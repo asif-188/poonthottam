@@ -15,6 +15,26 @@
  *   phone1  — e.g. "9952535057"
  *   phone2  — e.g. "9443247771"
  */
+function formatDateToDDMMYYYY(dateStr) {
+    if (!dateStr) return '';
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+        return dateStr;
+    }
+    const cleaned = dateStr.replace(/-/g, '/');
+    const parts = cleaned.split('/');
+    if (parts.length === 3) {
+        if (parts[0].length === 4) {
+            const [y, m, d] = parts;
+            return `${d}/${m}/${y}`;
+        }
+        if (parts[2].length === 4) {
+            const [d, m, y] = parts;
+            return `${d}/${m}/${y}`;
+        }
+    }
+    return dateStr;
+}
+
 export async function generateBuyerReceiptCanvas({
     buyer,
     salesItems    = [],
@@ -43,22 +63,17 @@ export async function generateBuyerReceiptCanvas({
     const fmtNum = (n, dec = 0) =>
         new Intl.NumberFormat('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec }).format(n || 0);
 
-    const displayDate = (iso) => {
-        if (!iso) return '';
-        const parts = iso.split('-');
-        if (parts.length === 3) {
-            const [y, m, d] = parts;
-            return `${d}/${m}/${y}`;
-        }
-        return iso.split('-').reverse().join('/');
-    };
+    // (displayDate helper removed in favor of global formatDateToDDMMYYYY helper)
 
     const runningBalance = prevBalance - paymentsTotal - cashLess;
     const absGrandTotal  = runningBalance + salesTotal;
 
     // ── Calculate Height ──
     const rowsCount = salesItems.length;
-    const baseHeight = 220 + 40 + 90 + 60 + 330 + 80;
+    let baseHeight = 220 + 40 + 90 + 60 + 330 + 80;
+    if (cashLess > 0) {
+        baseHeight += 45; // Space for Cash Less row
+    }
     const H = baseHeight + (rowsCount * LINE_H);
 
     const canvas  = document.createElement('canvas');
@@ -73,8 +88,22 @@ export async function generateBuyerReceiptCanvas({
     const drawText = (str, x, y, { size = 22, weight = 'normal', align = 'left', color = '#000', maxWidth, wrapWidth, lineHeight = 32 } = {}) => {
         ctx.font         = `${weight} ${size}px sans-serif`;
         ctx.fillStyle    = color;
-        ctx.textAlign    = align;
         ctx.textBaseline = 'middle';
+
+        let targetX = x;
+        let targetAlign = align;
+        if (!wrapWidth && (align === 'right' || align === 'center')) {
+            const textWidth = ctx.measureText(str || '').width;
+            const actualWidth = maxWidth ? Math.min(textWidth, maxWidth) : textWidth;
+            if (align === 'right') {
+                targetX = x - actualWidth;
+            } else {
+                targetX = x - (actualWidth / 2);
+            }
+            targetAlign = 'left';
+        }
+        ctx.textAlign = targetAlign;
+
         if (wrapWidth) {
             const words = (str || '').split(' ');
             let line = '';
@@ -83,18 +112,18 @@ export async function generateBuyerReceiptCanvas({
                 const testLine = line + words[i] + ' ';
                 const testWidth = ctx.measureText(testLine).width;
                 if (testWidth > wrapWidth && i > 0) {
-                    ctx.fillText(line.trim(), x, currentY, wrapWidth);
+                    ctx.fillText(line.trim(), targetX, currentY, wrapWidth);
                     line = words[i] + ' ';
                     currentY += lineHeight;
                 } else {
                     line = testLine;
                 }
             }
-            ctx.fillText(line.trim(), x, currentY, wrapWidth);
+            ctx.fillText(line.trim(), targetX, currentY, wrapWidth);
         } else if (maxWidth) {
-            ctx.fillText(str || '', x, y, maxWidth);
+            ctx.fillText(str || '', targetX, y, maxWidth);
         } else {
-            ctx.fillText(str || '', x, y);
+            ctx.fillText(str || '', targetX, y);
         }
     };
 
@@ -140,7 +169,7 @@ export async function generateBuyerReceiptCanvas({
     y += 45;
 
     // 4. Date (Left-aligned, bold, no box)
-    const formattedDate = dateLabel.includes('-') ? displayDate(dateLabel) : dateLabel;
+    const formattedDate = formatDateToDDMMYYYY(dateLabel);
     drawText(`தேதி : ${formattedDate}`, PAD, y, { size: 24, weight: '700' });
     y += 45;
 
@@ -231,8 +260,13 @@ export async function generateBuyerReceiptCanvas({
     const totalSumVal = salesTotal + prevBalance;
     drawTotalRow(totalsLabels.totalSum, totalSumVal, true);
 
-    const cashReceivedVal = paymentsTotal + cashLess;
-    drawTotalRow(totalsLabels.cashRec, cashReceivedVal);
+    const cashLessLabel = labels.cashLess || (lang === 'ta' ? 'கழிவு' : 'Discount');
+    if (cashLess > 0) {
+        drawTotalRow(totalsLabels.cashRec, paymentsTotal);
+        drawTotalRow(cashLessLabel, cashLess);
+    } else {
+        drawTotalRow(totalsLabels.cashRec, paymentsTotal);
+    }
 
     y += 30;
     ctx.beginPath();
@@ -240,7 +274,7 @@ export async function generateBuyerReceiptCanvas({
     ctx.lineTo(W - PAD, y);
     ctx.stroke();
 
-    const remainingBalanceVal = totalSumVal - cashReceivedVal;
+    const remainingBalanceVal = totalSumVal - paymentsTotal - cashLess;
     drawTotalRow(totalsLabels.finalBal, remainingBalanceVal, true);
 
     y += 30;
@@ -341,7 +375,7 @@ export async function generateLedgerCanvas({
         const isNameWrapped = nameWidth > (W - PAD*2 - 20);
         const firstPageTableStartY = 30 + 45 + 28 + 32 + 18 + 22 + 40 + 40 + 28 + (isNameWrapped ? 58 : 30) + 3 + 2;
 
-        const displayStartDate = startDate ? startDate.split('-').reverse().join('/') : '';
+        const displayStartDate = formatDateToDDMMYYYY(startDate);
         const allRows = [
             { date: displayStartDate, particulars: openingBalLabel, weight: '0.00', rate: '0', total: openingBalance, cashRec: 0, cashLess: 0, isOpening: true },
             ...ledgerRows
@@ -405,8 +439,22 @@ export async function generateLedgerCanvas({
                 const drawText = (str, x, y, { size = 20, weight = 'normal', align = 'left', color = '#000', maxWidth, wrapWidth, lineHeight = 28 } = {}) => {
                     ctx.font         = `${weight} ${size}px sans-serif`;
                     ctx.fillStyle    = color;
-                    ctx.textAlign    = align;
                     ctx.textBaseline = 'middle';
+
+                    let targetX = x;
+                    let targetAlign = align;
+                    if (!wrapWidth && (align === 'right' || align === 'center')) {
+                        const textWidth = ctx.measureText(str || '').width;
+                        const actualWidth = maxWidth ? Math.min(textWidth, maxWidth) : textWidth;
+                        if (align === 'right') {
+                            targetX = x - actualWidth;
+                        } else {
+                            targetX = x - (actualWidth / 2);
+                        }
+                        targetAlign = 'left';
+                    }
+                    ctx.textAlign = targetAlign;
+
                     if (wrapWidth) {
                         const words = (str || '').split(' ');
                         let line = '';
@@ -415,18 +463,18 @@ export async function generateLedgerCanvas({
                             const testLine = line + words[i] + ' ';
                             const testWidth = ctx.measureText(testLine).width;
                             if (testWidth > wrapWidth && i > 0) {
-                                ctx.fillText(line.trim(), x, currentY, wrapWidth);
+                                ctx.fillText(line.trim(), targetX, currentY, wrapWidth);
                                 line = words[i] + ' ';
                                 currentY += lineHeight;
                             } else {
                                 line = testLine;
                             }
                         }
-                        ctx.fillText(line.trim(), x, currentY, wrapWidth);
+                        ctx.fillText(line.trim(), targetX, currentY, wrapWidth);
                     } else if (maxWidth) {
-                        ctx.fillText(str || '', x, y, maxWidth);
+                        ctx.fillText(str || '', targetX, y, maxWidth);
                     } else {
-                        ctx.fillText(str || '', x, y);
+                        ctx.fillText(str || '', targetX, y);
                     }
                 };
 
@@ -438,9 +486,7 @@ export async function generateLedgerCanvas({
 
                 const drawRow = (rowY, dataRow, isOpening = false) => {
                     const { date: rDate, particulars: rParts, weight: rW, rate: rR, total: rT, cashRec: rCR, cashLess: rCL } = dataRow;
-                    const formattedDate = (rDate && rDate.includes('-') && rDate.split('-')[0].length === 4)
-                        ? rDate.split('-').reverse().join('-')
-                        : rDate;
+                    const formattedDate = formatDateToDDMMYYYY(rDate);
                     const vals = [formattedDate, rParts, rW, rR, rT, rCR, rCL];
                     vals.forEach((v, i) => {
                         let x = colStarts[i] + 10;
@@ -619,8 +665,22 @@ export async function generateLedgerCanvas({
     const drawText = (str, x, y, { size = 20, weight = 'normal', align = 'left', color = '#000', maxWidth, wrapWidth, lineHeight = 28 } = {}) => {
         ctx.font         = `${weight} ${size}px sans-serif`;
         ctx.fillStyle    = color;
-        ctx.textAlign    = align;
         ctx.textBaseline = 'middle';
+
+        let targetX = x;
+        let targetAlign = align;
+        if (!wrapWidth && (align === 'right' || align === 'center')) {
+            const textWidth = ctx.measureText(str || '').width;
+            const actualWidth = maxWidth ? Math.min(textWidth, maxWidth) : textWidth;
+            if (align === 'right') {
+                targetX = x - actualWidth;
+            } else {
+                targetX = x - (actualWidth / 2);
+            }
+            targetAlign = 'left';
+        }
+        ctx.textAlign = targetAlign;
+
         if (wrapWidth) {
             const words = (str || '').split(' ');
             let line = '';
@@ -629,18 +689,18 @@ export async function generateLedgerCanvas({
                 const testLine = line + words[i] + ' ';
                 const testWidth = ctx.measureText(testLine).width;
                 if (testWidth > wrapWidth && i > 0) {
-                    ctx.fillText(line.trim(), x, currentY, wrapWidth);
+                    ctx.fillText(line.trim(), targetX, currentY, wrapWidth);
                     line = words[i] + ' ';
                     currentY += lineHeight;
                 } else {
                     line = testLine;
                 }
             }
-            ctx.fillText(line.trim(), x, currentY, wrapWidth);
+            ctx.fillText(line.trim(), targetX, currentY, wrapWidth);
         } else if (maxWidth) {
-            ctx.fillText(str || '', x, y, maxWidth);
+            ctx.fillText(str || '', targetX, y, maxWidth);
         } else {
-            ctx.fillText(str || '', x, y);
+            ctx.fillText(str || '', targetX, y);
         }
     };
 
@@ -706,9 +766,7 @@ export async function generateLedgerCanvas({
     // Opening Balance Row
     const drawRow = (rowY, data, isOpening = false) => {
         const { date, particulars, weight, rate, total, cashRec, cashLess } = data;
-        const formattedDate = (date && date.includes('-') && date.split('-')[0].length === 4)
-            ? date.split('-').reverse().join('-')
-            : date;
+        const formattedDate = formatDateToDDMMYYYY(date);
         const vals = [formattedDate, particulars, weight, rate, total, cashRec, cashLess];
         vals.forEach((v, i) => {
             let x = colStarts[i] + 10;
@@ -748,7 +806,7 @@ export async function generateLedgerCanvas({
         ctx.beginPath(); ctx.moveTo(PAD, rowY + LINE_H); ctx.lineTo(W - PAD, rowY + LINE_H); ctx.stroke();
     };
 
-    const displayStartDate = startDate ? startDate.split('-').reverse().join('/') : '';
+    const displayStartDate = formatDateToDDMMYYYY(startDate);
     drawRow(y, { date: displayStartDate, particulars: openingBalLabel, weight: '0.00', rate: '0', total: fmtNum(openingBalance), cashRec: '0', cashLess: '0' }, true);
     y += LINE_H;
 
@@ -839,10 +897,24 @@ export async function generatePaymentReceiptCanvas({
     const drawText = (str, x, y, { size = 22, weight = 'normal', align = 'left', color = '#000', maxWidth } = {}) => {
         ctx.font = `${weight} ${size}px sans-serif`;
         ctx.fillStyle = color;
-        ctx.textAlign = align;
         ctx.textBaseline = 'middle';
-        if (maxWidth) ctx.fillText(str || '', x, y, maxWidth);
-        else ctx.fillText(str || '', x, y);
+
+        let targetX = x;
+        let targetAlign = align;
+        if (align === 'right' || align === 'center') {
+            const textWidth = ctx.measureText(str || '').width;
+            const actualWidth = maxWidth ? Math.min(textWidth, maxWidth) : textWidth;
+            if (align === 'right') {
+                targetX = x - actualWidth;
+            } else {
+                targetX = x - (actualWidth / 2);
+            }
+            targetAlign = 'left';
+        }
+        ctx.textAlign = targetAlign;
+
+        if (maxWidth) ctx.fillText(str || '', targetX, y, maxWidth);
+        else ctx.fillText(str || '', targetX, y);
     };
 
     let y = 50;
@@ -871,8 +943,7 @@ export async function generatePaymentReceiptCanvas({
         }
     };
 
-    const dArr = (payment.date || '').split('-');
-    const displayDate = dArr.length === 3 ? `${dArr[2]}-${dArr[1]}-${dArr[0]}` : payment.date;
+    const displayDate = formatDateToDDMMYYYY(payment.date);
 
     const isVendor = payment.type === 'vendor' || (entity.displayId && String(entity.displayId).startsWith('V'));
     const amountColor = isVendor ? '#b91c1c' : '#15803d';
@@ -934,10 +1005,24 @@ export async function generatePurchaseReceiptCanvas({
     const drawText = (str, x, y, { size = 22, weight = 'normal', align = 'left', color = '#000', maxWidth } = {}) => {
         ctx.font = `${weight} ${size}px sans-serif`;
         ctx.fillStyle = color;
-        ctx.textAlign = align;
         ctx.textBaseline = 'middle';
-        if (maxWidth) ctx.fillText(str || '', x, y, maxWidth);
-        else ctx.fillText(str || '', x, y);
+
+        let targetX = x;
+        let targetAlign = align;
+        if (align === 'right' || align === 'center') {
+            const textWidth = ctx.measureText(str || '').width;
+            const actualWidth = maxWidth ? Math.min(textWidth, maxWidth) : textWidth;
+            if (align === 'right') {
+                targetX = x - actualWidth;
+            } else {
+                targetX = x - (actualWidth / 2);
+            }
+            targetAlign = 'left';
+        }
+        ctx.textAlign = targetAlign;
+
+        if (maxWidth) ctx.fillText(str || '', targetX, y, maxWidth);
+        else ctx.fillText(str || '', targetX, y);
     };
 
     let y = 50;
@@ -955,8 +1040,7 @@ export async function generatePurchaseReceiptCanvas({
     drawText(purchaseReceipt, W/2, y, { size: 26, weight: '800', align: 'center', color: '#1e293b' });
     y += 60;
 
-    const dArr = (purchase.date || '').split('-');
-    const displayDate = dArr.length === 3 ? `${dArr[2]}-${dArr[1]}-${dArr[0]}` : purchase.date;
+    const displayDate = formatDateToDDMMYYYY(purchase.date);
 
     drawText(`${dateLabel}: ${displayDate}`, PAD, y, { size: 22, weight: '600' });
     y += 40;

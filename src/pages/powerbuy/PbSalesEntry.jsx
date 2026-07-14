@@ -50,12 +50,26 @@ const SearchSelect = ({ items, value, onChange, onKeyDown, inputRef, placeholder
   const selectedItem = items.find(i => i.id === value || i.name === value);
   const selectedName = selectedItem ? formatName(selectedItem) : '';
 
-  const filtered = query.trim() ? items.filter(i => {
-    const n = i.name?.toLowerCase() || '';
-    const tn = i.taName?.toLowerCase() || '';
-    const q = query.toLowerCase();
-    return n.includes(q) || tn.includes(q) || (i.displayId && String(i.displayId).includes(query));
-  }) : items;
+  const filtered = query.trim() ? items
+    .filter(i => {
+      const n = i.name?.toLowerCase() || '';
+      const tn = i.taName?.toLowerCase() || '';
+      const q = query.toLowerCase();
+      return n.includes(q) || tn.includes(q) || (i.displayId && String(i.displayId).includes(query));
+    })
+    .sort((a, b) => {
+      const q = query.toLowerCase();
+      const getScore = (item) => {
+        const n = item.name?.toLowerCase() || '';
+        const tn = item.taName?.toLowerCase() || '';
+        const id = item.displayId ? String(item.displayId).toLowerCase() : '';
+        if (n.startsWith(q) || tn.startsWith(q) || id.startsWith(q)) return 3;
+        if (n.includes(' ' + q) || tn.includes(' ' + q) || n.includes('-' + q) || tn.includes('-' + q)) return 2;
+        if (n.includes(q) || tn.includes(q) || id.includes(q)) return 1;
+        return 0;
+      };
+      return getScore(b) - getScore(a);
+    }) : items;
 
   const choose = (item) => {
     onChange(item);

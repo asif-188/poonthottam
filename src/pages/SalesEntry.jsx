@@ -24,12 +24,26 @@ const SearchSelect = ({ items, value, onChange, onKeyDown, inputRef, placeholder
     const selectedName = selectedItem ? formatName(selectedItem) : '';
 
     const filtered = query.trim()
-        ? items.filter(i => {
-            const n = i.name?.toLowerCase() || '';
-            const tn = i.taName?.toLowerCase() || '';
-            const q = query.toLowerCase();
-            return n.includes(q) || tn.includes(q) || (i.displayId && String(i.displayId).includes(query));
-        })
+        ? items
+            .filter(i => {
+                const n = i.name?.toLowerCase() || '';
+                const tn = i.taName?.toLowerCase() || '';
+                const q = query.toLowerCase();
+                return n.includes(q) || tn.includes(q) || (i.displayId && String(i.displayId).includes(query));
+            })
+            .sort((a, b) => {
+                const q = query.toLowerCase();
+                const getScore = (item) => {
+                    const n = item.name?.toLowerCase() || '';
+                    const tn = item.taName?.toLowerCase() || '';
+                    const id = item.displayId ? String(item.displayId).toLowerCase() : '';
+                    if (n.startsWith(q) || tn.startsWith(q) || id.startsWith(q)) return 3;
+                    if (n.includes(' ' + q) || tn.includes(' ' + q) || n.includes('-' + q) || tn.includes('-' + q)) return 2;
+                    if (n.includes(q) || tn.includes(q) || id.includes(q)) return 1;
+                    return 0;
+                };
+                return getScore(b) - getScore(a);
+            })
         : items;
 
     const choose = (item) => {
@@ -142,11 +156,13 @@ const SalesEntry = () => {
     const [currentItem, setCurrentItem] = useState({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
     const [isSaving, setIsSaving] = useState(false);
     const [mainTableSelectedIndex, setMainTableSelectedIndex] = useState(-1);
+    const [isWhatsAppActive, setIsWhatsAppActive] = useState(false);
+    const [selectedBuyerIdForShare, setSelectedBuyerIdForShare] = useState('');
 
-    // Reset selected index when customer selection changes
-    useEffect(() => {
-        setMainTableSelectedIndex(-1);
-    }, [buyerId]);
+    const selectRowAndBuyer = (sale) => {
+        setSelectedBuyerIdForShare(sale.buyerId);
+        setIsWhatsAppActive(true);
+    };
 
     // Refs
     const refDate     = useRef(null);
@@ -193,53 +209,39 @@ const SalesEntry = () => {
         return dailyEntries.filter(s => !buyerId || s.buyerId === buyerId);
     }, [dailyEntries, buyerId]);
 
-    const financialStats = React.useMemo(() => {
-        // 1. Today's Total (sales on the selected date for this buyer)
-        const activeBuyerEntries = buyerId ? allSales.filter(s => s.buyerId === buyerId && (s.date || (s.timestamp?.toDate ? toDateStr(s.timestamp.toDate()) : null)) === date) : [];
+    const getFinancialStatsForBuyer = (targetBuyerId) => {
+        if (!targetBuyerId) return { oldBalance: 0, cashRec: 0, cashLess: 0, todayTotal: 0, finalBalance: 0, ledgerBalance: 0 };
+        const activeBuyerEntries = allSales.filter(s => s.buyerId === targetBuyerId && (s.date || (s.timestamp?.toDate ? toDateStr(s.timestamp.toDate()) : null)) === date);
         const todayTotal = activeBuyerEntries.reduce((s, e) => s + (e.grandTotal || 0), 0);
-        
-        // 2. Payments for the selected date for this buyer
         const dayPayments = allPayments.filter(p => {
-            if (!buyerId || p.entityId !== buyerId || p.type !== 'buyer') return false;
+            if (p.entityId !== targetBuyerId || p.type !== 'buyer') return false;
             const d = p.timestamp ? (typeof p.timestamp === 'string' ? p.timestamp.substring(0, 10) : toDateStr(p.timestamp.toDate ? p.timestamp.toDate() : new Date(p.timestamp))) : null;
             return d === date;
         });
         const cashRec  = dayPayments.reduce((s, p) => s + (p.amount || 0), 0);
         const cashLess = dayPayments.reduce((s, p) => s + (p.cashLess || 0), 0);
-        
-        // 3. Live balance from database (representing current balance right now)
-        let liveBalance = 0;
-        if (buyerId) {
-            const buyer = buyers.find(b => b.id === buyerId);
-            liveBalance = buyer?.balance || 0;
-        }
-
-        // 4. Calculate future transactions relative to the selected date (strictly after selected date)
-        const futureSales = buyerId ? allSales.filter(s => {
-            if (s.buyerId !== buyerId) return false;
+        const buyer = buyers.find(b => b.id === targetBuyerId);
+        const liveBalance = buyer?.balance || 0;
+        const futureSales = allSales.filter(s => {
+            if (s.buyerId !== targetBuyerId) return false;
             const dt = s.date || (s.timestamp?.toDate ? toDateStr(s.timestamp.toDate()) : null);
             return dt && dt > date;
-        }) : [];
-        const futurePayments = buyerId ? allPayments.filter(p => {
-            if (p.entityId !== buyerId || p.type !== 'buyer') return false;
+        });
+        const futurePayments = allPayments.filter(p => {
+            if (p.entityId !== targetBuyerId || p.type !== 'buyer') return false;
             const dt = p.timestamp ? (typeof p.timestamp === 'string' ? p.timestamp.substring(0, 10) : toDateStr(p.timestamp.toDate ? p.timestamp.toDate() : new Date(p.timestamp))) : null;
             return dt && dt > date;
-        }) : [];
-        
+        });
         const futureSalesAmt = futureSales.reduce((s, x) => s + (Number(x.grandTotal) || 0), 0);
         const futurePayAmt   = futurePayments.reduce((s, x) => s + (Number(x.amount) || 0) + (Number(x.cashLess) || 0), 0);
-
-        // 5. Old Balance (at start of selected date)
-        // OB(D) = liveBalance - sales(on or after D) + payments(on or after D)
-        const oldBalance = buyerId ? (liveBalance - (futureSalesAmt + todayTotal) + (futurePayAmt + cashRec + cashLess)) : 0;
-        
-        // 6. Ledger Balance (after payments on D, before sales on D)
+        const oldBalance = liveBalance - (futureSalesAmt + todayTotal) + (futurePayAmt + cashRec + cashLess);
         const ledgerBalance = oldBalance - cashRec - cashLess;
-        
-        // 7. Final Balance (at the end of selected date)
         const finalBalance = ledgerBalance + todayTotal;
-
         return { oldBalance, cashRec, cashLess, todayTotal, finalBalance, ledgerBalance };
+    };
+
+    const financialStats = React.useMemo(() => {
+        return getFinancialStatsForBuyer(buyerId);
     }, [buyers, buyerId, allSales, allPayments, date]);
 
     const handleAddItem = async () => {
@@ -263,6 +265,9 @@ const SalesEntry = () => {
             await updateDoc(doc(db, 'buyers', buyerId), { balance: increment(total) });
             
             setCurrentItem({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
+            setIsWhatsAppActive(false);
+            setSelectedBuyerIdForShare('');
+            setMainTableSelectedIndex(-1);
             setTimeout(() => refFlower.current?.focus(), 50);
         } catch (err) {
             alert('Error saving item: ' + err.message);
@@ -274,6 +279,9 @@ const SalesEntry = () => {
     const handleEditItem = async (sale) => {
         setBuyerId(sale.buyerId);
         setCurrentItem(sale.items[0]);
+        setIsWhatsAppActive(false);
+        setSelectedBuyerIdForShare('');
+        setMainTableSelectedIndex(-1);
         // To edit, we basically populate the fields and delete the old entry
         // so when they click 'Save' again, it creates a clean updated version.
         try {
@@ -288,6 +296,9 @@ const SalesEntry = () => {
 
     const handleDeleteItem = async (sale) => {
         if (!window.confirm(t('delete') + '?')) return;
+        setIsWhatsAppActive(false);
+        setSelectedBuyerIdForShare('');
+        setMainTableSelectedIndex(-1);
         try {
             await deleteDoc(doc(db, 'sales', sale.id));
             await updateDoc(doc(db, 'buyers', sale.buyerId), { balance: increment(-(sale.grandTotal || 0)) });
@@ -305,17 +316,14 @@ const SalesEntry = () => {
     };
 
     const handleShareWhatsApp = async () => {
-        const activeBuyerEntries = dailyEntries.filter(s => s.buyerId === buyerId);
-        if (!buyerId || activeBuyerEntries.length === 0) return alert('No items to share for today.');
+        const targetBuyerId = selectedBuyerIdForShare || buyerId;
+        const activeBuyerEntries = dailyEntries.filter(s => s.buyerId === targetBuyerId);
+        if (!targetBuyerId || activeBuyerEntries.length === 0) return alert('No items to share for today.');
         
-        const template = getTemplateForTenant(tenantId || 'kasivetrivel');
-        if (template === TEMPLATE_TYPES.FLORAL_PREMIUM) {
-            window.open(`/#/invoice/${tenantId || 'kasivetrivel'}/${buyerId}?from=${date}&to=${date}`, '_blank');
-            return;
-        }
+        const buyer = buyers.find(b => b.id === targetBuyerId);
+        if (!buyer) return alert('Customer not found.');
 
-        const buyer = buyers.find(b => b.id === buyerId);
-        const { oldBalance, cashRec, cashLess, todayTotal } = financialStats;
+        const stats = getFinancialStatsForBuyer(targetBuyerId);
 
         try {
             const { blob, url } = await generateBuyerReceiptCanvas({
@@ -325,10 +333,10 @@ const SalesEntry = () => {
                     name: lang === 'ta' ? (buyer.nameTa || buyer.name) : buyer.name,
                 },
                 salesItems: activeBuyerEntries.flatMap(s => s.items || []),
-                salesTotal: todayTotal,
-                paymentsTotal: cashRec,
-                cashLess: cashLess,
-                prevBalance: oldBalance,
+                salesTotal: stats.todayTotal,
+                paymentsTotal: stats.cashRec,
+                cashLess: stats.cashLess,
+                prevBalance: stats.oldBalance,
                 dateLabel: date.split('-').reverse().join('/'),
                 bizInfo: settings,
                 lang: lang,
@@ -458,7 +466,12 @@ const SalesEntry = () => {
                         <SearchSelect 
                             items={buyers} 
                             value={buyerId} 
-                            onChange={b => setBuyerId(b.id)} 
+                            onChange={b => {
+                                setBuyerId(b.id);
+                                setIsWhatsAppActive(false);
+                                setSelectedBuyerIdForShare('');
+                                setMainTableSelectedIndex(-1);
+                            }} 
                             inputRef={refCustomer} 
                             onKeyDown={e => onKey(e, refFlower)} 
                             placeholder={t('selectCustomer')}
@@ -502,7 +515,22 @@ const SalesEntry = () => {
                     </button>
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <button onClick={handlePrint} style={{ height: '42px', width: '42px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><Printer size={18}/></button>
-                        <button onClick={handleShareWhatsApp} style={{ height: '42px', width: '42px', borderRadius: '10px', border: '1.5px solid #22c55e', background: '#fff', color: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><WhatsAppIcon size={20}/></button>
+                        <button 
+                            disabled={!isWhatsAppActive}
+                            onClick={handleShareWhatsApp} 
+                            style={{ 
+                                height: '42px', width: '42px', borderRadius: '10px', 
+                                border: '1.5px solid ' + (isWhatsAppActive ? '#22c55e' : '#cbd5e1'), 
+                                background: '#fff', 
+                                color: isWhatsAppActive ? '#22c55e' : '#94a3b8', 
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                cursor: isWhatsAppActive ? 'pointer' : 'not-allowed',
+                                opacity: isWhatsAppActive ? 1 : 0.5
+                            }}
+                            title="Share on WhatsApp"
+                        >
+                            <WhatsAppIcon size={20}/>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -539,22 +567,33 @@ const SalesEntry = () => {
                             ) : (
                                 buyerTodayEntries.map((sale, idx) => {
                                     const buyer = buyers.find(b => b.id === sale.buyerId);
-                                    const isHighlighted = mainTableSelectedIndex === idx;
+                                    const isHighlighted = selectedBuyerIdForShare ? (sale.buyerId === selectedBuyerIdForShare) : (mainTableSelectedIndex === idx);
                                     return (
                                         <tr key={sale.id}
                                             ref={el => mainTableRowRefs.current[idx] = el}
                                             tabIndex={0}
-                                            onClick={() => setMainTableSelectedIndex(idx)}
+                                            onClick={() => {
+                                                selectRowAndBuyer(sale);
+                                                setMainTableSelectedIndex(idx);
+                                            }}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'ArrowDown') {
                                                     e.preventDefault();
                                                     const nextIdx = Math.min(idx + 1, buyerTodayEntries.length - 1);
-                                                    setMainTableSelectedIndex(nextIdx);
+                                                    const nextSale = buyerTodayEntries[nextIdx];
+                                                    if (nextSale) {
+                                                        selectRowAndBuyer(nextSale);
+                                                        setMainTableSelectedIndex(nextIdx);
+                                                    }
                                                     mainTableRowRefs.current[nextIdx]?.focus();
                                                 } else if (e.key === 'ArrowUp') {
                                                     e.preventDefault();
                                                     const prevIdx = Math.max(idx - 1, 0);
-                                                    setMainTableSelectedIndex(prevIdx);
+                                                    const prevSale = buyerTodayEntries[prevIdx];
+                                                    if (prevSale) {
+                                                        selectRowAndBuyer(prevSale);
+                                                        setMainTableSelectedIndex(prevIdx);
+                                                    }
                                                     mainTableRowRefs.current[prevIdx]?.focus();
                                                 }
                                             }}
