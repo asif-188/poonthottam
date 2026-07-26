@@ -31,6 +31,13 @@ const MENU_ITEMS = [
         labelTa: 'கடன் / செலவுகள்',
         color: { border: '#ef4444', text: '#b91c1c', bg: '#fef2f2', glow: 'rgba(239,68,68,0.15)' },
         route: '/app/salesman-credit-expenses',
+    },
+    {
+        emoji: '📈',
+        label: 'Reports',
+        labelTa: 'அறிக்கைகள்',
+        color: { border: '#d97706', text: '#d97706', bg: '#fffbeb', glow: 'rgba(217,119,6,0.15)' },
+        route: '/app/salesman-reports',
     }
 ];
 

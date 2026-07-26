@@ -57,11 +57,16 @@ const SearchSelect = ({ items, value, onChange, onKeyDown, inputRef, placeholder
         else if (e.key === 'ArrowUp') { e.preventDefault(); setCursor(c => Math.max(c - 1, 0)); }
         else if (e.key === 'Enter') {
             e.preventDefault();
-            if (open && filtered[cursor]) {
+            if (e.shiftKey) {
+                if (onKeyDown) onKeyDown(e);
+            }
+            else if (open && filtered[cursor]) {
                 choose(filtered[cursor]);
                 if (onKeyDown) onKeyDown(e);
             }
-            else if (onKeyDown) onKeyDown(e);
+            else if (value) {
+                if (onKeyDown) onKeyDown(e);
+            }
         }
         else if (e.key === 'Escape') setOpen(false);
         else if (e.key === 'Tab') {
@@ -366,9 +371,22 @@ const SalesEntry = () => {
         if (activeBuyerEntries.length > 0) window.print();
     };
 
-    const onKey = (e, nextRef) => {
+    const onKey = (e, nextRef, valToCheck = null, prevRef = null) => {
         if (e.key === 'Enter') {
             e.preventDefault();
+            if (e.shiftKey) {
+                if (prevRef && prevRef.current) {
+                    prevRef.current.focus();
+                    if (prevRef.current.select) prevRef.current.select();
+                }
+                return;
+            }
+            if (valToCheck !== null) {
+                const val = String(valToCheck).trim();
+                if (!val || val === '0' || parseFloat(val) <= 0) {
+                    return;
+                }
+            }
             nextRef.current?.focus();
             if (nextRef.current?.select) nextRef.current.select();
         }
@@ -485,18 +503,28 @@ const SalesEntry = () => {
                             value={currentItem.flowerType} 
                             onChange={f => setCurrentItem(p => ({...p, flowerType: f.name, flowerTypeTa: f.taName || '' }))} 
                             inputRef={refFlower} 
-                            onKeyDown={e => onKey(e, refQty)} 
+                            onKeyDown={e => onKey(e, refQty, null, refCustomer)} 
                             placeholder={t('flowerVariety')}
                             lang={lang}
                         />
                     </div>
                     <div>
                         <label style={LABEL_S}>{t('qty')}</label>
-                        <input ref={refQty} type="number" placeholder="0.00" value={currentItem.quantity} onChange={e => setCurrentItem(p => ({...p, quantity: e.target.value}))} onKeyDown={e => onKey(e, refRate)} style={INPUT_S} />
+                        <input ref={refQty} type="number" placeholder="0.00" value={currentItem.quantity} onChange={e => setCurrentItem(p => ({...p, quantity: e.target.value}))} onKeyDown={e => onKey(e, refRate, currentItem.quantity, refFlower)} style={INPUT_S} />
                     </div>
                     <div>
                         <label style={LABEL_S}>{t('rate')}</label>
-                        <input ref={refRate} type="number" placeholder="0.00" value={currentItem.price} onChange={e => setCurrentItem(p => ({...p, price: e.target.value}))} onKeyDown={e => e.key === 'Enter' && handleAddItem()} style={INPUT_S} />
+                        <input ref={refRate} type="number" placeholder="0.00" value={currentItem.price} onChange={e => setCurrentItem(p => ({...p, price: e.target.value}))} onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (e.shiftKey) {
+                                    refQty.current?.focus();
+                                    if (refQty.current?.select) refQty.current.select();
+                                } else if (currentItem.price && parseFloat(currentItem.price) > 0) {
+                                    handleAddItem();
+                                }
+                            }
+                        }} style={INPUT_S} />
                     </div>
                     <button
                         ref={refAddBtn}

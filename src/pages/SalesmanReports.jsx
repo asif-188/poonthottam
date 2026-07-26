@@ -2,8 +2,7 @@ import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { subscribeToCollection } from '../utils/storage';
 import { LangContext } from '../components/Layout';
 import * as XLSX from 'xlsx';
-import { jsPDF } from 'jspdf';
-import { FileText, Calendar, User, Printer, Download, BarChart2 } from 'lucide-react';
+import { Printer, Download, BarChart2 } from 'lucide-react';
 
 const S = {
     page: {
@@ -40,14 +39,6 @@ const S = {
         cursor: 'pointer', transition: 'all 0.18s',
         fontFamily: 'var(--font-sans)',
     },
-    tabBar: {
-        display: 'flex', gap: '8px', borderBottom: '1px solid #e2e8f0',
-        paddingBottom: '10px', marginBottom: '20px', flexWrap: 'wrap',
-    },
-    tabBtn: {
-        padding: '6px 14px', borderRadius: '8px', border: 'none',
-        fontSize: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
-    },
     toolbar: {
         display: 'flex', alignItems: 'center', gap: '20px',
         padding: '20px', background: '#f0fdfa', border: '1px solid #99f6e4',
@@ -69,15 +60,15 @@ const S = {
         width: '100%', borderCollapse: 'collapse',
     },
     th: {
-        padding: '10px 14px', textAlign: 'left',
-        fontSize: '11px', fontWeight: 700, color: '#0f766e',
-        textTransform: 'uppercase', letterSpacing: '0.08em',
-        borderBottom: '1.5px solid #e5e7eb', whiteSpace: 'nowrap',
-        background: '#fff',
+        padding: '8px 10px', textAlign: 'left',
+        fontSize: '11px', fontWeight: 700, color: '#475569',
+        textTransform: 'uppercase', letterSpacing: '0.05em',
+        borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap',
+        background: '#f8fafc',
     },
     td: {
-        padding: '13px 14px', fontSize: '14px',
-        color: '#374151', borderBottom: '1px solid #f3f4f6',
+        padding: '8px 10px', fontSize: '12px',
+        color: '#334155', borderBottom: '1px solid #f1f5f9',
         verticalAlign: 'middle',
     },
     emptyRow: {
@@ -87,6 +78,7 @@ const S = {
 };
 
 const TD_S = S.td;
+const TH_S = S.th;
 
 const displayDate = (iso) => {
     if (!iso || typeof iso !== 'string') return '---';
@@ -101,9 +93,11 @@ const SalesmanReports = () => {
     const [cashRecords, setCashRecords] = useState([]);
     const [purchaseRecords, setPurchaseRecords] = useState([]);
     const [flowers, setFlowers] = useState([]);
+    const [payments, setPayments] = useState([]);
+    const [expenses, setExpenses] = useState([]);
+    const [transfers, setTransfers] = useState([]);
 
     const today = new Date().toLocaleDateString('en-CA');
-    const [activeTab, setActiveTab] = useState('cash'); // 'cash', 'purchase', 'ledger', 'flower', 'daily', 'monthly'
     const [selectedSalesmanId, setSelectedSalesmanId] = useState('');
     const [fromDate, setFromDate] = useState(today);
     const [toDate, setToDate] = useState(today);
@@ -117,423 +111,450 @@ const SalesmanReports = () => {
                 ? [{ name: 'Rose', taName: 'ரோஜா' }, { name: 'Jasmine', taName: 'மல்லிகை' }, { name: 'Marigold', taName: 'சாமந்தி' }]
                 : data);
         });
-
+        const unsubPayments = subscribeToCollection('payments', setPayments);
+        const unsubExpenses = subscribeToCollection('salesman_expenses', setExpenses);
+        const unsubTransfers = subscribeToCollection('salesman_transfers', setTransfers);
+ 
         return () => {
             unsubSalesmen();
             unsubCash();
             unsubPurchases();
             unsubProducts();
+            unsubPayments();
+            unsubExpenses();
+            unsubTransfers();
         };
     }, []);
 
-    // Filter Helper
-    const isWithinDateRange = (dateStr) => {
-        if (!dateStr) return false;
-        return dateStr >= fromDate && dateStr <= toDate;
-    };
+    const fmt = (n) =>
+        new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(n || 0);
 
-    // Report Data Calculators
-    const reportsData = useMemo(() => {
-        const cashFiltered = cashRecords.filter(r => 
-            isWithinDateRange(r.date) && (!selectedSalesmanId || r.salesmanId === selectedSalesmanId)
-        ).sort((a, b) => b.date.localeCompare(a.date));
+    const salesmanCardsData = useMemo(() => {
+        const activeSalesmen = salesmen.filter(s => 
+            s.status === 'Active' && (!selectedSalesmanId || s.id === selectedSalesmanId)
+        );
 
-        const purchaseFiltered = purchaseRecords.filter(p => 
-            isWithinDateRange(p.date) && (!selectedSalesmanId || p.salesmanId === selectedSalesmanId)
-        ).sort((a, b) => b.date.localeCompare(a.date));
+        return activeSalesmen.map(salesman => {
+            const creditList = [];
 
-        // Ledger calculation
-        let ledgerRows = [];
-        if (selectedSalesmanId) {
-            const sCash = cashRecords.filter(r => r.salesmanId === selectedSalesmanId);
-            const sPurchases = purchaseRecords.filter(p => p.salesmanId === selectedSalesmanId);
-            const allDates = Array.from(new Set([
-                ...sCash.map(r => r.date).filter(Boolean),
-                ...sPurchases.map(p => p.date).filter(Boolean)
-            ])).sort();
+            // 1. Opening Balance
+            const sCashHist = cashRecords.filter(r => r.salesmanId === salesman.id && r.date < fromDate);
+            const sTransInHist = transfers.filter(t => t.toSalesmanId === salesman.id && t.date < fromDate);
+            const sPurchasesHist = purchaseRecords.filter(p => p.salesmanId === salesman.id && p.date < fromDate);
+            const sPaymentsHist = payments.filter(p => p.type === 'vendor' && p.salesmanId === salesman.id && p.date < fromDate);
+            const sExpensesHist = expenses.filter(e => e.salesmanId === salesman.id && e.date < fromDate);
+            const sTransOutHist = transfers.filter(t => t.fromSalesmanId === salesman.id && t.date < fromDate);
 
-            let carryForward = 0;
-            for (const d of allDates) {
-                const issuedToday = sCash.filter(r => r.date === d).reduce((sum, r) => sum + (r.openingCash || 0), 0);
-                const purchasesToday = sPurchases.filter(p => p.date === d).reduce((sum, p) => sum + (p.grandTotal || 0), 0);
-                const openingCash = carryForward + issuedToday;
-                const balanceCash = openingCash - purchasesToday;
+            const openingCashInflow = (Number(salesman.openingCash) || 0) + 
+                sCashHist.reduce((sum, r) => sum + (Number(r.openingCash) || 0), 0) + 
+                sTransInHist.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-                if (isWithinDateRange(d)) {
-                    ledgerRows.push({
-                        date: d,
-                        openingCash,
-                        purchaseAmount: purchasesToday,
-                        balanceCash,
-                        closingBalance: balanceCash,
-                        carryForwardBalance: balanceCash
-                    });
-                }
-                carryForward = balanceCash;
+            const openingCashOutflow = 
+                sPurchasesHist.reduce((sum, p) => sum + (Number(p.grandTotal) || 0), 0) + 
+                sPaymentsHist.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) + 
+                sExpensesHist.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) + 
+                sTransOutHist.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+            const openingBalance = openingCashInflow - openingCashOutflow;
+
+            if (openingBalance !== 0) {
+                creditList.push({
+                    particulars: lang === 'ta' ? 'ஆரம்ப இருப்பு (Opening Balance)' : 'Opening Balance',
+                    quantity: null,
+                    rate: null,
+                    total: openingBalance
+                });
             }
-            ledgerRows.reverse();
-        }
 
-        // Flower-wise summary
-        const flowerSummary = {};
-        purchaseRecords.filter(p => isWithinDateRange(p.date)).forEach(p => {
-            (p.items || []).forEach(item => {
-                const name = item.flowerType;
-                if (!flowerSummary[name]) flowerSummary[name] = { name, quantity: 0, amount: 0 };
-                flowerSummary[name].quantity += Number(item.quantity) || 0;
-                flowerSummary[name].amount += Number(item.total) || 0;
+            // 2. Cash Issued
+            const rangeCash = cashRecords.filter(r => r.salesmanId === salesman.id && r.date >= fromDate && r.date <= toDate);
+            rangeCash.forEach(r => {
+                creditList.push({
+                    particulars: (lang === 'ta' ? 'ரொக்கம் வழங்கப்பட்டது' : 'Cash Issued') + (r.remarks ? ` (${r.remarks})` : ''),
+                    quantity: null,
+                    rate: null,
+                    total: Number(r.openingCash) || 0
+                });
             });
-        });
-        const flowerRows = Object.values(flowerSummary).sort((a, b) => b.quantity - a.quantity);
 
-        // Daily Summary
-        const dailySummary = {};
-        cashRecords.forEach(r => {
-            if (!r.date) return;
-            if (!dailySummary[r.date]) dailySummary[r.date] = { date: r.date, cashIssued: 0, purchases: 0 };
-            dailySummary[r.date].cashIssued += Number(r.openingCash) || 0;
-        });
-        purchaseRecords.forEach(p => {
-            if (!p.date) return;
-            if (!dailySummary[p.date]) dailySummary[p.date] = { date: p.date, cashIssued: 0, purchases: 0 };
-            dailySummary[p.date].purchases += Number(p.grandTotal) || 0;
-        });
-        const dailyRows = Object.values(dailySummary)
-            .filter(r => isWithinDateRange(r.date))
-            .map(r => ({ ...r, netBalance: r.cashIssued - r.purchases }))
-            .sort((a, b) => b.date.localeCompare(a.date));
+            // 3. Transfers In
+            const rangeTransIn = transfers.filter(t => t.toSalesmanId === salesman.id && t.date >= fromDate && t.date <= toDate);
+            rangeTransIn.forEach(t => {
+                const fromSales = salesmen.find(s => s.id === t.fromSalesmanId);
+                const fromName = fromSales ? (lang === 'ta' ? (fromSales.nameTa || fromSales.name) : fromSales.name) : '---';
+                creditList.push({
+                    particulars: lang === 'ta' ? `${fromName}-டமிருந்து வரவு (Transfer)` : `Transfer from ${fromName}`,
+                    quantity: null,
+                    rate: null,
+                    total: Number(t.amount) || 0
+                });
+            });
 
-        // Monthly Summary
-        const monthlySummary = {};
-        cashRecords.forEach(r => {
-            if (!r.date || typeof r.date !== 'string') return;
-            const m = r.date.substring(0, 7); // 'YYYY-MM'
-            if (!monthlySummary[m]) monthlySummary[m] = { month: m, cashIssued: 0, purchases: 0 };
-            monthlySummary[m].cashIssued += Number(r.openingCash) || 0;
+            const totalCredit = creditList.reduce((sum, item) => sum + (item.total || 0), 0);
+
+            const debitList = [];
+
+            // 1. Farmer purchases
+            const rangePurchases = purchaseRecords.filter(p => p.salesmanId === salesman.id && p.date >= fromDate && p.date <= toDate);
+            rangePurchases.forEach(p => {
+                p.items.forEach(item => {
+                    const fl = flowers.find(f => f.name === item.flowerType);
+                    const flowerName = fl ? (lang === 'ta' ? (fl.taName || item.flowerType) : item.flowerType) : item.flowerType;
+                    debitList.push({
+                        particulars: `${flowerName} (${lang === 'ta' ? 'விவசாயி' : 'Farmer'}: ${p.farmerName || '---'})`,
+                        quantity: Number(item.quantity) || 0,
+                        rate: Number(item.price) || 0,
+                        total: Number(item.total) || 0
+                    });
+                });
+            });
+
+            // 2. Vendor payments
+            const rangePayments = payments.filter(p => p.type === 'vendor' && p.salesmanId === salesman.id && p.date >= fromDate && p.date <= toDate);
+            rangePayments.forEach(p => {
+                debitList.push({
+                    particulars: `${lang === 'ta' ? 'விற்பனையாளர் செலுத்துகை' : 'Vendor Payment'} (${p.note || '---'})`,
+                    quantity: null,
+                    rate: null,
+                    total: Number(p.amount) || 0
+                });
+            });
+
+            // 3. Expenses
+            const rangeExpenses = expenses.filter(e => e.salesmanId === salesman.id && e.date >= fromDate && e.date <= toDate);
+            rangeExpenses.forEach(e => {
+                debitList.push({
+                    particulars: `${lang === 'ta' ? 'செலவு' : 'Expense'} (${e.remarks || '---'})`,
+                    quantity: null,
+                    rate: null,
+                    total: Number(e.amount) || 0
+                });
+            });
+
+            // 4. Transfers Out
+            const rangeTransOut = transfers.filter(t => t.fromSalesmanId === salesman.id && t.date >= fromDate && t.date <= toDate);
+            rangeTransOut.forEach(t => {
+                const toSales = salesmen.find(s => s.id === t.toSalesmanId);
+                const toName = toSales ? (lang === 'ta' ? (toSales.nameTa || toSales.name) : toSales.name) : '---';
+                debitList.push({
+                    particulars: lang === 'ta' ? `${toName}-க்கு செலுத்தியது (Transfer)` : `Transfer to ${toName}`,
+                    quantity: null,
+                    rate: null,
+                    total: Number(t.amount) || 0
+                });
+            });
+
+            const totalDebit = debitList.reduce((sum, item) => sum + (item.total || 0), 0);
+            const totalDebitKg = debitList.reduce((sum, item) => sum + (item.quantity || 0), 0);
+
+            const netBalanceAmount = totalCredit - totalDebit;
+
+            return {
+                salesmanId: salesman.id,
+                salesmanName: lang === 'ta' ? (salesman.nameTa || salesman.name) : salesman.name,
+                creditList,
+                debitList,
+                totalCredit,
+                totalDebit,
+                totalDebitKg,
+                netBalanceAmount
+            };
         });
-        purchaseRecords.forEach(p => {
-            if (!p.date || typeof p.date !== 'string') return;
-            const m = p.date.substring(0, 7); // 'YYYY-MM'
-            if (!monthlySummary[m]) monthlySummary[m] = { month: m, cashIssued: 0, purchases: 0 };
-            monthlySummary[m].purchases += Number(p.grandTotal) || 0;
-        });
-        const monthlyRows = Object.values(monthlySummary)
-            .map(r => ({ ...r, netBalance: r.cashIssued - r.purchases }))
-            .sort((a, b) => b.month.localeCompare(a.month));
+    }, [salesmen, cashRecords, purchaseRecords, payments, expenses, transfers, flowers, fromDate, toDate, lang, selectedSalesmanId]);
 
-        return {
-            cash: cashFiltered,
-            purchase: purchaseFiltered,
-            ledger: ledgerRows,
-            flower: flowerRows,
-            daily: dailyRows,
-            monthly: monthlyRows
-        };
-    }, [cashRecords, purchaseRecords, fromDate, toDate, selectedSalesmanId]);
+    const handlePrintSingleSalesman = (group) => {
+        try {
+            const printWindow = window.open('', '_blank');
+            const biz = { name: 'S.V.M', motto: 'SRI RAMA JAYAM', type: 'Sri Valli Flower Merchant', address: 'B-7, Flower Market, Tindivanam.', phone1: '', phone2: '' };
+            const formattedFrom = fromDate.split('-').reverse().join('/');
+            const formattedTo = toDate.split('-').reverse().join('/');
+            const title = lang === 'ta' ? 'விற்பனையாளர் அறிக்கை' : 'Salesman Report';
+            const salesmanText = `${lang === 'ta' ? 'விற்பனையாளர் பெயர்' : 'Salesman Name'}: ${group.salesmanName}`;
+            const dateRangeText = `${formattedFrom} - ${formattedTo}`;
 
-    const activeData = useMemo(() => {
-        return reportsData[activeTab] || [];
-    }, [reportsData, activeTab]);
+            let debitRows = '';
+            if (group.debitList.length === 0) {
+                debitRows = `<tr><td colspan="2" style="text-align:center; font-style:italic; padding:10px; color:#94a3b8;">${lang === 'ta' ? 'பற்று எதுவும் இல்லை' : 'No debits.'}</td></tr>`;
+            } else {
+                debitRows = group.debitList.map(item => `
+                    <tr>
+                        <td>${item.particulars}</td>
+                        <td class="right">${fmt(item.total)}</td>
+                    </tr>
+                `).join('');
+            }
 
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            maximumFractionDigits: 0
-        }).format(amount);
+            let creditRows = '';
+            if (group.creditList.length === 0) {
+                creditRows = `<tr><td colspan="2" style="text-align:center; font-style:italic; padding:10px; color:#94a3b8;">${lang === 'ta' ? 'வரவு எதுவும் இல்லை' : 'No credits.'}</td></tr>`;
+            } else {
+                creditRows = group.creditList.map(item => `
+                    <tr>
+                        <td>${item.particulars}</td>
+                        <td class="right">${fmt(item.total)}</td>
+                    </tr>
+                `).join('');
+            }
+
+            const contentHtml = `
+                <div class="salesman-group" style="margin-bottom:40px; border:1px solid #e2e8f0; padding:20px; border-radius:12px; page-break-inside:avoid; background:#fff;">
+                    <h2 style="margin:0 0 15px 0; font-size:18px; border-bottom:2px solid #f1f5f9; padding-bottom:10px; color:#0f172a; display:flex; align-items:center; gap:8px;">👤 ${group.salesmanName}</h2>
+                    <div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:space-between; margin-bottom:15px;">
+                        <div style="flex:1; min-width:250px;">
+                            <h3 style="margin:0 0 10px 0; font-size:11px; font-weight:800; color:#16a34a; text-transform:uppercase; letter-spacing:0.05em;">📤 Credit (Cr) / Sales</h3>
+                            <table style="width:100%; max-width:500px; border-collapse:collapse; font-size:11px;">
+                                <thead>
+                                    <tr style="background:#f8fafc;">
+                                        <th style="border-bottom:1.5px solid #e2e8f0; text-align:left; padding:8px; color:#475569;">Particulars</th>
+                                        <th style="border-bottom:1.5px solid #e2e8f0; text-align:right; padding:8px; color:#475569; width:90px;">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${creditRows}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="flex:1.2; min-width:300px;">
+                            <h3 style="margin:0 0 10px 0; font-size:11px; font-weight:800; color:#ef4444; text-transform:uppercase; letter-spacing:0.05em;">📥 Debit (Dr) / Purchase</h3>
+                            <table style="width:100%; max-width:500px; border-collapse:collapse; font-size:11px;">
+                                <thead>
+                                    <tr style="background:#f8fafc;">
+                                        <th style="border-bottom:1.5px solid #e2e8f0; text-align:left; padding:8px; color:#475569;">Particulars</th>
+                                        <th style="border-bottom:1.5px solid #e2e8f0; text-align:right; padding:8px; color:#475569; width:90px;">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${debitRows}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:space-between; border-top:1.5px solid #f1f5f9; padding-top:10px; font-size:11px; font-weight:bold; color:#475569;">
+                        <div style="flex:1; min-width:250px; max-width:500px; display:flex; justify-content:space-between;">
+                            <span>Total Sales:</span>
+                            <span style="color:#16a34a;">${fmt(group.totalCredit)}</span>
+                        </div>
+                        <div style="flex:1.2; min-width:300px; max-width:500px; display:flex; justify-content:space-between;">
+                            <span>Total Purchase:</span>
+                            <span style="color:#ef4444;">${fmt(group.totalDebit)}</span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:center; margin-top:15px;">
+                        <div style="display:inline-flex; flex-direction:column; align-items:center; background:${group.netBalanceAmount >= 0 ? '#f0fdf4' : '#fff5f5'}; border:${group.netBalanceAmount >= 0 ? '1px solid #bbf7d0' : '1px solid #fecdd3'}; border-radius:10px; padding:6px 20px; text-align:center;">
+                            <span style="font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; font-weight:800;">Net Balance</span>
+                            <span style="font-size:14px; font-weight:900; color:${group.netBalanceAmount >= 0 ? '#16a34a' : '#ef4444'}; margin-top:2px;">
+                                ${group.netBalanceAmount >= 0 ? '+' : ''}${fmt(group.netBalanceAmount)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>${title}</title>
+                    <style>
+                        body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; background: #fff; color: #1e293b; }
+                        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+                        .header-table td { padding: 0; vertical-align: top; }
+                        h1 { margin: 0; font-size: 22px; font-weight: 850; letter-spacing: -0.02em; color: #0f172a; }
+                        .subtitle { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-top: 3px; }
+                        .meta-info { font-size: 11px; color: #475569; font-weight: 500; text-align: right; line-height: 1.4; }
+                        table th { font-weight: 800; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1.5px solid #e2e8f0; padding: 6px 8px; color: #475569; }
+                        table td { padding: 8px; border-bottom: 1px solid #f1f5f9; font-size: 11px; color: #334155; }
+                        .right { text-align: right; }
+                    </style>
+                </head>
+                <body>
+                    <table class="header-table">
+                        <tr>
+                            <td>
+                                <h1>${biz.name}</h1>
+                                <div class="subtitle">${biz.type}</div>
+                                <div style="font-size:10px; color:#64748b; margin-top:2px;">${biz.address}</div>
+                            </td>
+                            <td class="meta-info">
+                                <div style="font-weight: 800; font-size:12px; color:#0f172a;">${title.toUpperCase()}</div>
+                                <div style="margin-top:2px;">${salesmanText}</div>
+                                <div>${dateRangeText}</div>
+                            </td>
+                        </tr>
+                    </table>
+                    ${contentHtml}
+                    <script>
+                        window.onload = function() { window.print(); window.close(); }
+                    </script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        } catch (e) {
+            alert('Printing failed: ' + e.message);
+        }
     };
 
-    // Export Excel
-    const handleExportExcel = () => {
-        if (activeData.length === 0) return alert('No data to export.');
-        
-        let wsData = [];
-        let filename = `Salesman_${activeTab}_Report_${Date.now()}.xlsx`;
+    const handlePrintAll = () => {
+        if (salesmanCardsData.length === 0) return alert('No data to print.');
 
-        if (activeTab === 'cash') {
-            wsData = activeData.map(r => ({
-                'Date': displayDate(r.date),
-                'Salesman Name': r.salesmanName,
-                'Cash Issued (₹)': r.openingCash,
-                'Remarks': r.remarks || '---'
-            }));
-        } else if (activeTab === 'purchase') {
-            wsData = activeData.map(p => ({
-                'Date': displayDate(p.date),
-                'Salesman Name': p.salesmanName,
-                'Farmer Name': p.farmerName,
-                'Bill Number': p.billNumber,
-                'Grand Total (₹)': p.grandTotal,
-                'Remarks': p.remarks || '---'
-            }));
-        } else if (activeTab === 'ledger') {
-            wsData = activeData.map(r => ({
-                'Date': displayDate(r.date),
-                'Opening Cash (₹)': r.openingCash,
-                'Purchase Amount (₹)': r.purchaseAmount,
-                'Balance Cash (₹)': r.balanceCash,
-                'Closing Balance (₹)': r.closingBalance
-            }));
-        } else if (activeTab === 'flower') {
-            wsData = activeData.map(r => ({
-                'Flower Name': r.name,
-                'Total Qty (KG)': r.quantity,
-                'Total Value (₹)': r.amount
-            }));
-        } else if (activeTab === 'daily') {
-            wsData = activeData.map(r => ({
-                'Date': displayDate(r.date),
-                'Total Cash Issued (₹)': r.cashIssued,
-                'Total Purchases (₹)': r.purchases,
-                'Net Balance (₹)': r.netBalance
-            }));
-        } else if (activeTab === 'monthly') {
-            wsData = activeData.map(r => ({
-                'Month': r.month,
-                'Total Cash Issued (₹)': r.cashIssued,
-                'Total Purchases (₹)': r.purchases,
-                'Net Balance (₹)': r.netBalance
-            }));
+        try {
+            const printWindow = window.open('', '_blank');
+            const biz = { name: 'S.V.M', motto: 'SRI RAMA JAYAM', type: 'Sri Valli Flower Merchant', address: 'B-7, Flower Market, Tindivanam.', phone1: '', phone2: '' };
+            const formattedFrom = fromDate.split('-').reverse().join('/');
+            const formattedTo = toDate.split('-').reverse().join('/');
+            const title = lang === 'ta' ? 'விற்பனையாளர் அறிக்கைகள்' : 'Salesman Reports';
+            const dateRangeText = `${formattedFrom} - ${formattedTo}`;
+
+            const pagesHtml = salesmanCardsData.map(group => {
+                let debitRows = '';
+                if (group.debitList.length === 0) {
+                    debitRows = `<tr><td colspan="2" style="text-align:center; font-style:italic; padding:10px; color:#94a3b8;">${lang === 'ta' ? 'பற்று எதுவும் இல்லை' : 'No debits.'}</td></tr>`;
+                } else {
+                    debitRows = group.debitList.map(item => `
+                        <tr>
+                            <td>${item.particulars}</td>
+                            <td class="right">${fmt(item.total)}</td>
+                        </tr>
+                    `).join('');
+                }
+
+                let creditRows = '';
+                if (group.creditList.length === 0) {
+                    creditRows = `<tr><td colspan="2" style="text-align:center; font-style:italic; padding:10px; color:#94a3b8;">${lang === 'ta' ? 'வரவு எதுவும் இல்லை' : 'No credits.'}</td></tr>`;
+                } else {
+                    creditRows = group.creditList.map(item => `
+                        <tr>
+                            <td>${item.particulars}</td>
+                            <td class="right">${fmt(item.total)}</td>
+                        </tr>
+                    `).join('');
+                }
+
+                return `
+                    <div class="salesman-group" style="margin-bottom:40px; border:1px solid #e2e8f0; padding:20px; border-radius:12px; page-break-inside:avoid; background:#fff;">
+                        <h2 style="margin:0 0 15px 0; font-size:18px; border-bottom:2px solid #f1f5f9; padding-bottom:10px; color:#0f172a; display:flex; align-items:center; gap:8px;">👤 ${group.salesmanName}</h2>
+                        <div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:space-between; margin-bottom:15px;">
+                            <div style="flex:1; min-width:250px;">
+                                <h3 style="margin:0 0 10px 0; font-size:11px; font-weight:800; color:#16a34a; text-transform:uppercase; letter-spacing:0.05em;">📤 Credit (Cr) / Sales</h3>
+                                <table style="width:100%; max-width:500px; border-collapse:collapse; font-size:11px;">
+                                    <thead>
+                                        <tr style="background:#f8fafc;">
+                                            <th style="border-bottom:1.5px solid #e2e8f0; text-align:left; padding:8px; color:#475569;">Particulars</th>
+                                            <th style="border-bottom:1.5px solid #e2e8f0; text-align:right; padding:8px; color:#475569; width:90px;">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${creditRows}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div style="flex:1.2; min-width:300px;">
+                                <h3 style="margin:0 0 10px 0; font-size:11px; font-weight:800; color:#ef4444; text-transform:uppercase; letter-spacing:0.05em;">📥 Debit (Dr) / Purchase</h3>
+                                <table style="width:100%; max-width:500px; border-collapse:collapse; font-size:11px;">
+                                    <thead>
+                                        <tr style="background:#f8fafc;">
+                                            <th style="border-bottom:1.5px solid #e2e8f0; text-align:left; padding:8px; color:#475569;">Particulars</th>
+                                            <th style="border-bottom:1.5px solid #e2e8f0; text-align:right; padding:8px; color:#475569; width:90px;">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${debitRows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:space-between; border-top:1.5px solid #f1f5f9; padding-top:10px; font-size:11px; font-weight:bold; color:#475569;">
+                            <div style="flex:1; min-width:250px; max-width:500px; display:flex; justify-content:space-between;">
+                                <span>Total Sales:</span>
+                                <span style="color:#16a34a;">${fmt(group.totalCredit)}</span>
+                            </div>
+                            <div style="flex:1.2; min-width:300px; max-width:500px; display:flex; justify-content:space-between;">
+                                <span>Total Purchase:</span>
+                                <span style="color:#ef4444;">${fmt(group.totalDebit)}</span>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; justify-content:center; margin-top:15px;">
+                            <div style="display:inline-flex; flex-direction:column; align-items:center; background:${group.netBalanceAmount >= 0 ? '#f0fdf4' : '#fff5f5'}; border:${group.netBalanceAmount >= 0 ? '1px solid #bbf7d0' : '1px solid #fecdd3'}; border-radius:10px; padding:6px 20px; text-align:center;">
+                                <span style="font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; font-weight:800;">Net Balance</span>
+                                <span style="font-size:14px; font-weight:900; color:${group.netBalanceAmount >= 0 ? '#16a34a' : '#ef4444'}; margin-top:2px;">
+                                    ${group.netBalanceAmount >= 0 ? '+' : ''}${fmt(group.netBalanceAmount)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>${title}</title>
+                    <style>
+                        body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; background: #fff; color: #1e293b; }
+                        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+                        .header-table td { padding: 0; vertical-align: top; }
+                        h1 { margin: 0; font-size: 22px; font-weight: 850; letter-spacing: -0.02em; color: #0f172a; }
+                        .subtitle { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; margin-top: 3px; }
+                        .meta-info { font-size: 11px; color: #475569; font-weight: 500; text-align: right; line-height: 1.4; }
+                        table th { font-weight: 800; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1.5px solid #e2e8f0; padding: 6px 8px; color: #475569; }
+                        table td { padding: 8px; border-bottom: 1px solid #f1f5f9; font-size: 11px; color: #334155; }
+                        .right { text-align: right; }
+                        @media print {
+                            body { padding: 0; }
+                            .salesman-group { border: none !important; padding: 0 !important; box-shadow: none !important; page-break-after: always; }
+                            .salesman-group:last-child { page-break-after: avoid; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <table class="header-table">
+                        <tr>
+                            <td>
+                                <h1>${biz.name}</h1>
+                                <div class="subtitle">${biz.type}</div>
+                                <div style="font-size:10px; color:#64748b; margin-top:2px;">${biz.address}</div>
+                            </td>
+                            <td class="meta-info">
+                                <div style="font-weight: 800; font-size:12px; color:#0f172a;">${title.toUpperCase()}</div>
+                                <div>${dateRangeText}</div>
+                            </td>
+                        </tr>
+                    </table>
+                    ${pagesHtml}
+                    <script>
+                        window.onload = function() { window.print(); window.close(); }
+                    </script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        } catch (e) {
+            alert('Printing failed: ' + e.message);
         }
+    };
+
+    const handleExportExcel = () => {
+        if (salesmanCardsData.length === 0) return alert('No data to export.');
+
+        const filename = `Salesman_Reports_${Date.now()}.xlsx`;
+        const wsData = salesmanCardsData.map(group => ({
+            'Salesman Name': group.salesmanName,
+            'Total Credit (Inflow) (₹)': group.totalCredit,
+            'Total Debit (Outflow) (₹)': group.totalDebit,
+            'Total Purchase (KG)': group.totalDebitKg,
+            'Net Balance (₹)': group.netBalanceAmount
+        }));
 
         const ws = XLSX.utils.json_to_sheet(wsData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Report');
+        XLSX.utils.book_append_sheet(wb, ws, 'Salesmen Summary');
         XLSX.writeFile(wb, filename);
-    };
-
-    // Print Report
-    const handlePrint = () => {
-        if (activeData.length === 0) return alert('No data to print.');
-
-        const printWindow = window.open('', '_blank');
-        const rangeText = `Period: ${displayDate(fromDate)} - ${displayDate(toDate)}`;
-        const salesman = salesmen.find(s => s.id === selectedSalesmanId);
-
-        let tableHeader = '';
-        let tableBody = '';
-
-        if (activeTab === 'cash') {
-            tableHeader = '<tr><th>Date</th><th>Salesman</th><th class="right">Cash Issued</th><th>Remarks</th></tr>';
-            tableBody = activeData.map(r => `
-                <tr>
-                    <td>${displayDate(r.date)}</td>
-                    <td>${r.salesmanName}</td>
-                    <td class="right">${formatCurrency(r.openingCash)}</td>
-                    <td>${r.remarks || '---'}</td>
-                </tr>
-            `).join('');
-        } else if (activeTab === 'purchase') {
-            tableHeader = '<tr><th>Date</th><th>Salesman</th><th>Farmer</th><th>Bill Number</th><th class="right">Grand Total</th></tr>';
-            tableBody = activeData.map(p => `
-                <tr>
-                    <td>${displayDate(p.date)}</td>
-                    <td>${p.salesmanName}</td>
-                    <td>${p.farmerName}</td>
-                    <td>${p.billNumber}</td>
-                    <td class="right">${formatCurrency(p.grandTotal)}</td>
-                </tr>
-            `).join('');
-        } else if (activeTab === 'ledger') {
-            tableHeader = '<tr><th>Date</th><th class="right">Opening Cash</th><th class="right">Purchase Amount</th><th class="right">Balance Cash</th><th class="right">Closing Balance</th></tr>';
-            tableBody = activeData.map(r => `
-                <tr>
-                    <td>${displayDate(r.date)}</td>
-                    <td class="right">${formatCurrency(r.openingCash)}</td>
-                    <td class="right">${formatCurrency(r.purchaseAmount)}</td>
-                    <td class="right">${formatCurrency(r.balanceCash)}</td>
-                    <td class="right">${formatCurrency(r.closingBalance)}</td>
-                </tr>
-            `).join('');
-        } else if (activeTab === 'flower') {
-            tableHeader = '<tr><th>Flower Name</th><th class="right">Total Qty (KG)</th><th class="right">Total Value</th></tr>';
-            tableBody = activeData.map(r => {
-                const fl = flowers.find(f => f.name === r.name);
-                const nameLocalized = lang === 'ta' ? (fl?.taName || r.name) : r.name;
-                return `
-                    <tr>
-                        <td>${nameLocalized}</td>
-                        <td class="right">${r.quantity.toFixed(3)}</td>
-                        <td class="right">${formatCurrency(r.amount)}</td>
-                    </tr>
-                `;
-            }).join('');
-        } else if (activeTab === 'daily') {
-            tableHeader = '<tr><th>Date</th><th class="right">Total Cash Issued</th><th class="right">Total Purchases</th><th class="right">Net Balance</th></tr>';
-            tableBody = activeData.map(r => `
-                <tr>
-                    <td>${displayDate(r.date)}</td>
-                    <td class="right">${formatCurrency(r.cashIssued)}</td>
-                    <td class="right">${formatCurrency(r.purchases)}</td>
-                    <td class="right">${formatCurrency(r.netBalance)}</td>
-                </tr>
-            `).join('');
-        } else if (activeTab === 'monthly') {
-            tableHeader = '<tr><th>Month</th><th class="right">Total Cash Issued</th><th class="right">Total Purchases</th><th class="right">Net Balance</th></tr>';
-            tableBody = activeData.map(r => `
-                <tr>
-                    <td>${r.month}</td>
-                    <td class="right">${formatCurrency(r.cashIssued)}</td>
-                    <td class="right">${formatCurrency(r.purchases)}</td>
-                    <td class="right">${formatCurrency(r.netBalance)}</td>
-                </tr>
-            `).join('');
-        }
-
-        const html = `
-            <html>
-            <head>
-                <title>Report - ${activeTab.toUpperCase()}</title>
-                <style>
-                    body { font-family: sans-serif; padding: 20px; line-height: 1.4; }
-                    .header { text-align: center; margin-bottom: 25px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-                    .header h2 { margin: 0; font-size: 24px; text-transform: uppercase; }
-                    .header p { margin: 5px 0 0; color: #555; font-size: 14px; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-                    th, td { border: 1px solid #ccc; padding: 8px 10px; font-size: 13px; text-align: left; }
-                    th { background: #f9f9f9; font-weight: bold; }
-                    .right { text-align: right; }
-                    .footer { text-align: center; margin-top: 30px; font-size: 11px; color: #888; }
-                </style>
-            </head>
-            <body onload="window.print(); window.close();">
-                <div class="header">
-                    <h2>SALESMAN ${activeTab.toUpperCase()} REPORT</h2>
-                    ${salesman ? `<p>Salesman: <strong>${salesman.name}</strong></p>` : ''}
-                    <p>${rangeText}</p>
-                </div>
-                <table>
-                    <thead>${tableHeader}</thead>
-                    <tbody>${tableBody}</tbody>
-                </table>
-                <div class="footer">Generated on ${new Date().toLocaleString()}</div>
-            </body>
-            </html>
-        `;
-
-        printWindow.document.write(html);
-        printWindow.document.close();
-    };
-
-    // PDF Download
-    const handleExportPDF = () => {
-        if (activeData.length === 0) return alert('No data to export.');
-
-        try {
-            const doc = new jsPDF('p', 'mm', 'a4');
-            doc.setFont('Helvetica', 'bold');
-            doc.setFontSize(16);
-            doc.text(`SALESMAN ${activeTab.toUpperCase()} REPORT`, 14, 20);
-
-            doc.setFont('Helvetica', 'normal');
-            doc.setFontSize(10);
-            doc.text(`Period: ${displayDate(fromDate)} to ${displayDate(toDate)}`, 14, 27);
-
-            const salesman = salesmen.find(s => s.id === selectedSalesmanId);
-            if (salesman) {
-                doc.text(`Salesman: ${salesman.name}`, 14, 33);
-            }
-
-            let y = 40;
-            doc.setFillColor(240, 240, 240);
-            doc.setFont('Helvetica', 'bold');
-
-            if (activeTab === 'cash') {
-                doc.rect(14, y, 182, 8, 'F');
-                doc.text('Date', 16, y + 5.5);
-                doc.text('Salesman Name', 50, y + 5.5);
-                doc.text('Cash Issued', 110, y + 5.5);
-                doc.text('Remarks', 150, y + 5.5);
-                y += 8;
-                doc.setFont('Helvetica', 'normal');
-                activeData.forEach(r => {
-                    if (y > 270) { doc.addPage(); y = 20; }
-                    doc.line(14, y, 196, y);
-                    doc.text(displayDate(r.date), 16, y + 5.5);
-                    doc.text(r.salesmanName, 50, y + 5.5);
-                    doc.text(`Rs ${r.openingCash.toFixed(0)}`, 110, y + 5.5);
-                    doc.text(r.remarks || '---', 150, y + 5.5);
-                    y += 8;
-                });
-            } else if (activeTab === 'purchase') {
-                doc.rect(14, y, 182, 8, 'F');
-                doc.text('Date', 16, y + 5.5);
-                doc.text('Salesman', 45, y + 5.5);
-                doc.text('Farmer', 85, y + 5.5);
-                doc.text('Bill No.', 125, y + 5.5);
-                doc.text('Total', 160, y + 5.5);
-                y += 8;
-                doc.setFont('Helvetica', 'normal');
-                activeData.forEach(p => {
-                    if (y > 270) { doc.addPage(); y = 20; }
-                    doc.line(14, y, 196, y);
-                    doc.text(displayDate(p.date), 16, y + 5.5);
-                    doc.text(p.salesmanName, 45, y + 5.5);
-                    doc.text(p.farmerName, 85, y + 5.5);
-                    doc.text(p.billNumber || '---', 125, y + 5.5);
-                    doc.text(`Rs ${p.grandTotal.toFixed(0)}`, 160, y + 5.5);
-                    y += 8;
-                });
-            } else if (activeTab === 'ledger') {
-                doc.rect(14, y, 182, 8, 'F');
-                doc.text('Date', 16, y + 5.5);
-                doc.text('Opening Cash', 50, y + 5.5);
-                doc.text('Purchase Amt', 90, y + 5.5);
-                doc.text('Balance Cash', 130, y + 5.5);
-                doc.text('Closing Bal', 165, y + 5.5);
-                y += 8;
-                doc.setFont('Helvetica', 'normal');
-                activeData.forEach(r => {
-                    if (y > 270) { doc.addPage(); y = 20; }
-                    doc.line(14, y, 196, y);
-                    doc.text(displayDate(r.date), 16, y + 5.5);
-                    doc.text(`Rs ${r.openingCash.toFixed(0)}`, 50, y + 5.5);
-                    doc.text(`Rs ${r.purchaseAmount.toFixed(0)}`, 90, y + 5.5);
-                    doc.text(`Rs ${r.balanceCash.toFixed(0)}`, 130, y + 5.5);
-                    doc.text(`Rs ${r.closingBalance.toFixed(0)}`, 165, y + 5.5);
-                    y += 8;
-                });
-            } else if (activeTab === 'flower') {
-                doc.rect(14, y, 182, 8, 'F');
-                doc.text('Flower Name', 16, y + 5.5);
-                doc.text('Total Qty (KG)', 80, y + 5.5);
-                doc.text('Total Value', 140, y + 5.5);
-                y += 8;
-                doc.setFont('Helvetica', 'normal');
-                activeData.forEach(r => {
-                    if (y > 270) { doc.addPage(); y = 20; }
-                    const fl = flowers.find(f => f.name === r.name);
-                    const nameLocalized = lang === 'ta' ? (fl?.taName || r.name) : r.name;
-                    doc.line(14, y, 196, y);
-                    doc.text(nameLocalized, 16, y + 5.5);
-                    doc.text(r.quantity.toFixed(3), 80, y + 5.5);
-                    doc.text(`Rs ${r.amount.toFixed(0)}`, 140, y + 5.5);
-                    y += 8;
-                });
-            } else if (activeTab === 'daily' || activeTab === 'monthly') {
-                doc.rect(14, y, 182, 8, 'F');
-                doc.text(activeTab === 'daily' ? 'Date' : 'Month', 16, y + 5.5);
-                doc.text('Total Cash Issued', 60, y + 5.5);
-                doc.text('Total Purchases', 110, y + 5.5);
-                doc.text('Net Balance', 160, y + 5.5);
-                y += 8;
-                doc.setFont('Helvetica', 'normal');
-                activeData.forEach(r => {
-                    if (y > 270) { doc.addPage(); y = 20; }
-                    doc.line(14, y, 196, y);
-                    doc.text(activeTab === 'daily' ? displayDate(r.date) : r.month, 16, y + 5.5);
-                    doc.text(`Rs ${r.cashIssued.toFixed(0)}`, 60, y + 5.5);
-                    doc.text(`Rs ${r.purchases.toFixed(0)}`, 110, y + 5.5);
-                    doc.text(`Rs ${r.netBalance.toFixed(0)}`, 160, y + 5.5);
-                    y += 8;
-                });
-            }
-
-            doc.line(14, y, 196, y);
-            doc.save(`Salesman_${activeTab}_report_${Date.now()}.pdf`);
-        } catch (e) {
-            alert('PDF Generation Failed: ' + e.message);
-        }
     };
 
     return (
@@ -543,24 +564,18 @@ const SalesmanReports = () => {
                 <div style={S.titleRow}>
                     <BarChart2 size={22} color="#0d9488" />
                     <div style={S.titleCol}>
-                        <h2 style={S.title}>Salesman Reports</h2>
-                        <span style={S.subtitle}>Generate and export operations logs</span>
+                        <h2 style={S.title}>{lang === 'ta' ? 'விற்பனையாளர் அறிக்கைகள்' : 'Salesman Reports'}</h2>
+                        <span style={S.subtitle}>{lang === 'ta' ? 'வரவு மற்றும் பற்று விவரங்கள்' : 'Credit and Debit Details'}</span>
                     </div>
                 </div>
 
-                {activeData.length > 0 && (
+                {salesmanCardsData.length > 0 && (
                     <div style={S.actions}>
-                        <button style={S.btnAction} onClick={handlePrint}
+                        <button style={S.btnAction} onClick={handlePrintAll}
                             onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'}
                             onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}
                         >
-                            <Printer size={14} /> Print
-                        </button>
-                        <button style={S.btnAction} onClick={handleExportPDF}
-                            onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
-                            onMouseLeave={e => e.currentTarget.style.background='#f9fafb'}
-                        >
-                            <FileText size={14} color="#ef4444" /> PDF
+                            <Printer size={14} /> {lang === 'ta' ? 'அனைத்தும் அச்சிடு' : 'Print All'}
                         </button>
                         <button style={S.btnAction} onClick={handleExportExcel}
                             onMouseEnter={e => e.currentTarget.style.background='#ecfdf5'}
@@ -572,208 +587,199 @@ const SalesmanReports = () => {
                 )}
             </div>
 
-            {/* Sub Tabs */}
-            <div style={S.tabBar}>
-                {[
-                    { id: 'cash', label: 'Cash Report' },
-                    { id: 'purchase', label: 'Purchase Report' },
-                    { id: 'ledger', label: 'Ledger' },
-                    { id: 'flower', label: 'Flower Purchases' },
-                    { id: 'daily', label: 'Daily Summary' },
-                    { id: 'monthly', label: 'Monthly Summary' }
-                ].map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => {
-                            setActiveTab(tab.id);
-                            if (tab.id !== 'ledger' && tab.id !== 'cash' && tab.id !== 'purchase') {
-                                setSelectedSalesmanId('');
-                            }
-                        }}
-                        style={{
-                            ...S.tabBtn,
-                            background: activeTab === tab.id ? '#0d9488' : '#fff',
-                            color: activeTab === tab.id ? '#fff' : '#64748b',
-                            border: '1px solid ' + (activeTab === tab.id ? '#0d9488' : '#e2e8f0'),
-                        }}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
-
             {/* Filters Toolbar */}
             <div style={S.toolbar}>
-                
-                {/* Date Selection */}
-                {activeTab !== 'monthly' && (
-                    <>
-                        <div style={S.filterGroup}>
-                            <label style={S.label}>From Date</label>
-                            <input 
-                                type="date"
-                                style={S.input}
-                                value={fromDate}
-                                onChange={(e) => setFromDate(e.target.value)}
-                            />
-                        </div>
-                        <div style={S.filterGroup}>
-                            <label style={S.label}>To Date</label>
-                            <input 
-                                type="date"
-                                style={S.input}
-                                value={toDate}
-                                onChange={(e) => setToDate(e.target.value)}
-                            />
-                        </div>
-                    </>
-                )}
+                <div style={S.filterGroup}>
+                    <label style={S.label}>{lang === 'ta' ? 'தேதி முதல்' : 'From Date'}</label>
+                    <input 
+                        type="date"
+                        style={S.input}
+                        value={fromDate}
+                        onChange={(e) => setFromDate(e.target.value)}
+                    />
+                </div>
+                <div style={S.filterGroup}>
+                    <label style={S.label}>{lang === 'ta' ? 'தேதி வரை' : 'To Date'}</label>
+                    <input 
+                        type="date"
+                        style={S.input}
+                        value={toDate}
+                        onChange={(e) => setToDate(e.target.value)}
+                    />
+                </div>
 
-                {/* Salesman Filter */}
-                {(activeTab === 'cash' || activeTab === 'purchase' || activeTab === 'ledger') && (
-                    <div style={S.filterGroup}>
-                        <label style={S.label}>Filter Salesman</label>
-                        <select
-                            style={{...S.input, minWidth: '200px'}}
-                            value={selectedSalesmanId}
-                            onChange={(e) => setSelectedSalesmanId(e.target.value)}
-                        >
-                            <option value="">All Salesmen...</option>
-                            {salesmen.map(s => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
+                <div style={S.filterGroup}>
+                    <label style={S.label}>{lang === 'ta' ? 'விற்பனையாளர் வடிகட்டி' : 'Filter Salesman'}</label>
+                    <select
+                        style={{...S.input, minWidth: '200px'}}
+                        value={selectedSalesmanId}
+                        onChange={(e) => setSelectedSalesmanId(e.target.value)}
+                    >
+                        <option value="">{lang === 'ta' ? 'அனைத்து விற்பனையாளர்களும்...' : 'All Salesmen...'}</option>
+                        {salesmen.filter(s => s.status === 'Active').map(s => (
+                            <option key={s.id} value={s.id}>
+                                {lang === 'ta' ? (s.nameTa || s.name) : s.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
-            {/* Output Grid/Table */}
-            {activeTab === 'ledger' && !selectedSalesmanId ? (
-                <div style={S.emptyRow}>
-                    Select a salesman from the filters above to load the ledger report.
-                </div>
-            ) : (
-                <div style={{ overflowX: 'auto' }}>
-                    <table style={S.table}>
-                        <thead>
-                            <tr style={{ background: '#fff', borderBottom: '1.5px solid #f1f5f9' }}>
-                                {activeTab === 'cash' && (
-                                    <>
-                                        <th style={S.th}>Date</th>
-                                        <th style={S.th}>Salesman Name</th>
-                                        <th style={{...S.th, textAlign: 'right'}}>Cash Issued</th>
-                                        <th style={S.th}>Remarks</th>
-                                    </>
-                                )}
-                                {activeTab === 'purchase' && (
-                                    <>
-                                        <th style={S.th}>Date</th>
-                                        <th style={S.th}>Salesman Name</th>
-                                        <th style={S.th}>Farmer Name</th>
-                                        <th style={S.th}>Bill Number</th>
-                                        <th style={{...S.th, textAlign: 'right'}}>Grand Total</th>
-                                    </>
-                                )}
-                                {activeTab === 'ledger' && (
-                                    <>
-                                        <th style={S.th}>Date</th>
-                                        <th style={{...S.th, textAlign: 'right'}}>Opening Cash</th>
-                                        <th style={{...S.th, textAlign: 'right'}}>Purchase Amount</th>
-                                        <th style={{...S.th, textAlign: 'right'}}>Balance Cash</th>
-                                        <th style={{...S.th, textAlign: 'right'}}>Closing Balance</th>
-                                    </>
-                                )}
-                                {activeTab === 'flower' && (
-                                    <>
-                                        <th style={S.th}>Flower Name</th>
-                                        <th style={{...S.th, textAlign: 'right'}}>Total Quantity</th>
-                                        <th style={{...S.th, textAlign: 'right'}}>Total Purchase Value</th>
-                                    </>
-                                )}
-                                {activeTab === 'daily' && (
-                                    <>
-                                        <th style={S.th}>Date</th>
-                                        <th style={{...S.th, textAlign: 'right'}}>Total Cash Issued</th>
-                                        <th style={{...S.th, textAlign: 'right'}}>Total Purchases</th>
-                                        <th style={{...S.th, textAlign: 'right'}}>Net Day Balance</th>
-                                    </>
-                                )}
-                                {activeTab === 'monthly' && (
-                                    <>
-                                        <th style={S.th}>Month</th>
-                                        <th style={{...S.th, textAlign: 'right'}}>Total Cash Issued</th>
-                                        <th style={{...S.th, textAlign: 'right'}}>Total Purchases</th>
-                                        <th style={{...S.th, textAlign: 'right'}}>Net Month Balance</th>
-                                    </>
-                                )}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {activeData.length === 0 ? (
-                                <tr>
-                                    <td colSpan={10} style={S.emptyRow}>
-                                        No records found matching the selected filters.
-                                    </td>
-                                </tr>
-                            ) : (
-                                activeTab === 'cash' && activeData.map(r => (
-                                    <tr key={r.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                        <td style={TD_S}>{displayDate(r.date)}</td>
-                                        <td style={{...TD_S, fontWeight: 700}}>{r.salesmanName}</td>
-                                        <td style={{...TD_S, textAlign: 'right', fontWeight: 800, color: '#16a34a'}}>{formatCurrency(r.openingCash)}</td>
-                                        <td style={TD_S}>{r.remarks || '---'}</td>
-                                    </tr>
-                                ))
-                            )}
-                            {activeTab === 'purchase' && activeData.map(p => (
-                                <tr key={p.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                    <td style={TD_S}>{displayDate(p.date)}</td>
-                                    <td style={{...TD_S, fontWeight: 700}}>{p.salesmanName}</td>
-                                    <td style={TD_S}>{p.farmerName}</td>
-                                    <td style={TD_S}>{p.billNumber}</td>
-                                    <td style={{...TD_S, textAlign: 'right', fontWeight: 800, color: '#ea580c'}}>{formatCurrency(p.grandTotal)}</td>
-                                </tr>
-                            ))}
-                            {activeTab === 'ledger' && activeData.map(r => (
-                                <tr key={r.date} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                    <td style={TD_S}>{displayDate(r.date)}</td>
-                                    <td style={{...TD_S, textAlign: 'right'}}>{formatCurrency(r.openingCash)}</td>
-                                    <td style={{...TD_S, textAlign: 'right', color: '#dc2626', fontWeight: 700}}>{formatCurrency(r.purchaseAmount)}</td>
-                                    <td style={{...TD_S, textAlign: 'right'}}>{formatCurrency(r.balanceCash)}</td>
-                                    <td style={{...TD_S, textAlign: 'right', fontWeight: 800, color: '#0d9488'}}>{formatCurrency(r.closingBalance)}</td>
-                                </tr>
-                            ))}
-                            {activeTab === 'flower' && activeData.map(r => {
-                                const fl = flowers.find(f => f.name === r.name);
-                                const localizedName = lang === 'ta' ? (fl?.taName || r.name) : r.name;
-                                return (
-                                    <tr key={r.name} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                        <td style={{...TD_S, fontWeight: 700}}>{localizedName}</td>
-                                        <td style={{...TD_S, textAlign: 'right'}}>{r.quantity.toFixed(3)} KG</td>
-                                        <td style={{...TD_S, textAlign: 'right', fontWeight: 800, color: '#0d9488'}}>{formatCurrency(r.amount)}</td>
-                                    </tr>
-                                );
-                            })}
-                            {activeTab === 'daily' && activeData.map(r => (
-                                <tr key={r.date} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                    <td style={TD_S}>{displayDate(r.date)}</td>
-                                    <td style={{...TD_S, textAlign: 'right', color: '#16a34a'}}>{formatCurrency(r.cashIssued)}</td>
-                                    <td style={{...TD_S, textAlign: 'right', color: '#dc2626'}}>{formatCurrency(r.purchases)}</td>
-                                    <td style={{...TD_S, textAlign: 'right', fontWeight: 800, color: '#0d9488'}}>{formatCurrency(r.netBalance)}</td>
-                                </tr>
-                            ))}
-                            {activeTab === 'monthly' && activeData.map(r => (
-                                <tr key={r.month} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                    <td style={TD_S}>{r.month}</td>
-                                    <td style={{...TD_S, textAlign: 'right', color: '#16a34a'}}>{formatCurrency(r.cashIssued)}</td>
-                                    <td style={{...TD_S, textAlign: 'right', color: '#dc2626'}}>{formatCurrency(r.purchases)}</td>
-                                    <td style={{...TD_S, textAlign: 'right', fontWeight: 800, color: '#0d9488'}}>{formatCurrency(r.netBalance)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+            {/* Salesmen Cards List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {salesmanCardsData.length === 0 ? (
+                    <div style={S.emptyRow}>
+                        {lang === 'ta' ? 'பதிவுகள் எதுவும் இல்லை' : 'No records found matching the selected filters.'}
+                    </div>
+                ) : (
+                    salesmanCardsData.map(group => (
+                        <div
+                            key={group.salesmanId}
+                            style={{
+                                background: '#fff',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '16px',
+                                padding: '16px 20px',
+                                boxShadow: '0 10px 30px rgba(0,0,0,0.02)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                            }}
+                        >
+                            {/* Heading */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '2px solid #f1f5f9', paddingBottom: '10px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '24px' }}>👤</span>
+                                    <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>
+                                        {group.salesmanName}
+                                    </h2>
+                                </div>
+                                <button
+                                    onClick={() => handlePrintSingleSalesman(group)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        padding: '6px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1',
+                                        background: '#f8fafc', color: '#475569', fontSize: '12px', fontWeight: 800,
+                                        cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'var(--font-sans)',
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+                                    onMouseLeave={e => e.currentTarget.style.background = '#f8fafc'}
+                                >
+                                    <Printer size={13} color="#475569" />
+                                    {lang === 'ta' ? 'அச்சிடு' : 'Print'}
+                                </button>
+                            </div>
+
+                            {/* Two Columns Grid for Debits and Credits */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '20px', marginTop: '16px' }}>
+                                {/* Credits column */}
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 800, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        📤 {lang === 'ta' ? 'வரவு (Cr) / விற்பனை' : 'Credit (Cr) / Sales'}
+                                    </h4>
+                                    <div style={{ overflowX: 'auto', width: '100%' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                            <thead>
+                                                <tr>
+                                                    <th style={TH_S}>{lang === 'ta' ? 'விவரம் (வாடிக்கையாளர்/ஆரம்ப இருப்பு)' : 'Particulars (Customer/Inflow)'}</th>
+                                                    <th style={{ ...TH_S, textAlign: 'right', width: '80px' }}>Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {group.creditList.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={2} style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>
+                                                            {lang === 'ta' ? 'வரவு எதுவும் இல்லை' : 'No credits.'}
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    group.creditList.map((item, idx) => (
+                                                        <tr key={idx}>
+                                                            <td style={TD_S}>{item.particulars}</td>
+                                                            <td style={{ ...TD_S, textAlign: 'right', color: '#16a34a', fontWeight: 700 }}>{fmt(item.total)}</td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* Debits column */}
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        📥 {lang === 'ta' ? 'பற்று (Dr) / கொள்முதல்' : 'Debit (Dr) / Purchase'}
+                                    </h4>
+                                    <div style={{ overflowX: 'auto', width: '100%' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                            <thead>
+                                                <tr>
+                                                    <th style={TH_S}>{lang === 'ta' ? 'விவரம் (விவசாயி/விற்பனையாளர்)' : 'Particulars (Farmer/Vendor)'}</th>
+                                                    <th style={{ ...TH_S, textAlign: 'right', width: '80px' }}>Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {group.debitList.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={2} style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>
+                                                            {lang === 'ta' ? 'பற்று எதுவும் இல்லை' : 'No debits.'}
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    group.debitList.map((item, idx) => (
+                                                        <tr key={idx}>
+                                                            <td style={TD_S}>{item.particulars}</td>
+                                                            <td style={{ ...TD_S, textAlign: 'right', color: '#ef4444', fontWeight: 700 }}>{fmt(item.total)}</td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Aligned Subtotals Bar */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '16px', borderTop: '1.5px solid #f1f5f9', paddingTop: '10px', marginTop: '4px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '6px 12px', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
+                                    <span style={{ fontSize: '12px', fontWeight: 850, color: '#475569' }}>
+                                        {lang === 'ta' ? `மொத்த வரவு (Cr):` : `Total Sales:`}
+                                    </span>
+                                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center', fontSize: '13px', fontWeight: 900 }}>
+                                        <span style={{ color: '#16a34a' }}>{fmt(group.totalCredit)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Center Net Balance for this salesman */}
+                            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
+                                <div style={{
+                                    display: 'inline-flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    background: group.netBalanceAmount >= 0 ? '#f0fdf4' : '#fff5f5',
+                                    border: group.netBalanceAmount >= 0 ? '1px solid #bbf7d0' : '1px solid #fecdd3',
+                                    borderRadius: '10px',
+                                    padding: '5px 14px',
+                                    textAlign: 'center'
+                                }}>
+                                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        {lang === 'ta' ? 'நிகர மதிப்பு' : 'Net Balance'}
+                                    </span>
+                                    <div style={{
+                                        fontSize: '15px',
+                                        fontWeight: 900,
+                                        color: group.netBalanceAmount >= 0 ? '#16a34a' : '#ef4444',
+                                        marginTop: '2px'
+                                    }}>
+                                        {group.netBalanceAmount >= 0 ? '+' : ''}
+                                        {fmt(group.netBalanceAmount)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
         </div>
     );
 };

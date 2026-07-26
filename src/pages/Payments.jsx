@@ -186,9 +186,21 @@ const Payments = () => {
         b.displayId?.toString().toLowerCase().includes(customerSearch.toLowerCase())
     );
 
-    const handleKeyDown = (e, nextRef) => {
+    const handleKeyDown = (e, nextRef, valToCheck = null, prevRef = null) => {
         if (e.key === 'Enter') {
             e.preventDefault();
+            if (e.shiftKey) {
+                if (prevRef && prevRef.current) {
+                    prevRef.current.focus();
+                }
+                return;
+            }
+            if (valToCheck !== null) {
+                const val = String(valToCheck).trim();
+                if (!val || val === '0' || parseFloat(val) <= 0) {
+                    return;
+                }
+            }
             nextRef?.current?.focus();
         }
     };
@@ -552,7 +564,10 @@ const Payments = () => {
                                                             e.preventDefault();
                                                             setSelectedIndex(prev => (prev - 1 + filteredBuyers.length) % filteredBuyers.length);
                                                         } else if (e.key === 'Enter') {
-                                                            if (selectedIndex >= 0) {
+                                                            if (e.shiftKey) {
+                                                                e.preventDefault();
+                                                                dateRef.current?.focus();
+                                                            } else if (selectedIndex >= 0) {
                                                                 e.preventDefault();
                                                                 const b = filteredBuyers[selectedIndex];
                                                                 setFormData({ ...formData, entityId: b.id });
@@ -564,8 +579,13 @@ const Payments = () => {
                                                                 handleKeyDown(e, amountRef);
                                                             }
                                                         }
-                                                    } else if (e.key === 'Enter' && formData.entityId) {
-                                                        handleKeyDown(e, amountRef);
+                                                    } else if (e.key === 'Enter') {
+                                                        if (e.shiftKey) {
+                                                            e.preventDefault();
+                                                            dateRef.current?.focus();
+                                                        } else if (formData.entityId) {
+                                                            handleKeyDown(e, amountRef);
+                                                        }
                                                     }
                                                 }}
                                                 style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', fontSize: '14px', fontWeight: 600, color: '#1e293b', outline: 'none' }}
@@ -633,7 +653,7 @@ const Payments = () => {
                                                 placeholder="0"
                                                 value={formData.amount}
                                                 onChange={e => setFormData({ ...formData, amount: e.target.value })}
-                                                onKeyDown={(e) => handleKeyDown(e, cashLessRef)}
+                                                onKeyDown={(e) => handleKeyDown(e, cashLessRef, formData.amount, customerRef)}
                                                 required
                                                 min="1"
                                                 style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #16a34a', fontSize: '18px', fontWeight: 900, color: '#16a34a', outline: 'none' }}
@@ -651,7 +671,7 @@ const Payments = () => {
                                             </div>
                                         </div>
                                     </div>
-
+ 
                                     {/* Cash Less */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                         <label style={{ width: '120px', flexShrink: 0, fontSize: '13px', fontWeight: 600, color: '#475569' }}>CASH LESS</label>
@@ -661,7 +681,7 @@ const Payments = () => {
                                             placeholder="0"
                                             value={formData.cashLess}
                                             onChange={e => setFormData({ ...formData, cashLess: e.target.value })}
-                                            onKeyDown={(e) => handleKeyDown(e, saveRef)}
+                                            onKeyDown={(e) => handleKeyDown(e, saveRef, null, amountRef)}
                                             style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #f43f5e', fontSize: '18px', fontWeight: 900, color: '#f43f5e', outline: 'none' }}
                                         />
                                     </div>

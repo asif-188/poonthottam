@@ -76,8 +76,13 @@ const SearchSelect = ({ items, value, onChange, onKeyDown, inputRef, placeholder
         else if (e.key === 'ArrowUp') { e.preventDefault(); setCursor(c => Math.max(c - 1, 0)); }
         else if (e.key === 'Enter') {
             e.preventDefault();
-            if (open && filtered[cursor]) { choose(filtered[cursor]); if (onKeyDown) onKeyDown(e); }
-            else if (onKeyDown) onKeyDown(e);
+            if (e.shiftKey) {
+                if (onKeyDown) onKeyDown(e);
+            }
+            else if (open && filtered[cursor]) { choose(filtered[cursor]); if (onKeyDown) onKeyDown(e); }
+            else if (value) {
+                if (onKeyDown) onKeyDown(e);
+            }
         }
         else if (e.key === 'Escape') setOpen(false);
         else if (e.key === 'Tab') { if (open && filtered[cursor]) choose(filtered[cursor]); setOpen(false); if (onKeyDown) onKeyDown(e); }
@@ -196,6 +201,7 @@ const OutsideShop = () => {
     const [flowers, setFlowers] = useState([]);
     const [purchases, setPurchases] = useState([]);
     const [payments, setPayments] = useState([]);
+    const [salesmen, setSalesmen] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
     
     const bizInfo = tenantData || { motto: 'SRI RAMA JAYAM', name: 'S.V.M', type: 'SRI VALLI FLOWER MERCHANT', address: 'B-7, FLOWER MARKET, TINDIVANAM.', phone1: '9443247771', phone2: '9952535057' };
@@ -234,7 +240,7 @@ const OutsideShop = () => {
     const [editingPurchaseId, setEditingPurchaseId] = useState(null);
 
     // Vendor Payment State
-    const [paymentForm, setPaymentForm] = useState({ vendorId: '', amount: '', date: new Date().toLocaleDateString('en-CA'), note: '' });
+    const [paymentForm, setPaymentForm] = useState({ vendorId: '', salesmanId: '', amount: '', date: new Date().toLocaleDateString('en-CA'), note: '' });
     const [editingPaymentId, setEditingPaymentId] = useState(null);
     const [calcPurchaseFrom, setCalcPurchaseFrom] = useState(new Date().toLocaleDateString('en-CA'));
     const [calcPurchaseTo, setCalcPurchaseTo] = useState(new Date().toLocaleDateString('en-CA'));
@@ -256,6 +262,8 @@ const OutsideShop = () => {
     const refRate = useRef(null);
     const refPayAmount = useRef(null);
     const refPayNote = useRef(null);
+    const refPayVendor = useRef(null);
+    const refPaySalesman = useRef(null);
     const [refFile] = [useRef(null)];
     const [isScanning, setIsScanning] = useState(false);
     const [draftItems, setDraftItems] = useState([]);
@@ -319,8 +327,11 @@ const OutsideShop = () => {
         });
         const u3 = subscribeToCollection('outside_purchases', setPurchases, true, minStartDate);
         const u4 = subscribeToCollection('payments', setPayments, true, minStartDate);
+        const u5 = subscribeToCollection('salesmen', (data) => {
+            setSalesmen(data.filter(s => s.status === 'Active'));
+        }, true);
         
-        return () => { u1(); u2(); u3(); u4(); };
+        return () => { u1(); u2(); u3(); u4(); u5(); };
     }, [minStartDate]);
 
     const toDateStr = (d) => d.toISOString().split('T')[0];
@@ -382,7 +393,9 @@ const OutsideShop = () => {
 
     const stats = useMemo(() => {
         const vendor = vendors.find(v => v.id === vendorId);
-        const todayTot = todayPurchases.reduce((acc, p) => acc + (p.grandTotal || 0), 0);
+        const todayTot = purchases
+            .filter(p => p.vendorId === vendorId && p.date === date)
+            .reduce((acc, p) => acc + (p.grandTotal || 0), 0);
         
         let todayPayFiltered = payments.filter(p => p.date === date && p.type === 'vendor');
         if (vendorId) {
@@ -394,7 +407,7 @@ const OutsideShop = () => {
             cashPaid: todayPayFiltered.reduce((acc, p) => acc + (p.amount || 0), 0),
             vendorBalance: vendor?.balance || 0
         };
-    }, [todayPurchases, payments, vendors, vendorId, date]);
+    }, [purchases, payments, vendors, vendorId, date]);
 
     const purchaseTotalForPayment = useMemo(() => {
         if (!paymentForm.vendorId || !calcPurchaseFrom || !calcPurchaseTo) return 0;
@@ -719,8 +732,9 @@ const OutsideShop = () => {
             if (editingPurchaseId) {
                 const oldSnap = await getDoc(doc(db, 'outside_purchases', editingPurchaseId));
                 if (oldSnap.exists()) {
-                    const oldTotal = oldSnap.data().grandTotal || 0;
-                    const diff = grandTotal - oldTotal;
+                    const oldData = oldSnap.data();
+                    const oldTotal = oldData.grandTotal || 0;
+                    const oldVendorId = oldData.vendorId;
 
                     await updateDoc(doc(db, 'outside_purchases', editingPurchaseId), {
                         vendorId,
@@ -730,8 +744,16 @@ const OutsideShop = () => {
                         updatedAt: serverTimestamp()
                     });
                     
-                    if (diff !== 0) {
-                        await updateDoc(doc(db, 'vendors', vendorId), { balance: increment(diff) });
+                    if (oldVendorId === vendorId) {
+                        const diff = grandTotal - oldTotal;
+                        if (diff !== 0) {
+                            await updateDoc(doc(db, 'vendors', vendorId), { balance: increment(diff) });
+                        }
+                    } else {
+                        if (oldVendorId) {
+                            await updateDoc(doc(db, 'vendors', oldVendorId), { balance: increment(-oldTotal) });
+                        }
+                        await updateDoc(doc(db, 'vendors', vendorId), { balance: increment(grandTotal) });
                     }
                 }
                 setEditingPurchaseId(null);
@@ -751,10 +773,9 @@ const OutsideShop = () => {
             
             setCurrentItem({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
             setDraftItems([]);
-            setVendorId('');
             setDraftSelectedIndex(-1);
             setPurchaseSelectedIndex(-1);
-            setTimeout(() => refVendor.current?.focus(), 50);
+            setTimeout(() => refFlower.current?.focus(), 50);
         } catch (err) { alert(err.message); }
         finally { setIsSaving(false); }
     };
@@ -822,6 +843,12 @@ const OutsideShop = () => {
         try {
             await deleteDoc(doc(db, 'outside_purchases', p.id));
             await updateDoc(doc(db, 'vendors', p.vendorId), { balance: increment(-p.grandTotal) });
+            if (editingPurchaseId === p.id) {
+                setEditingPurchaseId(null);
+                setVendorId('');
+                setDraftItems([]);
+                setCurrentItem({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
+            }
         } catch (err) { alert(err.message); }
     };
 
@@ -944,20 +971,34 @@ const OutsideShop = () => {
             if (editingPaymentId) {
                 const oldSnap = await getDoc(doc(db, 'payments', editingPaymentId));
                 if (oldSnap.exists()) {
-                    const oldAmt = oldSnap.data().amount || 0;
+                    const oldData = oldSnap.data();
+                    const oldAmt = oldData.amount || 0;
+                    const oldVendorId = oldData.entityId;
                     const diff = amt - oldAmt;
                     
                     await updateDoc(doc(db, 'payments', editingPaymentId), {
+                        entityId: vid,
+                        salesmanId: paymentForm.salesmanId || '',
                         amount: amt,
                         date: paymentForm.date,
                         note: paymentForm.note,
                         updatedAt: serverTimestamp(),
                     });
                     
-                    // If amount changed, update vendor balance
-                    if (diff !== 0) {
+                    if (oldVendorId === vid) {
+                        if (diff !== 0) {
+                            await updateDoc(doc(db, 'vendors', vid), {
+                                balance: increment(-diff)
+                            });
+                        }
+                    } else {
+                        if (oldVendorId) {
+                            await updateDoc(doc(db, 'vendors', oldVendorId), {
+                                balance: increment(oldAmt)
+                            });
+                        }
                         await updateDoc(doc(db, 'vendors', vid), {
-                            balance: increment(-diff)
+                            balance: increment(-amt)
                         });
                     }
                 }
@@ -967,6 +1008,7 @@ const OutsideShop = () => {
                 const tenantId = getTenant();
                 await addDoc(collection(db, 'payments'), {
                     entityId: vid,
+                    salesmanId: paymentForm.salesmanId || '',
                     type: 'vendor',
                     amount: amt,
                     date: paymentForm.date,
@@ -979,7 +1021,7 @@ const OutsideShop = () => {
                 });
                 alert(t('saveSuccess') || 'Payment saved!');
             }
-            setPaymentForm({ vendorId: '', amount: '', note: '', date: new Date().toISOString().split('T')[0] });
+            setPaymentForm({ vendorId: '', salesmanId: '', amount: '', note: '', date: new Date().toISOString().split('T')[0] });
         } catch (err) {
             console.error(err);
             alert(t('saveError') || 'Error saving payment');
@@ -1383,6 +1425,7 @@ const OutsideShop = () => {
         setEditingPaymentId(p.id);
         setPaymentForm({
             vendorId: p.entityId,
+            salesmanId: p.salesmanId || '',
             amount: p.amount,
             date: p.date,
             note: p.note || ''
@@ -1555,7 +1598,7 @@ const OutsideShop = () => {
                                 }
                             }}
                             onKeyDown={e => {
-                                if (e.key === 'Enter') {
+                                if (e.key === 'Enter' && vendorId) {
                                     const hasTodaytotel = flowers.some(f => f.name.toLowerCase() === 'todaytotel');
                                     if (hasTodaytotel) refQty.current?.focus();
                                     else refFlower.current?.focus();
@@ -1578,18 +1621,44 @@ const OutsideShop = () => {
                             value={currentItem.flowerType} 
                             onChange={f => setCurrentItem(p => ({...p, flowerType: f.name, flowerTypeTa: f.taName || '' }))} 
                             inputRef={refFlower} 
-                            onKeyDown={e => { if(e.key==='Enter') refQty.current?.focus() }} 
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                    if (e.shiftKey) {
+                                        refVendor.current?.focus();
+                                    } else if (currentItem.flowerType) {
+                                        refQty.current?.focus();
+                                    }
+                                }
+                            }} 
                             placeholder={t('flowerVariety')}
                             lang={lang}
                         />
                     </div>
                     <div>
                         <label style={LABEL_S}>{t('qty')}</label>
-                        <input ref={refQty} type="number" value={currentItem.quantity} onChange={e => setCurrentItem(p => ({...p, quantity: e.target.value}))} onKeyDown={e => { if(e.key==='Enter') refRate.current?.focus() }} style={INPUT_S} />
+                        <input ref={refQty} type="number" value={currentItem.quantity} onChange={e => setCurrentItem(p => ({...p, quantity: e.target.value}))} onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                                if (e.shiftKey) {
+                                    const hasTodaytotel = flowers.some(f => f.name.toLowerCase() === 'todaytotel');
+                                    if (hasTodaytotel) refVendor.current?.focus();
+                                    else refFlower.current?.focus();
+                                } else if (currentItem.quantity && parseFloat(currentItem.quantity) > 0) {
+                                    refRate.current?.focus();
+                                }
+                            }
+                        }} style={INPUT_S} />
                     </div>
                     <div>
                         <label style={LABEL_S}>{t('rate')}</label>
-                        <input ref={refRate} type="number" value={currentItem.price} onChange={e => setCurrentItem(p => ({...p, price: e.target.value}))} onKeyDown={e => { if(e.key==='Enter') handleSavePurchase() }} style={INPUT_S} />
+                        <input ref={refRate} type="number" value={currentItem.price} onChange={e => setCurrentItem(p => ({...p, price: e.target.value}))} onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                                if (e.shiftKey) {
+                                    refQty.current?.focus();
+                                } else if (currentItem.price && parseFloat(currentItem.price) > 0) {
+                                    handleSavePurchase();
+                                }
+                            }
+                        }} style={INPUT_S} />
                     </div>
                 </div>
 
@@ -1615,10 +1684,6 @@ const OutsideShop = () => {
                         <label style={{ width: '42px', height: '42px', background: '#fff', border: '1.5px solid #6366f1', color: '#6366f1', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Import Excel">
                             <Upload size={20} /><input type="file" accept=".xlsx, .xls" onChange={handleImportFromExcel} style={{ display: 'none' }} />
                         </label>
-                        <div style={{ width: '1px', background: '#e2e8f0', margin: '0 4px' }} />
-                        <button onClick={handleAddItemToBill} disabled={!currentItem.flowerType || !currentItem.quantity || !currentItem.price} style={{ height: '42px', padding: '0 16px', background: '#fff', border: '1.5px solid #d97706', color: '#d97706', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: 700 }} title={t('addToList')}>
-                            <Plus size={20}/> {t('addToList') || 'Add Item'}
-                        </button>
                     </div>
 
                     <button 
@@ -1984,12 +2049,45 @@ const OutsideShop = () => {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', alignItems: 'flex-end' }}>
                     <div>
+                        <label style={LABEL_S}>{lang === 'ta' ? 'விற்பனையாளர்' : 'Salesman'}</label>
+                        <select 
+                            ref={refPaySalesman}
+                            value={paymentForm.salesmanId || ''} 
+                            onChange={e => setPaymentForm(p => ({ ...p, salesmanId: e.target.value }))}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                    if (e.shiftKey) {
+                                    } else {
+                                        refPayVendor.current?.focus();
+                                    }
+                                }
+                            }}
+                            style={INPUT_S}
+                        >
+                            <option value="">{lang === 'ta' ? '--விற்பனையாளர் தேர்வு செய்--' : '--Select Salesman--'}</option>
+                            {salesmen.map(s => (
+                                <option key={s.id} value={s.id}>
+                                    {lang === 'ta' ? (s.nameTa || s.name) : s.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
                         <label style={LABEL_S}>{t('vendorName')}</label>
                         <SearchSelect 
                             items={vendors} 
                             value={paymentForm.vendorId} 
                             onChange={v => setPaymentForm(p=>({...p, vendorId: v.id}))} 
-                            onKeyDown={e => { if(e.key==='Enter') refPayAmount.current?.focus() }}
+                            inputRef={refPayVendor}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                    if (e.shiftKey) {
+                                        refPaySalesman.current?.focus();
+                                    } else if (paymentForm.vendorId) {
+                                        refPayAmount.current?.focus();
+                                    }
+                                }
+                            }}
                             placeholder={t('vendorName')} idPrefix="V" lang={lang} 
                         />
                     </div>
@@ -2008,11 +2106,27 @@ const OutsideShop = () => {
                                 </span>
                             )}
                         </div>
-                        <input ref={refPayAmount} type="number" value={paymentForm.amount} onChange={e => setPaymentForm(p=>({...p, amount: e.target.value}))} onKeyDown={e => { if(e.key==='Enter') refPayNote.current?.focus() }} style={INPUT_S} placeholder="0.00" />
+                        <input ref={refPayAmount} type="number" value={paymentForm.amount} onChange={e => setPaymentForm(p=>({...p, amount: e.target.value}))} onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                                if (e.shiftKey) {
+                                    refPayVendor.current?.focus();
+                                } else if (paymentForm.amount && parseFloat(paymentForm.amount) > 0) {
+                                    refPayNote.current?.focus();
+                                }
+                            }
+                        }} style={INPUT_S} placeholder="0.00" />
                     </div>
                     <div>
                         <label style={LABEL_S}>{t('notes')}</label>
-                        <input ref={refPayNote} type="text" value={paymentForm.note} onChange={e => setPaymentForm(p=>({...p, note: e.target.value}))} onKeyDown={e => { if(e.key==='Enter') handleSavePayment() }} style={INPUT_S} placeholder={t('paymentDetailsPlaceholder')} />
+                        <input ref={refPayNote} type="text" value={paymentForm.note} onChange={e => setPaymentForm(p=>({...p, note: e.target.value}))} onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                                if (e.shiftKey) {
+                                    refPayAmount.current?.focus();
+                                } else {
+                                    handleSavePayment();
+                                }
+                            }
+                        }} style={INPUT_S} placeholder={t('paymentDetailsPlaceholder')} />
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <button 
@@ -2127,6 +2241,7 @@ const OutsideShop = () => {
                             <tr style={{ borderBottom: '1.5px solid #f1f5f9' }}>
                                 <th style={TH_S}>{t('date')}</th>
                                 <th style={TH_S}>{t('vendorName')}</th>
+                                <th style={TH_S}>{lang === 'ta' ? 'விற்பனையாளர்' : 'Salesman'}</th>
                                 <th style={TH_S}>{t('notes')}</th>
                                 <th style={{...TH_S, textAlign: 'right'}}>{t('amount')}</th>
                                 <th style={{...TH_S, textAlign: 'center'}}>{t('action')}</th>
@@ -2147,7 +2262,7 @@ const OutsideShop = () => {
                                 if (filteredPayments.length === 0) {
                                     return (
                                         <tr>
-                                            <td colSpan={5} style={{ padding: '60px', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>
+                                            <td colSpan={6} style={{ padding: '60px', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>
                                                 {t('noRecords')}
                                             </td>
                                         </tr>
@@ -2162,6 +2277,13 @@ const OutsideShop = () => {
                                                 const vend = vendors.find(v => v.id === p.entityId);
                                                 if (!vend) return '---';
                                                 return lang === 'ta' ? (vend.nameTa || vend.name) : vend.name;
+                                            })()}
+                                        </td>
+                                        <td style={TD_S}>
+                                            {(() => {
+                                                const sm = salesmen.find(s => s.id === p.salesmanId);
+                                                if (!sm) return '---';
+                                                return lang === 'ta' ? (sm.nameTa || sm.name) : sm.name;
                                             })()}
                                         </td>
                                         <td style={{ ...TD_S, color: '#64748b' }}>{p.note || '---'}</td>
@@ -2181,6 +2303,10 @@ const OutsideShop = () => {
                                                     if(window.confirm(t('delete') + '?')) {
                                                         await deleteDoc(doc(p.tenantId ? db : db, 'payments', p.id));
                                                         await updateDoc(doc(db, 'vendors', p.entityId), { balance: increment(p.amount) });
+                                                        if (editingPaymentId === p.id) {
+                                                            setEditingPaymentId(null);
+                                                            setPaymentForm({ vendorId: '', amount: '', note: '', date: new Date().toISOString().split('T')[0] });
+                                                        }
                                                     }
                                                 }} style={{ width: '28px', height: '28px', borderRadius: '6px', border: '1px solid #fee2e2', background: '#fff', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                                                     <Trash2 size={14}/>

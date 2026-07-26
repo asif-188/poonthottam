@@ -37,6 +37,7 @@ const SalesmanPurchases = () => {
     const [flowers, setFlowers] = useState([]);
     const [cashRecords, setCashRecords] = useState([]);
     const [purchaseRecords, setPurchaseRecords] = useState([]);
+    const [payments, setPayments] = useState([]);
     
     // Draft bill fields
     const [formData, setFormData] = useState({
@@ -74,12 +75,14 @@ const SalesmanPurchases = () => {
         });
         const unsubCash = subscribeToCollection('salesman_cash', setCashRecords);
         const unsubPurchases = subscribeToCollection('salesman_purchases', setPurchaseRecords);
-
+        const unsubPayments = subscribeToCollection('payments', setPayments);
+ 
         return () => {
             unsubSalesmen();
             unsubProducts();
             unsubCash();
             unsubPurchases();
+            unsubPayments();
         };
     }, []);
 
@@ -87,43 +90,54 @@ const SalesmanPurchases = () => {
     const cashStats = useMemo(() => {
         const { salesmanId, date } = formData;
         if (!salesmanId) return { openingCash: 0, totalPurchasesToday: 0, availableCash: 0 };
-
+ 
+        const sCash = cashRecords.filter(r => r.salesmanId === salesmanId);
+        const sPurchases = purchaseRecords.filter(p => p.salesmanId === salesmanId);
+        const sPayments = payments.filter(p => p.type === 'vendor' && p.salesmanId === salesmanId);
+ 
         const sortedDates = Array.from(new Set([
-            ...cashRecords.filter(r => r.salesmanId === salesmanId).map(r => r.date).filter(Boolean),
-            ...purchaseRecords.filter(p => p.salesmanId === salesmanId).map(p => p.date).filter(Boolean),
+            ...sCash.map(r => r.date).filter(Boolean),
+            ...sPurchases.map(p => p.date).filter(Boolean),
+            ...sPayments.map(p => p.date).filter(Boolean),
             date
         ])).sort();
-
-        let carryForward = 0;
+ 
+        const salesman = salesmen.find(s => s.id === salesmanId);
+        let carryForward = Number(salesman?.openingCash) || 0;
         let openingCashForSelectedDate = 0;
         let totalPurchasesToday = 0;
-
+        let totalPaymentsToday = 0;
+ 
         for (const d of sortedDates) {
             if (d > date) break;
-
-            const dayCashRecords = cashRecords.filter(r => r.salesmanId === salesmanId && r.date === d);
+ 
+            const dayCashRecords = sCash.filter(r => r.date === d);
             const dayPurchaseRecords = purchaseRecords.filter(p => p.salesmanId === salesmanId && p.date === d);
-
+            const dayPaymentsRecords = sPayments.filter(p => p.date === d);
+ 
             const issuedToday = dayCashRecords.reduce((sum, r) => sum + (r.openingCash || 0), 0);
             const purchasesToday = dayPurchaseRecords.reduce((sum, p) => sum + (p.grandTotal || 0), 0);
-
+            const paymentsToday = dayPaymentsRecords.reduce((sum, p) => sum + (p.amount || 0), 0);
+ 
             const dayOpeningCash = carryForward + issuedToday;
-            const dayEndingCash = dayOpeningCash - purchasesToday;
-
+            const dayEndingCash = dayOpeningCash - purchasesToday - paymentsToday;
+ 
             if (d === date) {
                 openingCashForSelectedDate = dayOpeningCash;
                 totalPurchasesToday = purchasesToday;
+                totalPaymentsToday = paymentsToday;
             }
-
+ 
             carryForward = dayEndingCash;
         }
-
+ 
         return {
             openingCash: openingCashForSelectedDate,
             totalPurchasesToday,
-            availableCash: openingCashForSelectedDate - totalPurchasesToday
+            totalPaymentsToday,
+            availableCash: openingCashForSelectedDate - totalPurchasesToday - totalPaymentsToday
         };
-    }, [cashRecords, purchaseRecords, formData.salesmanId, formData.date]);
+    }, [cashRecords, purchaseRecords, payments, salesmen, formData.salesmanId, formData.date]);
 
     // Handle adding line item to the draft bill
     const handleAddItem = () => {

@@ -127,7 +127,24 @@ const PbPayments = () => {
   const openingBalance = selectedEntity?.balance || 0;
   const closingBalance = openingBalance - (parseFloat(formData.amount) || 0) - (parseFloat(formData.cashLess) || 0);
   const filteredBuyers = buyers.filter(b => b.name.toLowerCase().includes(customerSearch.toLowerCase()) || b.displayId?.toString().includes(customerSearch));
-  const handleKeyDown = (e, nextRef) => { if (e.key === 'Enter') { e.preventDefault(); nextRef?.current?.focus(); } };
+  const handleKeyDown = (e, nextRef, valToCheck = null, prevRef = null) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        if (prevRef && prevRef.current) {
+          prevRef.current.focus();
+        }
+        return;
+      }
+      if (valToCheck !== null) {
+        const val = String(valToCheck).trim();
+        if (!val || val === '0' || parseFloat(val) <= 0) {
+          return;
+        }
+      }
+      nextRef?.current?.focus();
+    }
+  };
 
   const getFilteredPayments = () => {
     let filtered = [...payments];
@@ -317,6 +334,8 @@ const PbPayments = () => {
                             setCustomerSearch(''); setIsDropdownOpen(false); setSelectedIndex(-1);
                             setTimeout(() => amountRef.current?.focus(), 50);
                           }
+                        } else if (e.key === 'Enter' && formData.entityId) {
+                          handleKeyDown(e, amountRef);
                         }
                       }}
                       style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', fontSize: '14px', fontWeight: 600, color: '#1e293b', outline: 'none' }} />
@@ -343,7 +362,7 @@ const PbPayments = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <label style={{ width: '130px', flexShrink: 0, fontSize: '13px', fontWeight: 600, color: '#475569' }}>Given Amount</label>
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <input ref={amountRef} type="number" placeholder="0" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} onKeyDown={e => handleKeyDown(e, cashLessRef)} required min="1"
+                    <input ref={amountRef} type="number" placeholder="0" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} onKeyDown={e => handleKeyDown(e, cashLessRef, formData.amount, customerRef)} required min="1"
                       style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: `1.5px solid ${PB.primary}`, fontSize: '18px', fontWeight: 900, color: PB.primary, outline: 'none' }} />
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, color: formData.method === 'UPI' ? PB.primary : '#64748b', whiteSpace: 'nowrap' }}>
                       <input type="checkbox" checked={formData.method === 'UPI'} onChange={e => setFormData({ ...formData, method: e.target.checked ? 'UPI' : 'Cash' })} style={{ accentColor: PB.primary, width: '18px', height: '18px' }} /> GPAY
@@ -353,7 +372,7 @@ const PbPayments = () => {
                 {/* Cash Less */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <label style={{ width: '130px', flexShrink: 0, fontSize: '13px', fontWeight: 600, color: '#475569' }}>Cash Less</label>
-                  <input ref={cashLessRef} type="number" placeholder="0" value={formData.cashLess} onChange={e => setFormData({ ...formData, cashLess: e.target.value })} onKeyDown={e => handleKeyDown(e, saveRef)}
+                  <input ref={cashLessRef} type="number" placeholder="0" value={formData.cashLess} onChange={e => setFormData({ ...formData, cashLess: e.target.value })} onKeyDown={e => handleKeyDown(e, saveRef, null, amountRef)}
                     style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #f43f5e', fontSize: '18px', fontWeight: 900, color: '#f43f5e', outline: 'none' }} />
                 </div>
                 {/* Closing Balance */}

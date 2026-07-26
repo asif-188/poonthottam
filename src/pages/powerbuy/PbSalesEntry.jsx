@@ -82,8 +82,13 @@ const SearchSelect = ({ items, value, onChange, onKeyDown, inputRef, placeholder
     else if (e.key === 'ArrowUp') { e.preventDefault(); setCursor(c => Math.max(c - 1, 0)); }
     else if (e.key === 'Enter') {
       e.preventDefault();
-      if (open && filtered[cursor]) { choose(filtered[cursor]); if (onKeyDown) onKeyDown(e); }
-      else if (onKeyDown) onKeyDown(e);
+      if (e.shiftKey) {
+        if (onKeyDown) onKeyDown(e);
+      }
+      else if (open && filtered[cursor]) { choose(filtered[cursor]); if (onKeyDown) onKeyDown(e); }
+      else if (value) {
+        if (onKeyDown) onKeyDown(e);
+      }
     }
     else if (e.key === 'Escape') setOpen(false);
     else if (e.key === 'Tab') { if (open && filtered[cursor]) choose(filtered[cursor]); setOpen(false); if (onKeyDown) onKeyDown(e); }
@@ -298,7 +303,26 @@ const PbSalesEntry = () => {
     if (isNaN(d.getTime())) return '--:--';
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
   };
-  const onKey = (e, nextRef) => { if (e.key === 'Enter') { e.preventDefault(); nextRef.current?.focus(); if (nextRef.current?.select) nextRef.current.select(); } };
+  const onKey = (e, nextRef, valToCheck = null, prevRef = null) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        if (prevRef && prevRef.current) {
+          prevRef.current.focus();
+          if (prevRef.current.select) prevRef.current.select();
+        }
+        return;
+      }
+      if (valToCheck !== null) {
+        const val = String(valToCheck).trim();
+        if (!val || val === '0' || parseFloat(val) <= 0) {
+          return;
+        }
+      }
+      nextRef.current?.focus();
+      if (nextRef.current?.select) nextRef.current.select();
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: 'var(--font-sans)' }}>
@@ -346,13 +370,23 @@ const PbSalesEntry = () => {
             <SearchSelect items={buyers} value={buyerId} onChange={b => setBuyerId(b.id)} inputRef={refCustomer} onKeyDown={e => onKey(e, refFlower)} placeholder={t('selectCustomer')} lang={lang} />
           </div>
           <div><label style={LABEL_S}>{t('flowerVariety')}</label>
-            <SearchSelect items={flowers} value={currentItem.flowerType} onChange={f => setCurrentItem(p => ({ ...p, flowerType: f.name, flowerTypeTa: f.taName || '' }))} inputRef={refFlower} onKeyDown={e => onKey(e, refQty)} placeholder={t('flowerVariety')} lang={lang} />
+            <SearchSelect items={flowers} value={currentItem.flowerType} onChange={f => setCurrentItem(p => ({ ...p, flowerType: f.name, flowerTypeTa: f.taName || '' }))} inputRef={refFlower} onKeyDown={e => onKey(e, refQty, null, refCustomer)} placeholder={t('flowerVariety')} lang={lang} />
           </div>
           <div><label style={LABEL_S}>{t('qty')}</label>
-            <input ref={refQty} type="number" placeholder="0.00" value={currentItem.quantity} onChange={e => setCurrentItem(p => ({ ...p, quantity: e.target.value }))} onKeyDown={e => onKey(e, refRate)} style={INPUT_S} />
+            <input ref={refQty} type="number" placeholder="0.00" value={currentItem.quantity} onChange={e => setCurrentItem(p => ({ ...p, quantity: e.target.value }))} onKeyDown={e => onKey(e, refRate, currentItem.quantity, refFlower)} style={INPUT_S} />
           </div>
           <div><label style={LABEL_S}>{t('rate')}</label>
-            <input ref={refRate} type="number" placeholder="0.00" value={currentItem.price} onChange={e => setCurrentItem(p => ({ ...p, price: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAddItem()} style={INPUT_S} />
+            <input ref={refRate} type="number" placeholder="0.00" value={currentItem.price} onChange={e => setCurrentItem(p => ({ ...p, price: e.target.value }))} onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                  refQty.current?.focus();
+                  if (refQty.current?.select) refQty.current.select();
+                } else if (currentItem.price && parseFloat(currentItem.price) > 0) {
+                  handleAddItem();
+                }
+              }
+            }} style={INPUT_S} />
           </div>
           <button ref={refAddBtn} onClick={handleAddItem}
             disabled={!buyerId || !currentItem.flowerType || !currentItem.quantity || !currentItem.price || isSaving}

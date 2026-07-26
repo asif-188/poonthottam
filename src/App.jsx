@@ -23,6 +23,7 @@ import SalesmanCreditExpenses from './pages/SalesmanCreditExpenses';
 import InvoiceView from './pages/InvoiceView';
 import Payments from './pages/Payments';
 import DailyFlowerPrices from './pages/DailyFlowerPrices';
+import SalesmanReports from './pages/SalesmanReports';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useTenant();
@@ -74,6 +75,7 @@ const AppRoutes = () => {
           <Route path="salesman-ledger" element={<SalesmanLedger />} />
           <Route path="salesman-master" element={<SalesmanMaster />} />
           <Route path="salesman-credit-expenses" element={<SalesmanCreditExpenses />} />
+          <Route path="salesman-reports" element={<SalesmanReports />} />
           <Route path="payments" element={<Payments />} />
           <Route path="daily-flower-prices" element={<DailyFlowerPrices />} />
           <Route path="reports" element={<Reports />} />

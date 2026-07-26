@@ -105,6 +105,7 @@ const SalesmanLedger = () => {
     const [purchaseRecords, setPurchaseRecords] = useState([]);
     const [expenses, setExpenses] = useState([]);
     const [transfers, setTransfers] = useState([]);
+    const [payments, setPayments] = useState([]);
 
     const today = new Date().toLocaleDateString('en-CA');
     const [selectedSalesmanId, setSelectedSalesmanId] = useState('');
@@ -119,6 +120,7 @@ const SalesmanLedger = () => {
         const unsubPurchases = subscribeToCollection('salesman_purchases', setPurchaseRecords);
         const unsubExpenses = subscribeToCollection('salesman_expenses', setExpenses);
         const unsubTransfers = subscribeToCollection('salesman_transfers', setTransfers);
+        const unsubPayments = subscribeToCollection('payments', setPayments);
 
         return () => {
             unsubSalesmen();
@@ -126,6 +128,7 @@ const SalesmanLedger = () => {
             unsubPurchases();
             unsubExpenses();
             unsubTransfers();
+            unsubPayments();
         };
     }, []);
 
@@ -138,18 +141,21 @@ const SalesmanLedger = () => {
         const sExpenses = expenses.filter(e => e.salesmanId === selectedSalesmanId);
         const sTransfersIn = transfers.filter(t => t.toSalesmanId === selectedSalesmanId);
         const sTransfersOut = transfers.filter(t => t.fromSalesmanId === selectedSalesmanId);
-
+        const sPayments = payments.filter(p => p.type === 'vendor' && p.salesmanId === selectedSalesmanId);
+ 
         // Get all unique dates sorted chronologically
         const allDates = Array.from(new Set([
             ...sCash.map(r => r.date).filter(Boolean),
             ...sPurchases.map(p => p.date).filter(Boolean),
             ...sExpenses.map(e => e.date).filter(Boolean),
             ...sTransfersIn.map(t => t.date).filter(Boolean),
-            ...sTransfersOut.map(t => t.date).filter(Boolean)
+            ...sTransfersOut.map(t => t.date).filter(Boolean),
+            ...sPayments.map(p => p.date).filter(Boolean)
         ])).sort();
 
         const rows = [];
-        let carryForward = 0;
+        const salesman = salesmen.find(s => s.id === selectedSalesmanId);
+        let carryForward = Number(salesman?.openingCash) || 0;
 
         for (const date of allDates) {
             const dayCash = sCash.filter(r => r.date === date);
@@ -157,15 +163,17 @@ const SalesmanLedger = () => {
             const dayExpenses = sExpenses.filter(e => e.date === date);
             const dayTransfersIn = sTransfersIn.filter(t => t.date === date);
             const dayTransfersOut = sTransfersOut.filter(t => t.date === date);
-
+            const dayPayments = sPayments.filter(p => p.date === date);
+ 
             const issuedToday = dayCash.reduce((sum, r) => sum + (r.openingCash || 0), 0);
             const purchasesToday = dayPurchases.reduce((sum, p) => sum + (p.grandTotal || 0), 0);
             const expensesToday = dayExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
             const transInToday = dayTransfersIn.reduce((sum, t) => sum + (t.amount || 0), 0);
             const transOutToday = dayTransfersOut.reduce((sum, t) => sum + (t.amount || 0), 0);
-
+            const paymentsToday = dayPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+ 
             const inflow = issuedToday + transInToday;
-            const outflow = purchasesToday + expensesToday + transOutToday;
+            const outflow = purchasesToday + expensesToday + transOutToday + paymentsToday;
 
             const openingCash = carryForward + inflow;
             const balanceCash = openingCash - outflow;
@@ -177,6 +185,7 @@ const SalesmanLedger = () => {
                 purchases: purchasesToday,
                 expenses: expensesToday,
                 transOut: transOutToday,
+                vendorPayments: paymentsToday,
                 openingCash,
                 purchaseAmount: outflow,
                 balanceCash,
@@ -520,11 +529,12 @@ const SalesmanLedger = () => {
                                         </td>
                                         <td style={{...S.td, textAlign: 'right', color: '#dc2626', fontWeight: 700}}>
                                             <div>{formatCurrency(row.purchaseAmount)}</div>
-                                            {(row.purchases > 0 || row.expenses > 0 || row.transOut > 0) && (
+                                            {(row.purchases > 0 || row.expenses > 0 || row.transOut > 0 || row.vendorPayments > 0) && (
                                                 <div style={{ fontSize: '10.5px', color: '#ef4444', fontWeight: 600 }}>
                                                     {row.purchases > 0 && `Pur: ${row.purchases} `}
                                                     {row.expenses > 0 && `Exp: ${row.expenses} `}
-                                                    {row.transOut > 0 && `Sent: ${row.transOut}`}
+                                                    {row.transOut > 0 && `Sent: ${row.transOut} `}
+                                                    {row.vendorPayments > 0 && `VPay: ${row.vendorPayments}`}
                                                 </div>
                                             )}
                                         </td>

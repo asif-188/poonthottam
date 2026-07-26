@@ -125,6 +125,7 @@ const S = {
         background: '#fff', borderRadius: '16px', width: '100%',
         maxWidth: '440px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        maxHeight: '90vh'
     },
     modalHeader: {
         padding: '16px 24px', background: '#f9fafb',
@@ -140,6 +141,7 @@ const S = {
     },
     modalBody: {
         padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px',
+        overflowY: 'auto', flex: 1,
     },
     formGroup: {
         display: 'flex', flexDirection: 'column', gap: '6px',
@@ -177,6 +179,7 @@ const SalesmanMaster = () => {
     const [purchaseRecords, setPurchaseRecords] = useState([]);
     const [expenses, setExpenses] = useState([]);
     const [transfers, setTransfers] = useState([]);
+    const [payments, setPayments] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentSalesman, setCurrentSalesman] = useState({ id: '', displayId: '', name: '', contact: '', location: '', status: 'Active' });
@@ -187,17 +190,19 @@ const SalesmanMaster = () => {
         new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(n || 0);
 
     useEffect(() => {
-        const unsubscribe = subscribeToCollection('salesmen', setSalesmen);
+        const unsubSalesmen = subscribeToCollection('salesmen', setSalesmen);
         const unsubCash = subscribeToCollection('salesman_cash', setCashRecords);
         const unsubPurchases = subscribeToCollection('salesman_purchases', setPurchaseRecords);
         const unsubExpenses = subscribeToCollection('salesman_expenses', setExpenses);
         const unsubTransfers = subscribeToCollection('salesman_transfers', setTransfers);
+        const unsubPayments = subscribeToCollection('payments', setPayments);
         return () => {
-            unsubscribe();
+            unsubSalesmen();
             unsubCash();
             unsubPurchases();
             unsubExpenses();
             unsubTransfers();
+            unsubPayments();
         };
     }, []);
 
@@ -247,7 +252,7 @@ const SalesmanMaster = () => {
         if (salesman) {
             setCurrentSalesman(salesman);
         } else {
-            setCurrentSalesman({ id: '', displayId: '', name: '', nameTa: '', contact: '', location: '', status: 'Active' });
+            setCurrentSalesman({ id: '', displayId: '', name: '', nameTa: '', contact: '', location: '', status: 'Active', openingCash: '' });
         }
         setIsModalOpen(true);
     };
@@ -256,7 +261,11 @@ const SalesmanMaster = () => {
         e.preventDefault();
         setIsSaving(true);
         try {
-            await saveSalesman(currentSalesman);
+            const dataToSave = {
+                ...currentSalesman,
+                openingCash: currentSalesman.openingCash ? parseFloat(currentSalesman.openingCash) : 0
+            };
+            await saveSalesman(dataToSave);
             setIsModalOpen(false);
         } catch (error) {
             console.error("Error saving salesman:", error);
@@ -285,14 +294,16 @@ const SalesmanMaster = () => {
             const sExpenses = expenses.filter(e => e.salesmanId === s.id);
             const sTransfersIn = transfers.filter(t => t.toSalesmanId === s.id);
             const sTransfersOut = transfers.filter(t => t.fromSalesmanId === s.id);
+            const sPayments = payments.filter(p => p.type === 'vendor' && p.salesmanId === s.id);
 
-            const opening = sCash.reduce((sum, r) => sum + (Number(r.openingCash) || 0), 0);
+            const opening = (Number(s.openingCash) || 0) + sCash.reduce((sum, r) => sum + (Number(r.openingCash) || 0), 0);
             const purchasesAmt = sPurchases.reduce((sum, p) => sum + (Number(p.grandTotal) || 0), 0);
             const expensesAmt = sExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
             const transInAmt = sTransfersIn.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
             const transOutAmt = sTransfersOut.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+            const vendorPayAmt = sPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-            const balance = (opening + transInAmt) - (purchasesAmt + expensesAmt + transOutAmt);
+            const balance = (opening + transInAmt) - (purchasesAmt + expensesAmt + transOutAmt + vendorPayAmt);
             return {
                 'S.No': idx + 1,
                 'Salesman ID': s.displayId || '---',
@@ -342,13 +353,15 @@ const SalesmanMaster = () => {
                     const contact = row['Contact Number'] || row['Contact'] || row['Phone'] || '';
                     const location = row['Location'] || row['Address'] || '';
                     const status = row['Status'] || 'Active';
+                    const openingCash = row['Opening Cash'] || row['Opening'] || 0;
 
                     await saveSalesman({
                         name: String(name).trim(),
                         nameTa: String(nameTa).trim(),
                         contact: String(contact).trim(),
                         location: String(location).trim(),
-                        status: String(status).trim()
+                        status: String(status).trim(),
+                        openingCash: Number(openingCash) || 0
                     });
                     importedCount++;
                 }
@@ -451,14 +464,16 @@ const SalesmanMaster = () => {
                                 const sExpenses = expenses.filter(e => e.salesmanId === salesman.id);
                                 const sTransfersIn = transfers.filter(t => t.toSalesmanId === salesman.id);
                                 const sTransfersOut = transfers.filter(t => t.fromSalesmanId === salesman.id);
+                                const sPayments = payments.filter(p => p.type === 'vendor' && p.salesmanId === salesman.id);
 
-                                const opening = sCash.reduce((sum, r) => sum + (Number(r.openingCash) || 0), 0);
+                                const opening = (Number(salesman.openingCash) || 0) + sCash.reduce((sum, r) => sum + (Number(r.openingCash) || 0), 0);
                                 const purchasesAmt = sPurchases.reduce((sum, p) => sum + (Number(p.grandTotal) || 0), 0);
                                 const expensesAmt = sExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
                                 const transInAmt = sTransfersIn.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
                                 const transOutAmt = sTransfersOut.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+                                const vendorPayAmt = sPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-                                const balance = (opening + transInAmt) - (purchasesAmt + expensesAmt + transOutAmt);
+                                const balance = (opening + transInAmt) - (purchasesAmt + expensesAmt + transOutAmt + vendorPayAmt);
                                 return (
                                     <tr key={salesman.id} className="group" style={{ borderBottom: '1px solid #f3f4f6' }}>
                                         <td style={S.td}>
@@ -522,7 +537,7 @@ const SalesmanMaster = () => {
                                 <X size={20} />
                             </button>
                         </div>
-                        <form onSubmit={handleSave}>
+                        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
                             <div style={S.modalBody}>
                                 <div style={S.formGroup}>
                                     <label style={S.label}>
@@ -577,6 +592,18 @@ const SalesmanMaster = () => {
                                         value={currentSalesman.location}
                                         onChange={(e) => setCurrentSalesman({ ...currentSalesman, location: e.target.value })}
                                         placeholder={lang === 'ta' ? 'நகரம்' : 'City/Town'}
+                                    />
+                                </div>
+                                <div style={S.formGroup}>
+                                    <label style={S.label}>
+                                        {lang === 'ta' ? 'தொடக்க ரொக்கம்' : 'Opening Cash'}
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        style={S.input}
+                                        value={currentSalesman.openingCash || ''}
+                                        onChange={(e) => setCurrentSalesman({ ...currentSalesman, openingCash: e.target.value })}
+                                        placeholder={lang === 'ta' ? 'தொடக்க ரொக்கம் (ரூ)' : 'Opening Cash (₹)'}
                                     />
                                 </div>
                                 <div style={S.formGroup}>
