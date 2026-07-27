@@ -66,7 +66,7 @@ const Flowers = () => {
     const [touched, setTouched] = useState({ name: false, taName: false });
     const nameRef = useRef(null);
 
-    const [isListening, setIsListening] = useState(false);
+    const [listeningField, setListeningField] = useState(null); // null, 'name', or 'taName'
     const recognitionRef = useRef(null);
 
     // Speech Recognition setup
@@ -76,7 +76,7 @@ const Flowers = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) return;
 
-        if (!isListening) {
+        if (!listeningField) {
             if (recognitionRef.current) {
                 recognitionRef.current.abort();
             }
@@ -86,25 +86,33 @@ const Flowers = () => {
         const rec = new SpeechRecognition();
         rec.continuous = false;
         rec.interimResults = false;
-        rec.lang = lang === 'ta' ? 'ta-IN' : 'en-IN';
+        rec.lang = listeningField === 'name' ? 'en-IN' : 'ta-IN';
 
         rec.onstart = () => {
-            setIsListening(true);
+            // Speech started
         };
 
         rec.onresult = (e) => {
             const resultText = e.results[0][0].transcript;
-            setIsListening(false);
-            handleVoiceInput(resultText);
+            const activeField = listeningField;
+            setListeningField(null);
+            handleVoiceInput(resultText, activeField);
         };
 
         rec.onerror = (e) => {
             console.error('Speech recognition error:', e.error);
-            setIsListening(false);
+            setListeningField(null);
+            if (e.error === 'not-allowed') {
+                alert(lang === 'ta' ? '❌ மைக்ரோஃபோன் அனுமதி மறுக்கப்பட்டது!' : '❌ Microphone permission denied!');
+            } else if (e.error === 'no-speech') {
+                alert(lang === 'ta' ? '❌ பேச்சு எதுவும் கண்டறியப்படவில்லை' : '❌ No speech detected');
+            } else {
+                alert((lang === 'ta' ? '❌ பிழை: ' : '❌ Error: ') + e.error);
+            }
         };
 
         rec.onend = () => {
-            setIsListening(false);
+            setListeningField(null);
         };
 
         recognitionRef.current = rec;
@@ -113,6 +121,7 @@ const Flowers = () => {
             rec.start();
         } catch (err) {
             console.error('Failed to start speech recognition:', err);
+            setListeningField(null);
         }
 
         return () => {
@@ -120,15 +129,15 @@ const Flowers = () => {
                 recognitionRef.current.abort();
             }
         };
-    }, [isModalOpen, isListening, lang]);
+    }, [isModalOpen, listeningField, lang]);
 
-    const toggleListening = () => {
+    const toggleListening = (field) => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
             alert(lang === 'ta' ? '❌ உங்கள் உலாவியில் குரல் அங்கீகாரம் ஆதரிக்கப்படவில்லை' : '❌ Speech recognition is not supported in this browser.');
             return;
         }
-        setIsListening(prev => !prev);
+        setListeningField(prev => prev === field ? null : field);
     };
 
     const triggerAutoTranslate = (val, source) => {
@@ -154,68 +163,27 @@ const Flowers = () => {
         triggerAutoTranslate(val, source);
     };
 
-    const handleVoiceInput = (text) => {
+    const handleVoiceInput = (text, field) => {
         if (!text) return;
-        let lower = text.toLowerCase().trim();
+        let cleanName = text.replace(/\s+/g, ' ').trim();
 
-        // Check for units in English and Tamil
-        const unitsMap = {
-            'kg': ['kilo', 'kilos', 'kg', 'கிலோ', 'கேஜி'],
-            'g': ['gram', 'grams', 'g', 'கிராம்'],
-            'bunch': ['bunch', 'bunches', 'கட்டு'],
-            'piece': ['piece', 'pieces', 'பீஸ்', 'எண்ணிக்கை'],
-            'dozen': ['dozen', 'dozens', 'டஜன்'],
-            'meter': ['meter', 'meters', 'மீட்டர்']
-        };
-
-        let matchedUnit = null;
-        let textWithoutUnit = lower;
-
-        for (const [unit, keywords] of Object.entries(unitsMap)) {
-            for (const keyword of keywords) {
-                const regex = new RegExp(`\\b${keyword}\\b|${keyword}`, 'gi');
-                if (regex.test(lower)) {
-                    matchedUnit = unit;
-                    textWithoutUnit = textWithoutUnit.replace(regex, '');
-                    break;
-                }
-            }
-            if (matchedUnit) break;
-        }
-
-        // Clean up the name text
-        let cleanName = textWithoutUnit
-            .replace(/\s+/g, ' ')
-            .trim();
-
-        // Capitalize first letter of each word (English only)
-        if (cleanName && !/[\u0b80-\u0bff]/.test(cleanName)) {
+        if (field === 'name') {
+            // Capitalize English flower names properly (e.g., "rose" → "Rose")
             cleanName = cleanName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-        } else if (cleanName) {
-            cleanName = cleanName.trim();
-        }
 
-        if (!cleanName) return;
-
-        // Determine if spoken language is Tamil or English
-        const isTamil = /[\u0b80-\u0bff]/.test(cleanName);
-
-        if (isTamil) {
-            setTouched(prev => ({ ...prev, taName: true }));
-            setForm(prev => ({
-                ...prev,
-                taName: cleanName,
-                unit: matchedUnit || prev.unit
-            }));
-            triggerAutoTranslate(cleanName, 'taName');
-        } else {
             setTouched(prev => ({ ...prev, name: true }));
             setForm(prev => ({
                 ...prev,
-                name: cleanName,
-                unit: matchedUnit || prev.unit
+                name: cleanName
             }));
             triggerAutoTranslate(cleanName, 'name');
+        } else if (field === 'taName') {
+            setTouched(prev => ({ ...prev, taName: true }));
+            setForm(prev => ({
+                ...prev,
+                taName: cleanName
+            }));
+            triggerAutoTranslate(cleanName, 'taName');
         }
     };
 
@@ -448,6 +416,11 @@ const Flowers = () => {
                             <div>
                                 <label style={LABEL_S}>
                                     {lang === 'ta' ? 'பூவின் பெயர் (ஆங்கிலத்தில்) *' : 'Flower Name (English) *'}
+                                    {listeningField === 'name' && (
+                                        <span style={{ marginLeft: '8px', color: '#ef4444', textTransform: 'none', fontSize: '10px', fontWeight: 'bold' }} className="animate-pulse">
+                                            🎙️ {lang === 'ta' ? 'கேட்கிறது...' : 'Listening...'}
+                                        </span>
+                                    )}
                                 </label>
                                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                     <input
@@ -465,15 +438,15 @@ const Flowers = () => {
                                     />
                                     <button
                                         type="button"
-                                        onClick={toggleListening}
+                                        onClick={() => toggleListening('name')}
                                         style={{
                                             position: 'absolute',
                                             right: '10px',
                                             border: 'none',
-                                            background: isListening ? '#fef2f2' : 'none',
+                                            background: listeningField === 'name' ? '#fef2f2' : 'none',
                                             padding: '6px',
                                             borderRadius: '8px',
-                                            color: isListening ? '#ef4444' : '#94a3b8',
+                                            color: listeningField === 'name' ? '#ef4444' : '#94a3b8',
                                             cursor: 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -482,7 +455,7 @@ const Flowers = () => {
                                         }}
                                         title={lang === 'ta' ? 'குரல் உள்ளீடு' : 'Voice Input'}
                                     >
-                                        {isListening ? <MicOff size={16} className="animate-pulse" /> : <Mic size={16} />}
+                                        {listeningField === 'name' ? <MicOff size={16} className="animate-pulse" /> : <Mic size={16} />}
                                     </button>
                                 </div>
                             </div>
@@ -491,18 +464,46 @@ const Flowers = () => {
                             <div>
                                 <label style={LABEL_S}>
                                     {lang === 'ta' ? 'தமிழ் பெயர் (விருப்பமானது)' : 'Tamil Name (optional)'}
+                                    {listeningField === 'taName' && (
+                                        <span style={{ marginLeft: '8px', color: '#ef4444', textTransform: 'none', fontSize: '10px', fontWeight: 'bold' }} className="animate-pulse">
+                                            🎙️ {lang === 'ta' ? 'கேட்கிறது...' : 'Listening...'}
+                                        </span>
+                                    )}
                                 </label>
-                                <input
-                                    type="text"
-                                    placeholder={lang === 'ta' ? 'எ.கா. ரோஜா, மல்லி...' : 'e.g. ரோஜா, மல்லி...'}
-                                    value={form.taName}
-                                    onChange={e => {
-                                        setTouched(p => ({ ...p, taName: true }));
-                                        handleAutoTranslate(e.target.value, 'taName');
-                                    }}
-                                    onKeyDown={e => e.key === 'Enter' && e.preventDefault()}
-                                    style={INPUT_S}
-                                />
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                    <input
+                                        type="text"
+                                        placeholder={lang === 'ta' ? 'எ.கா. ரோஜா, மல்லி...' : 'e.g. ரோஜா, மல்லி...'}
+                                        value={form.taName}
+                                        onChange={e => {
+                                            setTouched(p => ({ ...p, taName: true }));
+                                            handleAutoTranslate(e.target.value, 'taName');
+                                        }}
+                                        onKeyDown={e => e.key === 'Enter' && e.preventDefault()}
+                                        style={{ ...INPUT_S, paddingRight: '40px' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleListening('taName')}
+                                        style={{
+                                            position: 'absolute',
+                                            right: '10px',
+                                            border: 'none',
+                                            background: listeningField === 'taName' ? '#fef2f2' : 'none',
+                                            padding: '6px',
+                                            borderRadius: '8px',
+                                            color: listeningField === 'taName' ? '#ef4444' : '#94a3b8',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        title={lang === 'ta' ? 'குரல் உள்ளீடு' : 'Voice Input'}
+                                    >
+                                        {listeningField === 'taName' ? <MicOff size={16} className="animate-pulse" /> : <Mic size={16} />}
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Unit */}
