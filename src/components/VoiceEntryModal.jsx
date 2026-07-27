@@ -155,6 +155,72 @@ const extractQtyAndRate = (translatedText) => {
     return { quantity, price };
 };
 
+/* ── Gram & Kilogram Voice Preprocessor ── */
+const preprocessWeights = (text) => {
+    let t = text.toLowerCase();
+
+    const exactPhrases = {
+        'one and half kilo': '1.500 kg',
+        'one and a half kilo': '1.500 kg',
+        '1 and half kilo': '1.500 kg',
+        '1 and a half kilo': '1.500 kg',
+        '1.5 kilo': '1.500 kg',
+        '1.5 கிலோ': '1.500 kg',
+        '1.5 kg': '1.500 kg',
+        'ஒன்னரை கிலோ': '1.500 kg',
+        'ஒன்றரை கிலோ': '1.500 kg',
+        '1ரை கிலோ': '1.500 kg',
+        
+        'three quarter kilo': '0.750 kg',
+        'முக்கால் கிலோ': '0.750 kg',
+        
+        'half kilo': '0.500 kg',
+        'அரை கிலோ': '0.500 kg',
+        '0.5 kilo': '0.500 kg',
+        '0.5 கிலோ': '0.500 kg',
+        '0.5 kg': '0.500 kg',
+        
+        'quarter kilo': '0.250 kg',
+        'கால் கிலோ': '0.250 kg',
+        '0.25 kilo': '0.250 kg',
+        '0.25 கிலோ': '0.250 kg',
+        '0.25 kg': '0.250 kg',
+        
+        'one kilo': '1.000 kg',
+        'ஒரு கிலோ': '1.000 kg'
+    };
+
+    for (const [phrase, replacement] of Object.entries(exactPhrases)) {
+        t = t.replace(new RegExp(phrase, 'g'), ` ${replacement} `);
+    }
+
+    // Match "X kilo Y grams" or "X கிலோ Y கிராம்"
+    const kiloGramsRegex = /(\d+(?:\.\d+)?)\s*(?:kilo|kilos|kg|கிலோ)\s*(?:and)?\s*(\d+(?:\.\d+)?)\s*(?:grams|gram|gm|gms|g|கிராம்)/gi;
+    t = t.replace(kiloGramsRegex, (match, p1, p2) => {
+        const kg = parseFloat(p1);
+        const g = parseFloat(p2);
+        const total = kg + (g / 1000);
+        return ` ${total.toFixed(3)} kg `;
+    });
+
+    // Match single kilo numbers "X kilo" or "X kg" or "X கிலோ"
+    const kiloRegex = /(\d+(?:\.\d+)?)\s*(?:kilo|kilos|kg|கிலோ)/gi;
+    t = t.replace(kiloRegex, (match, p1) => {
+        const kg = parseFloat(p1);
+        return ` ${kg.toFixed(3)} kg `;
+    });
+
+    // Match single gram numbers "X grams" or "X கிராம்"
+    const gramsRegex = /(\d+(?:\.\d+)?)\s*(?:grams|gram|gm|gms|g|கிராம்)/gi;
+    t = t.replace(gramsRegex, (match, p1) => {
+        const g = parseFloat(p1);
+        const kg = g / 1000;
+        return ` ${kg.toFixed(3)} kg `;
+    });
+
+    return t;
+};
+
 /* ── Smart Multi-Line & Multi-Type Speech Parser ── */
 const parseMultiLineSpeech = (transcript, config) => {
     const { type, entities = [], flowers = [], currentItems = [], salesmen = [] } = config;
@@ -172,7 +238,8 @@ const parseMultiLineSpeech = (transcript, config) => {
         return { intent: 'CANCEL' };
     }
 
-    const translatedText = compileMultipliers(collapseDigits(parseNumbers(cleanText)));
+    const rawTranslated = compileMultipliers(collapseDigits(parseNumbers(cleanText)));
+    const translatedText = preprocessWeights(rawTranslated);
 
     // 3. Delete check (only relevant for multi-item sales/purchases)
     if (type === 'buyer' || type === 'vendor' || type === 'sales' || type === 'purchase') {
@@ -193,13 +260,11 @@ const parseMultiLineSpeech = (transcript, config) => {
             }
         }
 
-        // 4. Edit check
-        const editKeywords = ['edit', 'change', 'update', 'மாற்று', 'திருத்து', 'மாத்து', 'ஏத்து'];
+        // 4. Edit check (Only trigger edit/update if explicit edit keywords are spoken)
+        const editKeywords = ['edit', 'change', 'update', 'replace', 'merge', 'மாற்று', 'திருத்து', 'மாத்து', 'ஏத்து', 'புதுப்பி'];
         const qtyKeywords = ['quantity', 'qty', 'weight', 'அளவு', 'எடை', 'கிலோ', 'மூட்டை', 'அளவை', 'கேஜி'];
         const rateKeywords = ['rate', 'price', 'விலை', 'ரேட்', 'ரேட்டு', 'ரூபாய்', 'ரூ', 'rs', 'rupees'];
-        const isEdit = editKeywords.some(kw => translatedText.includes(kw)) || 
-                       qtyKeywords.some(kw => translatedText.includes(kw)) ||
-                       rateKeywords.some(kw => translatedText.includes(kw));
+        const isEdit = editKeywords.some(kw => translatedText.includes(kw));
 
         if (isEdit && currentItems.length > 0) {
             let matchedItem = null;
@@ -578,7 +643,7 @@ const VoiceEntryModal = ({
         }
 
         const rec = new SpeechRecognition();
-        rec.continuous = false;
+        rec.continuous = true;
         rec.interimResults = false;
         rec.lang = speechLang;
         
@@ -588,23 +653,19 @@ const VoiceEntryModal = ({
         };
         
         rec.onresult = (e) => {
-            const resultText = e.results[0][0].transcript;
+            const resultIndex = e.resultIndex;
+            const resultText = e.results[resultIndex][0].transcript;
             setTranscript(resultText);
-            
-            // Turn off listening after processing single sentence
-            setIsListening(false);
-            setIsRecognizing(false);
-            
             handleVoiceCommand(resultText);
         };
         
         rec.onerror = (e) => {
             console.error('Speech recognition error:', e.error);
-            setIsListening(false);
-            setIsRecognizing(false);
             if (e.error !== 'no-speech') {
                 if (e.error === 'not-allowed') {
                     setErrorMsg('Microphone access denied. Please allow microphone permissions.');
+                    setIsListening(false);
+                    setIsRecognizing(false);
                 } else {
                     setErrorMsg('Voice Error: ' + e.error);
                 }
@@ -613,7 +674,13 @@ const VoiceEntryModal = ({
         
         rec.onend = () => {
             setIsRecognizing(false);
-            // DO NOT auto-restart. This resolves the looping/blinking issue completely.
+            if (isListening) {
+                try {
+                    rec.start();
+                } catch (err) {
+                    console.log('Failed to restart recognition on end:', err);
+                }
+            }
         };
 
         recognitionRef.current = rec;
@@ -644,11 +711,13 @@ const VoiceEntryModal = ({
         });
 
         if (parsed.intent === 'SAVE') {
+            setIsListening(false);
             handleConfirmSave();
             return;
         }
         
         if (parsed.intent === 'CANCEL') {
+            setIsListening(false);
             onClose();
             return;
         }
@@ -660,7 +729,7 @@ const VoiceEntryModal = ({
                 id: Math.random(),
                 flowerType: item.flower ? item.flower.name : '',
                 flowerTypeTa: item.flower ? (item.flower.taName || item.flower.nameTa || '') : '',
-                quantity: item.quantity,
+                quantity: parseFloat(item.quantity).toFixed(3),
                 price: item.price
             }));
             setItemsList(prev => [...prev, ...newItems]);
@@ -670,7 +739,7 @@ const VoiceEntryModal = ({
                 id: Math.random(),
                 flowerType: item.flower ? item.flower.name : '',
                 flowerTypeTa: item.flower ? (item.flower.taName || item.flower.nameTa || '') : '',
-                quantity: item.quantity,
+                quantity: parseFloat(item.quantity).toFixed(3),
                 price: item.price
             }));
             setItemsList(prev => [...prev, ...newItems]);
@@ -874,7 +943,7 @@ const VoiceEntryModal = ({
             id: Math.random(),
             flowerType: manualItem.flowerType,
             flowerTypeTa: selected?.taName || selected?.nameTa || '',
-            quantity: manualItem.quantity,
+            quantity: parseFloat(manualItem.quantity).toFixed(3),
             price: manualItem.price
         };
         setItemsList(prev => [...prev, newItem]);
@@ -1025,7 +1094,7 @@ const VoiceEntryModal = ({
                                     <div style={styles.totalsSummaryContainer}>
                                         <div style={styles.totalBox}>
                                             <span style={styles.totalLabel}>Total Qty</span>
-                                            <span style={styles.totalVal}>{totalQty.toFixed(2)} Kg</span>
+                                            <span style={styles.totalVal}>{totalQty.toFixed(3)} Kg</span>
                                         </div>
                                         <div style={styles.totalBox}>
                                             <span style={styles.totalLabel}>Grand Total</span>

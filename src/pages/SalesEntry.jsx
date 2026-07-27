@@ -738,7 +738,7 @@ const SalesEntry = () => {
                                                     {lang === 'ta' ? (item.flowerTypeTa || item.flowerType) : item.flowerType}
                                                 </td>
                                                 <td style={{...TD_S, textAlign: 'center', color: isHighlighted ? '#fff' : '#64748b', fontWeight: 600}}>
-                                                    {item.quantity}
+                                                    {parseFloat(item.quantity).toFixed(3)}
                                                 </td>
                                                 <td style={{...TD_S, textAlign: 'center', color: isHighlighted ? '#fff' : '#64748b', fontWeight: 600}}>
                                                     {item.price}
@@ -801,8 +801,8 @@ const SalesEntry = () => {
                             {t('totalQuantity')}
                         </span>
                         <div style={{ fontSize: '20px', fontWeight: 800, color: '#fff' }}>
-                            {buyerTodayEntries.reduce((sum, sale) => sum + sale.items.reduce((sQty, item) => sQty + (parseFloat(item.quantity) || 0), 0), 0).toFixed(1)}
-                        </div>
+                                                    {buyerTodayEntries.reduce((sum, sale) => sum + sale.items.reduce((sQty, item) => sQty + (parseFloat(item.quantity) || 0), 0), 0).toFixed(3)}
+                                                </div>
                     </div>
                     <div>
                         <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>

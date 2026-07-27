@@ -336,7 +336,7 @@ const Reports = () => {
                                         <tr>
                                             <td align="center" style="font-weight: 700;">${showDate ? displayDate(item.date) : ''}</td>
                                             <td>${item.desc}</td>
-                                            <td align="center">${item.type === 'SALE' ? parseFloat(item.qty).toFixed(2) : '0.00'}</td>
+                                            <td align="center">${item.type === 'SALE' ? parseFloat(item.qty).toFixed(3) : '0.000'}</td>
                                             <td align="center">${item.type === 'SALE' ? item.price : '0'}</td>
                                             <td align="right" style="font-weight: 700; color: ${item.total > 0 ? '#b91c1c' : '#000'}">${item.total > 0 ? item.total.toFixed(0) : '0'}</td>
                                             <td align="right" style="font-weight: 700; color: #16a34a">${item.type === 'PAY' ? item.credit.toFixed(0) : '0'}</td>
@@ -414,13 +414,13 @@ const Reports = () => {
                         const foundFlower = products.find(f => f.name?.trim().toLowerCase() === item.flowerType?.trim().toLowerCase());
                         descLocalized = item.flowerTypeTa || foundFlower?.taName || item.flowerType;
                     }
-                    items.push({ dateIso, date: displayDate(dateIso), particulars: descLocalized, weight: parseFloat(item.quantity).toFixed(2), rate: item.price, total: item.total, cashRec: 0, cashLess: 0 });
+                    items.push({ dateIso, date: displayDate(dateIso), particulars: descLocalized, weight: parseFloat(item.quantity).toFixed(3), rate: item.price, total: item.total, cashRec: 0, cashLess: 0 });
                 });
             });
             periodPayments.forEach(p => {
                 const dateIso = p.timestamp ? (typeof p.timestamp === 'string' ? p.timestamp.substring(0, 10) : toDateStr(p.timestamp.toDate ? p.timestamp.toDate() : new Date(p.timestamp))) : '';
-                if (p.amount > 0) items.push({ dateIso, date: displayDate(dateIso), particulars: t('cashRec'), weight: '0.00', rate: 0, total: 0, cashRec: p.amount, cashLess: 0 });
-                if (p.cashLess > 0) items.push({ dateIso, date: displayDate(dateIso), particulars: t('cashLess'), weight: '0.00', rate: 0, total: 0, cashRec: 0, cashLess: p.cashLess });
+                if (p.amount > 0) items.push({ dateIso, date: displayDate(dateIso), particulars: t('cashRec'), weight: '0.000', rate: 0, total: 0, cashRec: p.amount, cashLess: 0 });
+                if (p.cashLess > 0) items.push({ dateIso, date: displayDate(dateIso), particulars: t('cashLess'), weight: '0.000', rate: 0, total: 0, cashRec: 0, cashLess: p.cashLess });
             });
             items.sort((a, b) => a.dateIso.localeCompare(b.dateIso));
             
@@ -545,13 +545,13 @@ const Reports = () => {
                         const foundFlower = products.find(f => f.name?.trim().toLowerCase() === item.flowerType?.trim().toLowerCase());
                         descLocalized = item.flowerTypeTa || foundFlower?.taName || item.flowerType;
                     }
-                    items.push({ dateIso, date: displayDate(dateIso), particulars: descLocalized, weight: parseFloat(item.quantity).toFixed(2), rate: item.price, total: item.total, cashRec: 0, cashLess: 0 });
+                    items.push({ dateIso, date: displayDate(dateIso), particulars: descLocalized, weight: parseFloat(item.quantity).toFixed(3), rate: item.price, total: item.total, cashRec: 0, cashLess: 0 });
                 });
             });
             periodPayments.forEach(p => {
                 const dateIso = p.timestamp ? (typeof p.timestamp === 'string' ? p.timestamp.substring(0, 10) : toDateStr(p.timestamp.toDate ? p.timestamp.toDate() : new Date(p.timestamp))) : '';
-                if (p.amount > 0) items.push({ dateIso, date: displayDate(dateIso), particulars: t('cashRec'), weight: '0.00', rate: 0, total: 0, cashRec: p.amount, cashLess: 0 });
-                if (p.cashLess > 0) items.push({ dateIso, date: displayDate(dateIso), particulars: t('cashLess'), weight: '0.00', rate: 0, total: 0, cashRec: 0, cashLess: p.cashLess });
+                if (p.amount > 0) items.push({ dateIso, date: displayDate(dateIso), particulars: t('cashRec'), weight: '0.000', rate: 0, total: 0, cashRec: p.amount, cashLess: 0 });
+                if (p.cashLess > 0) items.push({ dateIso, date: displayDate(dateIso), particulars: t('cashLess'), weight: '0.000', rate: 0, total: 0, cashRec: 0, cashLess: p.cashLess });
             });
             items.sort((a, b) => a.dateIso.localeCompare(b.dateIso));
             

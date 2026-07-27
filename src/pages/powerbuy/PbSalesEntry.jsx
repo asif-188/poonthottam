@@ -449,7 +449,7 @@ const PbSalesEntry = () => {
                       <td style={TD_S}><span style={{ fontSize: '12px', fontWeight: 800, color: isHighlighted ? '#fff' : PB.primary, background: isHighlighted ? 'rgba(255,255,255,0.2)' : PB.badge, border: `1px solid ${isHighlighted ? 'rgba(255,255,255,0.4)' : PB.border}`, padding: '3px 10px', borderRadius: '8px' }}>#{buyer?.displayId || '---'}</span></td>
                       <td style={{ ...TD_S, fontWeight: 700, color: isHighlighted ? '#fff' : '#334155' }}>{buyer ? (lang === 'ta' ? (buyer.nameTa || buyer.name) : buyer.name) : (sale.buyerName || '---')}</td>
                       <td style={{ ...TD_S, fontWeight: 700, color: isHighlighted ? '#fff' : PB.primary }}>{lang === 'ta' ? (sale.items[0]?.flowerTypeTa || sale.items[0]?.flowerType) : sale.items[0]?.flowerType}</td>
-                      <td style={{ ...TD_S, textAlign: 'center', color: isHighlighted ? '#fff' : '#64748b', fontWeight: 600 }}>{sale.items[0]?.quantity}</td>
+                      <td style={{ ...TD_S, textAlign: 'center', color: isHighlighted ? '#fff' : '#64748b', fontWeight: 600 }}>{parseFloat(sale.items[0]?.quantity || 0).toFixed(3)}</td>
                       <td style={{ ...TD_S, textAlign: 'center', color: isHighlighted ? '#fff' : '#64748b', fontWeight: 600 }}>{sale.items[0]?.price}</td>
                       <td style={{ ...TD_S, textAlign: 'right', fontWeight: 800, color: isHighlighted ? '#fff' : PB.primary }}>{fmt(sale.grandTotal)}</td>
                       <td style={{ ...TD_S, textAlign: 'center' }}>
@@ -481,7 +481,7 @@ const PbSalesEntry = () => {
         <div style={{ display: 'flex', gap: '40px' }}>
           <div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('totalQuantity')}</span>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: '#fff' }}>{buyerTodayEntries.reduce((s, e) => s + parseFloat(e.items[0]?.quantity || 0), 0).toFixed(1)}</div>
+            <div style={{ fontSize: '20px', fontWeight: 800, color: '#fff' }}>{buyerTodayEntries.reduce((s, e) => s + parseFloat(e.items[0]?.quantity || 0), 0).toFixed(3)}</div>
           </div>
           <div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('todayTotal')}</span>

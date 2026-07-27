@@ -283,7 +283,7 @@ const Intake = () => {
                                         </td>
                                         <td className="px-6 py-6 text-center">
                                             <span className="px-4 py-2 bg-white shadow-sm border border-emerald-50 rounded-full font-black text-emerald-600 text-sm">
-                                                {item.quantity} Kg
+                                                {parseFloat(item.quantity).toFixed(3)} Kg
                                             </span>
                                         </td>
                                         <td className="px-6 py-6 text-right font-bold text-gray-400 italic">{item.price}</td>

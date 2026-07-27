@@ -1801,7 +1801,7 @@ const OutsideShop = () => {
                                                 <span style={{ fontSize: '10px', color: isDraftSel ? 'rgba(255,255,255,0.85)' : '#94a3b8', fontWeight: 700 }}>{item.time || '--:--'}</span>
                                             </td>
                                             <td style={{ padding: '8px', fontWeight: 600 }}>{lang === 'ta' ? (item.flowerTypeTa || item.flowerType) : item.flowerType}</td>
-                                            <td style={{ padding: '8px', textAlign: 'center' }}>{item.quantity}</td>
+                                            <td style={{ padding: '8px', textAlign: 'center' }}>{parseFloat(item.quantity).toFixed(3)}</td>
                                             <td style={{ padding: '8px', textAlign: 'center' }}>{item.price}</td>
                                             <td style={{ padding: '8px', textAlign: 'right', fontWeight: 700 }}>{fmt(item.total)}</td>
                                             <td style={{ padding: '8px', textAlign: 'center' }}>
@@ -1923,7 +1923,7 @@ const OutsideShop = () => {
                                                 {lang === 'ta' ? (item.flowerTypeTa || item.flowerType) : item.flowerType}
                                             </td>
                                             <td style={{ ...TD_S, textAlign: 'center', color: isPurchaseSel ? '#92400e' : '#64748b' }}>
-                                                {parseFloat(item.quantity || 0).toFixed(2)}
+                                                {parseFloat(item.quantity || 0).toFixed(3)}
                                             </td>
                                             <td style={{ ...TD_S, textAlign: 'center', color: isPurchaseSel ? '#92400e' : '#64748b' }}>
                                                 {item.price || (item.quantity > 0 ? (item.total / item.quantity).toFixed(2) : 0)}
@@ -1953,7 +1953,7 @@ const OutsideShop = () => {
                                 <tr style={{ background: '#fffbeb', borderTop: '2px solid #fed7aa' }}>
                                     <td colSpan={4} style={{...TD_S, textAlign: 'right', fontWeight: 800, color: '#92400e'}}>{t('total').toUpperCase()}</td>
                                     <td style={{...TD_S, textAlign: 'center', fontWeight: 900}}>
-                                        {todayPurchases.reduce((acc, p) => acc + p.items.reduce((s, i) => s + parseFloat(i.quantity || 0), 0), 0).toFixed(2)}
+                                        {todayPurchases.reduce((acc, p) => acc + p.items.reduce((s, i) => s + parseFloat(i.quantity || 0), 0), 0).toFixed(3)}
                                     </td>
                                     <td></td>
                                     <td style={{...TD_S, textAlign: 'right', fontWeight: 900, fontSize: '18px', color: '#d97706'}}>{fmt(stats.todayTotal)}</td>
@@ -2946,7 +2946,7 @@ const OutsideShop = () => {
                                                     {lang === 'ta' ? (item.flowerTypeTa || item.flowerType) : item.flowerType}
                                                 </td>
                                                 <td style={{ ...TD_S, textAlign: 'right', padding: '12px', fontWeight: 700, color: '#475569' }}>
-                                                    {item.quantity}
+                                                    {parseFloat(item.quantity).toFixed(3)}
                                                 </td>
                                                 <td style={{ ...TD_S, textAlign: 'right', padding: '12px', fontWeight: 700, color: '#475569' }}>
                                                     {fmt(item.price)}
@@ -2965,7 +2965,7 @@ const OutsideShop = () => {
                                                 {lang === 'ta' ? 'மொத்தம்' : 'Total'}
                                             </td>
                                             <td style={{ ...TD_S, textAlign: 'right', padding: '12px', fontWeight: 900, color: '#1e293b' }}>
-                                                {totalQty.toFixed(2)}
+                                                {totalQty.toFixed(3)}
                                             </td>
                                             <td style={{ ...TD_S, textAlign: 'right', padding: '12px', fontWeight: 900, color: '#1e293b' }}>
                                                 —
