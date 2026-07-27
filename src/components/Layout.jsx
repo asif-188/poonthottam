@@ -3,6 +3,8 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, ChevronLeft, Globe, User, Mic, MicOff } from 'lucide-react';
 import Petals from './Petals';
 import { useTenant } from '../utils/TenantContext';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 
 // ── Language Context ──────────────────────────────────────────────────────────
 export const LangContext = createContext({ lang: 'ta', t: (k) => k });
@@ -342,8 +344,175 @@ const Layout = () => {
 
   // ── Global Voice Search State & Effect ──
   const [searchState, setSearchState] = useState(null); // null, 'listening', 'processing', 'searching', 'error'
+  const [voiceMatches, setVoiceMatches] = useState([]);
+  const [showMatchModal, setShowMatchModal] = useState(false);
   const searchRecRef = useRef(null);
   const searchStateTimeoutRef = useRef(null);
+
+  // ── Natural Language Voice Assistant Helpers ──
+  const fetchMasterData = async () => {
+    try {
+      const tenantId = sessionStorage.getItem('fm_tenantId') || 'default';
+      const collectionsToFetch = ['buyers', 'farmers', 'vendors', 'salesmen', 'products'];
+      const results = {};
+      for (const colName of collectionsToFetch) {
+        const q = query(collection(db, colName), where('tenantId', '==', tenantId));
+        const snap = await getDocs(q);
+        results[colName] = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      }
+      return results;
+    } catch (err) {
+      console.error('Error fetching master records for intent parsing:', err);
+      return null;
+    }
+  };
+
+  const fuzzyMatch = (str1, str2) => {
+    const s1 = str1.toLowerCase().replace(/[^a-z0-9\u0b80-\u0bff]/g, '');
+    const s2 = str2.toLowerCase().replace(/[^a-z0-9\u0b80-\u0bff]/g, '');
+    if (!s1 || !s2) return false;
+    if (s1.includes(s2) || s2.includes(s1)) return true;
+    
+    const len1 = s1.length;
+    const len2 = s2.length;
+    const maxLen = Math.max(len1, len2);
+    if (maxLen <= 3) return s1 === s2;
+    
+    let matches = 0;
+    const minLen = Math.min(len1, len2);
+    for (let i = 0; i < minLen; i++) {
+      if (s1[i] === s2[i]) matches++;
+    }
+    return (matches / minLen) > 0.75;
+  };
+
+  const findMatchingEntities = (text, masterData) => {
+    const matches = [];
+    if (!masterData) return matches;
+    const cleanSpoken = text.toLowerCase().replace(/[^a-z0-9\u0b80-\u0bff\s]/g, '').trim();
+    const spokenWords = cleanSpoken.split(/\s+/);
+
+    const checkMatch = (entityName) => {
+      if (!entityName) return false;
+      const cleanName = entityName.toLowerCase().replace(/[^a-z0-9\u0b80-\u0bff\s]/g, '').trim();
+      if (!cleanName) return false;
+      if (cleanSpoken.includes(cleanName)) return true;
+      const entityWords = cleanName.split(/\s+/);
+      return entityWords.every(ew => spokenWords.some(sw => fuzzyMatch(sw, ew)));
+    };
+
+    // 1. Buyers
+    (masterData.buyers || []).forEach(b => {
+      if (checkMatch(b.name) || checkMatch(b.nameTa) || checkMatch(b.displayId)) {
+        matches.push({ type: 'buyer', data: b, label: b.name + (b.nameTa ? ` (${b.nameTa})` : '') + ` - ID: ${b.displayId || b.id}` });
+      }
+    });
+
+    // 2. Farmers
+    (masterData.farmers || []).forEach(f => {
+      if (checkMatch(f.name) || checkMatch(f.location)) {
+        matches.push({ type: 'farmer', data: f, label: f.name + (f.location ? ` (${f.location})` : '') + ` - ID: ${f.id}` });
+      }
+    });
+
+    // 3. Vendors
+    (masterData.vendors || []).forEach(v => {
+      if (checkMatch(v.name) || checkMatch(v.shop_name)) {
+        matches.push({ type: 'vendor', data: v, label: v.name + (v.shop_name ? ` (${v.shop_name})` : '') + ` - ID: ${v.id}` });
+      }
+    });
+
+    // 4. Salesmen
+    (masterData.salesmen || []).forEach(s => {
+      if (checkMatch(s.name) || checkMatch(s.location)) {
+        matches.push({ type: 'salesman', data: s, label: s.name + ` - ID: ${s.displayId || s.id}` });
+      }
+    });
+
+    // 5. Products (Flowers)
+    (masterData.products || []).forEach(p => {
+      if (checkMatch(p.name) || checkMatch(p.taName)) {
+        matches.push({ type: 'product', data: p, label: p.name + (p.taName ? ` (${p.taName})` : '') });
+      }
+    });
+
+    return matches;
+  };
+
+  const navigateToPage = (text) => {
+    let route = null;
+    const tLower = text.toLowerCase();
+    
+    if (tLower.includes('setting') || tLower.includes('செட்டிங்') || tLower.includes('அமைப்பு')) {
+      route = '/app/business-info';
+    } 
+    else if (tLower.includes('sales entry') || tLower.includes('விற்பனை பதிவு')) {
+      route = '/app/sales-entry';
+    } 
+    else if (tLower.includes('sales') || tLower.includes('விற்பனை')) {
+      route = '/app/sales-menu';
+    } 
+    else if (tLower.includes('customer') || tLower.includes('buyer') || tLower.includes('வாடிக்கையாளர்')) {
+      route = '/app/buyer';
+    } 
+    else if (tLower.includes('farmer') || tLower.includes('விவசாயி')) {
+      route = '/app/farmer';
+    } 
+    else if (tLower.includes('vendor') || tLower.includes('வியாபாரி')) {
+      route = '/app/outside-shop';
+    } 
+    else if (tLower.includes('staff') || tLower.includes('salesman') || tLower.includes('பணியாளர்')) {
+      route = '/app/salesman-master';
+    } 
+    else if (tLower.includes('daily report') || tLower.includes('தினசரி அறிக்கை')) {
+      route = '/app/daily-report';
+    } 
+    else if (tLower.includes('report') || tLower.includes('அறிக்கை')) {
+      route = '/app/reports';
+    } 
+    else if (tLower.includes('recycle bin') || tLower.includes('அழித்தவை') || tLower.includes('குப்பை')) {
+      route = '/app/recycle-bin';
+    } 
+    else if (tLower.includes('history') || tLower.includes('வரலாறு')) {
+      route = '/app/history';
+    } 
+    else if (tLower.includes('payment') || tLower.includes('வரவு') || tLower.includes('செலுத்து')) {
+      route = '/app/payments';
+    }
+    
+    if (route) {
+      navigate(route);
+      return true;
+    }
+    return false;
+  };
+
+  const executeEntityAction = (match, queryText) => {
+    let route = '/app/dashboard';
+    let searchQuery = match.data.name || match.data.nameTa || '';
+    const text = queryText.toLowerCase();
+
+    if (match.type === 'buyer') {
+      if (text.includes('ledger') || text.includes('report') || text.includes('balance') || text.includes('transaction') || text.includes('sales') || text.includes('பாக்கி') || text.includes('அறிக்கை')) {
+        route = '/app/reports';
+      } else {
+        route = '/app/buyer';
+      }
+    } else if (match.type === 'farmer') {
+      route = '/app/farmer';
+    } else if (match.type === 'vendor') {
+      route = '/app/outside-shop';
+    } else if (match.type === 'salesman') {
+      route = '/app/salesman-master';
+    } else if (match.type === 'product') {
+      route = '/app/flowers';
+    }
+
+    navigate(route);
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('global-voice-search', { detail: searchQuery }));
+    }, 250);
+  };
 
   const toggleGlobalSearchVoice = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -383,7 +552,7 @@ const Layout = () => {
       setSearchState('listening');
     };
 
-    rec.onresult = (e) => {
+    rec.onresult = async (e) => {
       setSearchState('processing');
       const resultText = e.results[0][0].transcript;
       
@@ -392,16 +561,56 @@ const Layout = () => {
         .replace(/\.$/, '')
         .trim();
 
-      if (cleanQuery) {
+      if (!cleanQuery) {
+        handleSearchError('no-speech');
+        return;
+      }
+
+      // 1. Try navigation matches first
+      const navigated = navigateToPage(cleanQuery);
+      if (navigated) {
         setSearchState('searching');
-        window.dispatchEvent(new CustomEvent('global-voice-search', { detail: cleanQuery }));
-        
         if (searchStateTimeoutRef.current) clearTimeout(searchStateTimeoutRef.current);
         searchStateTimeoutRef.current = setTimeout(() => {
           setSearchState(null);
         }, 1500);
+        return;
+      }
+
+      // 2. Fetch master records on-demand
+      const masterRecords = await fetchMasterData();
+      const entityMatches = findMatchingEntities(cleanQuery, masterRecords);
+
+      if (entityMatches.length === 1) {
+        setSearchState('searching');
+        executeEntityAction(entityMatches[0], cleanQuery);
+        if (searchStateTimeoutRef.current) clearTimeout(searchStateTimeoutRef.current);
+        searchStateTimeoutRef.current = setTimeout(() => {
+          setSearchState(null);
+        }, 1500);
+      } else if (entityMatches.length > 1) {
+        setSearchState(null);
+        setVoiceMatches(entityMatches);
+        setShowMatchModal(true);
       } else {
-        handleSearchError('no-speech');
+        const queryLower = cleanQuery.toLowerCase();
+        const isExplicitLookup = queryLower.includes('details') || queryLower.includes('ledger') || queryLower.includes('report') || queryLower.includes('balance') || queryLower.includes('விவரம்') || queryLower.includes('பாக்கி') || queryLower.includes('அறிக்கை');
+        
+        if (isExplicitLookup) {
+          setSearchState('error');
+          window.toast.warning(lang === 'ta' ? 'பொருந்தும் பதிவு எதுவும் இல்லை.' : 'No matching record found.');
+          if (searchStateTimeoutRef.current) clearTimeout(searchStateTimeoutRef.current);
+          searchStateTimeoutRef.current = setTimeout(() => {
+            setSearchState(null);
+          }, 2000);
+        } else {
+          setSearchState('searching');
+          window.dispatchEvent(new CustomEvent('global-voice-search', { detail: cleanQuery }));
+          if (searchStateTimeoutRef.current) clearTimeout(searchStateTimeoutRef.current);
+          searchStateTimeoutRef.current = setTimeout(() => {
+            setSearchState(null);
+          }, 1500);
+        }
       }
     };
 
@@ -1187,6 +1396,107 @@ const Layout = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showMatchModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)',
+          backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', zIndex: 99999, padding: '16px'
+        }}>
+          <div style={{
+            background: '#ffffff', borderRadius: '24px', width: '100%',
+            maxWidth: '440px', padding: '24px', boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
+            border: '4px solid #f1f5f9', fontFamily: 'var(--font-sans)',
+            boxSizing: 'border-box'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <span style={{ fontSize: '20px' }}>🔍</span>
+              <h3 style={{ fontSize: '15px', fontWeight: 900, color: '#1e293b', margin: 0 }}>
+                {lang === 'ta' ? 'பொருந்தும் பதிவுகள்' : 'Matching Records'}
+              </h3>
+            </div>
+            
+            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px', fontWeight: 500 }}>
+              {lang === 'ta' ? 'பல பொருத்தங்கள் கண்டறியப்பட்டன. ஒன்றை தேர்ந்தெடுக்கவும்:' : 'Multiple matches found. Please select one:'}
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto', paddingRight: '4px' }}>
+              {voiceMatches.map((match, idx) => {
+                let icon = '👤';
+                if (match.type === 'farmer') icon = '🚜';
+                if (match.type === 'vendor') icon = '🏪';
+                if (match.type === 'product') icon = '🌸';
+                
+                let typeLabel = lang === 'ta' ? 'வாடிக்கையாளர்' : 'Customer';
+                if (match.type === 'farmer') typeLabel = lang === 'ta' ? 'விவசாயி' : 'Farmer';
+                if (match.type === 'vendor') typeLabel = lang === 'ta' ? 'வியாபாரி' : 'Vendor';
+                if (match.type === 'salesman') typeLabel = lang === 'ta' ? 'பணியாளர்' : 'Staff';
+                if (match.type === 'product') typeLabel = lang === 'ta' ? 'பூ' : 'Flower';
+
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setShowMatchModal(false);
+                      executeEntityAction(match, '');
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      border: '1.5px solid #e2e8f0',
+                      background: '#f8fafc',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease-in-out',
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = '#f0fdf4';
+                      e.currentTarget.style.borderColor = '#10b981';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = '#f8fafc';
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                    }}
+                  >
+                    <span style={{ fontSize: '18px' }}>{icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '13px', fontWeight: 800, color: '#1e293b' }}>{match.data.name || match.data.nameTa}</div>
+                      <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', marginTop: '2px' }}>{typeLabel}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setShowMatchModal(false)}
+              style={{
+                marginTop: '16px',
+                width: '100%',
+                padding: '12px',
+                borderRadius: '12px',
+                border: 'none',
+                background: '#f1f5f9',
+                color: '#64748b',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxSizing: 'border-box'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
+              onMouseLeave={e => e.currentTarget.style.background = '#f1f5f9'}
+            >
+              {lang === 'ta' ? 'ரத்து செய்' : 'Cancel'}
+            </button>
           </div>
         </div>
       )}
