@@ -160,9 +160,22 @@ const Buyer = () => {
         };
         window.addEventListener('global-voice-search', handleGlobalSearch);
 
+        const handleGlobalAction = (e) => {
+            const action = e.detail;
+            if (action === 'add') {
+                setCurrentBuyer({ id: '', name: '', nameTa: '', contact: '', place: '', placeTa: '', balance: 0, balanceDate: toDateStr(new Date()) });
+                setIsModalOpen(true);
+            } else if (action === 'cancel') {
+                setIsModalOpen(false);
+                setViewingBuyer(null);
+            }
+        };
+        window.addEventListener('global-action', handleGlobalAction);
+
         return () => {
             u1(); u2(); u3();
             window.removeEventListener('global-voice-search', handleGlobalSearch);
+            window.removeEventListener('global-action', handleGlobalAction);
         };
     }, []);
 

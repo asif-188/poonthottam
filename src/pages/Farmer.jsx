@@ -39,12 +39,23 @@ const Farmer = () => {
         };
         window.addEventListener('global-voice-search', handleGlobalSearch);
 
+        const handleGlobalAction = (e) => {
+            const action = e.detail;
+            if (action === 'add') {
+                handleOpenModal();
+            } else if (action === 'cancel') {
+                setIsModalOpen(false);
+            }
+        };
+        window.addEventListener('global-action', handleGlobalAction);
+
         return () => {
             u1();
             u2();
             u3();
             u4();
             window.removeEventListener('global-voice-search', handleGlobalSearch);
+            window.removeEventListener('global-action', handleGlobalAction);
         };
     }, []);
 

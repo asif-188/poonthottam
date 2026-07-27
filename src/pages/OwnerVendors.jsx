@@ -56,9 +56,21 @@ const OwnerVendors = () => {
     };
     window.addEventListener('global-voice-search', handleGlobalSearch);
 
+    const handleGlobalAction = (e) => {
+      const action = e.detail;
+      if (action === 'add') {
+        setVendorForm({ id: '', name: '', shop_name: '', mobile: '', location: '', balance: 0, status: 'active' });
+        setShowModal(true);
+      } else if (action === 'cancel') {
+        setShowModal(false);
+      }
+    };
+    window.addEventListener('global-action', handleGlobalAction);
+
     return () => {
       unsubscribe();
       window.removeEventListener('global-voice-search', handleGlobalSearch);
+      window.removeEventListener('global-action', handleGlobalAction);
     };
   }, []);
 

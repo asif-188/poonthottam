@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, ChevronLeft, Globe, User, Mic, MicOff } from 'lucide-react';
+import { LogOut, ChevronLeft, Globe, User, Mic, MicOff, Search } from 'lucide-react';
 import Petals from './Petals';
 import { useTenant } from '../utils/TenantContext';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -344,6 +344,7 @@ const Layout = () => {
 
   // ── Global Voice Search State & Effect ──
   const [searchState, setSearchState] = useState(null); // null, 'listening', 'processing', 'searching', 'error'
+  const [searchTextInput, setSearchTextInput] = useState('');
   const [voiceMatches, setVoiceMatches] = useState([]);
   const [showMatchModal, setShowMatchModal] = useState(false);
   const searchRecRef = useRef(null);
@@ -487,6 +488,54 @@ const Layout = () => {
     return false;
   };
 
+  const executeActionIntent = (queryText) => {
+    const text = queryText.toLowerCase();
+    
+    if (text.includes('logout') || text.includes('வெளியேறு') || text.includes('sign out')) {
+      handleLogout();
+      return true;
+    }
+    if (text.includes('developer') || text.includes('console') || text.includes('டெவலப்பர்')) {
+      setDevError('');
+      setDevPassword('');
+      setShowDevModal(true);
+      return true;
+    }
+    if (text.includes('print') || text.includes('அச்சிடு') || text.includes('பிரிண்ட்')) {
+      window.dispatchEvent(new CustomEvent('global-action', { detail: 'print' }));
+      return true;
+    }
+    if (text.includes('pdf') || text.includes('பதிவிறக்கு')) {
+      window.dispatchEvent(new CustomEvent('global-action', { detail: 'pdf' }));
+      return true;
+    }
+    if (text.includes('excel') || text.includes('xlsx') || text.includes('எக்செல்')) {
+      window.dispatchEvent(new CustomEvent('global-action', { detail: 'excel' }));
+      return true;
+    }
+    if (text.includes('share') || text.includes('whatsapp') || text.includes('வாட்ஸ்அப்')) {
+      window.dispatchEvent(new CustomEvent('global-action', { detail: 'share' }));
+      return true;
+    }
+    if (text.includes('save') || text.includes('submit') || text.includes('சேமி') || text.includes('பதிவுசெய்')) {
+      window.dispatchEvent(new CustomEvent('global-action', { detail: 'save' }));
+      return true;
+    }
+    if (text.includes('cancel') || text.includes('ரத்து')) {
+      window.dispatchEvent(new CustomEvent('global-action', { detail: 'cancel' }));
+      return true;
+    }
+    if (text.includes('edit') || text.includes('திருத்து')) {
+      window.dispatchEvent(new CustomEvent('global-action', { detail: 'edit' }));
+      return true;
+    }
+    if (text.includes('delete') || text.includes('நீக்கு') || text.includes('அழி')) {
+      window.dispatchEvent(new CustomEvent('global-action', { detail: 'delete' }));
+      return true;
+    }
+    return false;
+  };
+
   const executeEntityAction = (match, queryText) => {
     let route = '/app/dashboard';
     let searchQuery = match.data.name || match.data.nameTa || '';
@@ -512,6 +561,57 @@ const Layout = () => {
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('global-voice-search', { detail: searchQuery }));
     }, 250);
+  };
+
+  const handleUniversalSearchSubmit = async (queryText) => {
+    if (!queryText || !queryText.trim()) return;
+    const cleanQuery = queryText.trim();
+    
+    setSearchState('processing');
+
+    // 1. Try navigation matches first
+    const navigated = navigateToPage(cleanQuery);
+    if (navigated) {
+      setSearchState('searching');
+      setTimeout(() => setSearchState(null), 1200);
+      return;
+    }
+
+    // 2. Try action triggers
+    const actionTriggered = executeActionIntent(cleanQuery);
+    if (actionTriggered) {
+      setSearchState('searching');
+      setTimeout(() => setSearchState(null), 1200);
+      return;
+    }
+
+    // 3. Fetch master records on-demand
+    const masterRecords = await fetchMasterData();
+    const entityMatches = findMatchingEntities(cleanQuery, masterRecords);
+
+    if (entityMatches.length === 1) {
+      setSearchState('searching');
+      executeEntityAction(entityMatches[0], cleanQuery);
+      setTimeout(() => setSearchState(null), 1200);
+    } else if (entityMatches.length > 1) {
+      setSearchState(null);
+      setVoiceMatches(entityMatches);
+      setShowMatchModal(true);
+    } else {
+      setSearchState('searching');
+      const p = location.pathname;
+      const isSearchPage = p.includes('/buyer') || p.includes('/farmer') || p.includes('/outside-shop') || p.includes('/salesman-master') || p.includes('/reports') || p.includes('/daily-report') || p.includes('/recycle-bin') || p.includes('/products');
+      
+      if (!isSearchPage) {
+        navigate('/app/reports');
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('global-voice-search', { detail: cleanQuery }));
+        }, 250);
+      } else {
+        window.dispatchEvent(new CustomEvent('global-voice-search', { detail: cleanQuery }));
+      }
+      setTimeout(() => setSearchState(null), 1200);
+    }
   };
 
   const toggleGlobalSearchVoice = () => {
@@ -555,6 +655,7 @@ const Layout = () => {
     rec.onresult = async (e) => {
       setSearchState('processing');
       const resultText = e.results[0][0].transcript;
+      setSearchTextInput(resultText);
       
       const cleanQuery = resultText
         .replace(/^(search for|find|look up|show|தேடு|காட்டு|please)\s+/i, '')
@@ -573,11 +674,22 @@ const Layout = () => {
         if (searchStateTimeoutRef.current) clearTimeout(searchStateTimeoutRef.current);
         searchStateTimeoutRef.current = setTimeout(() => {
           setSearchState(null);
-        }, 1500);
+        }, 1200);
         return;
       }
 
-      // 2. Fetch master records on-demand
+      // 2. Try action triggers
+      const actionTriggered = executeActionIntent(cleanQuery);
+      if (actionTriggered) {
+        setSearchState('searching');
+        if (searchStateTimeoutRef.current) clearTimeout(searchStateTimeoutRef.current);
+        searchStateTimeoutRef.current = setTimeout(() => {
+          setSearchState(null);
+        }, 1200);
+        return;
+      }
+
+      // 3. Fetch master records on-demand
       const masterRecords = await fetchMasterData();
       const entityMatches = findMatchingEntities(cleanQuery, masterRecords);
 
@@ -587,7 +699,7 @@ const Layout = () => {
         if (searchStateTimeoutRef.current) clearTimeout(searchStateTimeoutRef.current);
         searchStateTimeoutRef.current = setTimeout(() => {
           setSearchState(null);
-        }, 1500);
+        }, 1200);
       } else if (entityMatches.length > 1) {
         setSearchState(null);
         setVoiceMatches(entityMatches);
@@ -605,11 +717,21 @@ const Layout = () => {
           }, 2000);
         } else {
           setSearchState('searching');
-          window.dispatchEvent(new CustomEvent('global-voice-search', { detail: cleanQuery }));
+          const p = location.pathname;
+          const isSearchPage = p.includes('/buyer') || p.includes('/farmer') || p.includes('/outside-shop') || p.includes('/salesman-master') || p.includes('/reports') || p.includes('/daily-report') || p.includes('/recycle-bin') || p.includes('/products');
+          
+          if (!isSearchPage) {
+            navigate('/app/reports');
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('global-voice-search', { detail: cleanQuery }));
+            }, 250);
+          } else {
+            window.dispatchEvent(new CustomEvent('global-voice-search', { detail: cleanQuery }));
+          }
           if (searchStateTimeoutRef.current) clearTimeout(searchStateTimeoutRef.current);
           searchStateTimeoutRef.current = setTimeout(() => {
             setSearchState(null);
-          }, 1500);
+          }, 1200);
         }
       }
     };
@@ -1089,21 +1211,77 @@ const Layout = () => {
                     ☰
                   </button>
                   
-                  {/* Mobile Voice Search Mic Button */}
-                  <button
-                    onClick={toggleGlobalSearchVoice}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      width: '36px', height: '36px',
-                      background: searchState === 'listening' ? '#fee2e2' : '#f1f5f9',
-                      border: `1.5px solid ${searchState === 'listening' ? '#f87171' : 'transparent'}`,
-                      borderRadius: '8px',
-                      color: searchState === 'listening' ? '#ef4444' : '#475569',
-                      cursor: 'pointer', boxSizing: 'border-box'
-                    }}
-                  >
-                    {searchState === 'listening' ? <MicOff size={15} className="animate-pulse" /> : <Mic size={15} />}
-                  </button>
+                  {/* Mobile Global Search Input Box */}
+                  <div style={{
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    background: '#f1f5f9',
+                    borderRadius: '8px',
+                    padding: '4px 6px 4px 8px',
+                    width: '130px',
+                    transition: 'all 0.2s ease-in-out',
+                    boxSizing: 'border-box'
+                  }}>
+                    <input
+                      type="text"
+                      placeholder={lang === 'ta' ? 'தேடுக...' : 'Search...'}
+                      value={searchTextInput}
+                      onChange={e => setSearchTextInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleUniversalSearchSubmit(searchTextInput);
+                        }
+                      }}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        outline: 'none',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: '#334155',
+                        width: '100%',
+                        padding: 0,
+                        fontFamily: 'var(--font-sans)'
+                      }}
+                    />
+                    {searchTextInput && (
+                      <button
+                        onClick={() => setSearchTextInput('')}
+                        style={{
+                          border: 'none',
+                          background: 'none',
+                          color: '#94a3b8',
+                          cursor: 'pointer',
+                          padding: '1px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: '2px'
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                    <button
+                      onClick={toggleGlobalSearchVoice}
+                      style={{
+                        border: 'none',
+                        background: searchState === 'listening' ? '#fee2e2' : 'none',
+                        borderRadius: '6px',
+                        color: searchState === 'listening' ? '#ef4444' : '#475569',
+                        cursor: 'pointer',
+                        padding: '3px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      {searchState === 'listening' ? <MicOff size={12} className="animate-pulse" /> : <Mic size={12} />}
+                    </button>
+                  </div>
                 </>
               )}
               {!isDashboard && (
@@ -1168,6 +1346,82 @@ const Layout = () => {
             {!isMobile ? (
               <div style={{ width: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
                 
+                {/* Global AI Universal Search Input Box */}
+                <div style={{
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: '#f8fafc',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: '10px',
+                  padding: '4px 8px 4px 12px',
+                  width: '240px',
+                  transition: 'all 0.2s ease-in-out',
+                  boxSizing: 'border-box',
+                  marginRight: '8px'
+                }}>
+                  <Search size={13} style={{ color: '#94a3b8', marginRight: '6px', flexShrink: 0 }} />
+                  <input
+                    type="text"
+                    placeholder={lang === 'ta' ? 'தேடுக...' : 'AI Universal Search...'}
+                    value={searchTextInput}
+                    onChange={e => setSearchTextInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleUniversalSearchSubmit(searchTextInput);
+                      }
+                    }}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      outline: 'none',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: '#334155',
+                      width: '100%',
+                      padding: 0,
+                      fontFamily: 'var(--font-sans)'
+                    }}
+                  />
+                  {searchTextInput && (
+                    <button
+                      onClick={() => setSearchTextInput('')}
+                      style={{
+                        border: 'none',
+                        background: 'none',
+                        color: '#94a3b8',
+                        cursor: 'pointer',
+                        padding: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: '4px'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                  <button
+                    onClick={toggleGlobalSearchVoice}
+                    title={lang === 'ta' ? 'குரல் தேடல்' : 'Voice Search'}
+                    style={{
+                      border: 'none',
+                      background: searchState === 'listening' ? '#fee2e2' : 'none',
+                      borderRadius: '6px',
+                      color: searchState === 'listening' ? '#ef4444' : '#475569',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                  >
+                    {searchState === 'listening' ? <MicOff size={13} className="animate-pulse" /> : <Mic size={13} />}
+                  </button>
+                </div>
+
                 {/* Voice Search Status Badge */}
                 {searchState && (
                   <div style={{
@@ -1189,34 +1443,6 @@ const Layout = () => {
                     {searchState === 'error' && `❌ ${lang === 'ta' ? 'அங்கீகரிக்கப்படவில்லை' : 'Voice not recognized'}`}
                   </div>
                 )}
-
-                {/* Header Voice Search Mic Button */}
-                <button
-                  onClick={toggleGlobalSearchVoice}
-                  title={lang === 'ta' ? 'குரல் தேடல்' : 'Voice Search'}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: '34px', height: '34px',
-                    background: searchState === 'listening' ? '#fee2e2' : '#f8fafc',
-                    border: `1.5px solid ${searchState === 'listening' ? '#f87171' : '#e2e8f0'}`,
-                    borderRadius: '10px',
-                    color: searchState === 'listening' ? '#ef4444' : '#475569',
-                    cursor: 'pointer', transition: 'all 0.2s',
-                    boxSizing: 'border-box'
-                  }}
-                  onMouseEnter={e => {
-                    if (searchState !== 'listening') {
-                      Object.assign(e.currentTarget.style, { background: '#f1f5f9', borderColor: '#cbd5e1' });
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (searchState !== 'listening') {
-                      Object.assign(e.currentTarget.style, { background: '#f8fafc', borderColor: '#e2e8f0' });
-                    }
-                  }}
-                >
-                  {searchState === 'listening' ? <MicOff size={15} className="animate-pulse" /> : <Mic size={15} />}
-                </button>
 
                 {/* Language picker */}
                 <div style={{

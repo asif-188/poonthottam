@@ -72,11 +72,31 @@ const Reports = () => {
 
     useEffect(() => {
         const handleGlobalSearch = (e) => {
-            setSearch(e.detail);
+            const query = e.detail;
+            setSearch(query);
+
+            const qLower = query.toLowerCase();
+            if (qLower.includes('today') || qLower.includes('இன்று')) {
+                applyPreset('today');
+            } else if (qLower.includes('month') || qLower.includes('மாதம்')) {
+                applyPreset('month');
+            }
+        };
+        const handleGlobalAction = (e) => {
+            const action = e.detail;
+            if (action === 'excel') {
+                handleDownloadXLSX();
+            } else if (action === 'print' || action === 'pdf') {
+                window.print();
+            }
         };
         window.addEventListener('global-voice-search', handleGlobalSearch);
-        return () => window.removeEventListener('global-voice-search', handleGlobalSearch);
-    }, []);
+        window.addEventListener('global-action', handleGlobalAction);
+        return () => {
+            window.removeEventListener('global-voice-search', handleGlobalSearch);
+            window.removeEventListener('global-action', handleGlobalAction);
+        };
+    }, [appliedFrom, appliedTo, activePreset, sales, buyers, payments, outsidePurchases, vendors]);
 
     const applyPreset = (preset) => {
         if (preset === 'custom') {

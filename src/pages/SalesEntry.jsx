@@ -240,6 +240,24 @@ const SalesEntry = () => {
         return () => { u1(); u2(); u3(); u4(); };
     }, [date]);
 
+    useEffect(() => {
+        const handleGlobalSearch = (e) => {
+            const query = e.detail;
+            if (!query) return;
+            const cleanQuery = query.toLowerCase().trim();
+            const matched = buyers.find(b => 
+                (b.name && b.name.toLowerCase().includes(cleanQuery)) ||
+                (b.nameTa && b.nameTa.toLowerCase().includes(cleanQuery)) ||
+                (b.displayId && b.displayId.toLowerCase() === cleanQuery)
+            );
+            if (matched) {
+                setBuyerId(matched.id);
+            }
+        };
+        window.addEventListener('global-voice-search', handleGlobalSearch);
+        return () => window.removeEventListener('global-voice-search', handleGlobalSearch);
+    }, [buyers]);
+
     const toDateStr = (d) => {
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
