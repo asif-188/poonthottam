@@ -50,11 +50,12 @@ const Payments = () => {
     const [payments, setPayments] = useState([]);
     const [buyers, setBuyers] = useState([]);
     const [farmers, setFarmers] = useState([]);
+    const [salesmen, setSalesmen] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [paymentType] = useState('buyer');
 
-    const [formData, setFormData] = useState({ entityId: '', amount: '', cashLess: '', method: 'Cash', note: '', date: new Date().toISOString().split('T')[0] });
+    const [formData, setFormData] = useState({ entityId: '', salesmanId: '', amount: '', cashLess: '', method: 'Cash', note: '', date: new Date().toISOString().split('T')[0] });
     const [customerSearch, setCustomerSearch] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [dateRange, setDateRange] = useState('today'); // 'today', 'yesterday', 'month', 'year', 'prevYear', 'custom', 'all'
@@ -93,12 +94,14 @@ const Payments = () => {
             })), true);
         const u2 = subscribeToCollection('buyers', setBuyers);
         const u3 = subscribeToCollection('farmers', setFarmers);
-        return () => { u1(); u2(); u3(); };
+        const u4 = subscribeToCollection('salesmen', setSalesmen);
+        return () => { u1(); u2(); u3(); u4(); };
     }, []);
 
     const handleOpenModal = () => {
         setFormData({ 
             entityId: '', 
+            salesmanId: '',
             amount: '', 
             cashLess: '', 
             method: 'Cash', 
@@ -405,6 +408,7 @@ const Payments = () => {
                         <tr>
                             <th style={S.th}>{t('date')}</th>
                             <th style={S.th}>{t('customerName')}</th>
+                            <th style={S.th}>{t('salesman') || 'விற்பனையாளர்'}</th>
                             <th style={{ ...S.th, textAlign: 'right' }}>{t('amountReceived')}</th>
                             <th style={S.th}>{t('notes')}</th>
                             <th style={{ ...S.th, textAlign: 'center' }}>{t('action')}</th>
@@ -413,7 +417,7 @@ const Payments = () => {
                     <tbody>
                         {buyerPayments.length === 0 ? (
                             <tr>
-                                <td colSpan={5} style={{ padding: '60px 16px', textAlign: 'center', color: '#9ca3af', fontStyle: 'italic', fontSize: '14px' }}>
+                                <td colSpan={6} style={{ padding: '60px 16px', textAlign: 'center', color: '#9ca3af', fontStyle: 'italic', fontSize: '14px' }}>
                                     {t('noRecords')}
                                 </td>
                             </tr>
@@ -462,6 +466,9 @@ const Payments = () => {
                                                 </span>
                                                 {getName(p.entityId, p.type)}
                                             </div>
+                                        </td>
+                                        <td style={{ ...S.td, color: isHighlighted ? 'rgba(255,255,255,0.9)' : '#475569', fontSize: '13px', fontWeight: 600 }}>
+                                            {salesmen.find(s => s.id === p.salesmanId)?.name || '—'}
                                         </td>
                                         <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: isHighlighted ? '#fff' : '#16a34a', fontSize: '15px' }}>
                                             {fmt(p.amount)}
@@ -633,6 +640,23 @@ const Payments = () => {
                                                 </div>
                                             )}
                                         </div>
+                                    </div>
+
+                                    {/* Received By Salesman */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <label style={{ width: '120px', flexShrink: 0, fontSize: '13px', fontWeight: 600, color: '#475569' }}>
+                                            {t('salesman') || 'விற்பனையாளர்'}
+                                        </label>
+                                        <select
+                                            value={formData.salesmanId || ''}
+                                            onChange={e => setFormData({ ...formData, salesmanId: e.target.value })}
+                                            style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', fontSize: '14px', fontWeight: 600, color: '#1e293b', outline: 'none' }}
+                                        >
+                                            <option value="">-- {t('selectSalesman') || 'விற்பனையாளரைத் தேர்ந்தெடுக்கவும்'} --</option>
+                                            {salesmen.filter(s => s.status === 'Active').map(s => (
+                                                <option key={s.id} value={s.id}>{s.nameTa || s.name}</option>
+                                            ))}
+                                        </select>
                                     </div>
 
                                     {/* Opening Balance */}

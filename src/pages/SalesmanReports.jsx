@@ -63,13 +63,15 @@ const S = {
         padding: '8px 10px', textAlign: 'left',
         fontSize: '11px', fontWeight: 700, color: '#475569',
         textTransform: 'uppercase', letterSpacing: '0.05em',
-        borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'nowrap',
+        borderBottom: '1.5px solid #e2e8f0', whiteSpace: 'normal',
+        wordBreak: 'break-word',
         background: '#f8fafc',
     },
     td: {
         padding: '8px 10px', fontSize: '12px',
         color: '#334155', borderBottom: '1px solid #f1f5f9',
-        verticalAlign: 'middle',
+        verticalAlign: 'middle', whiteSpace: 'normal',
+        wordBreak: 'break-word',
     },
     emptyRow: {
         padding: '80px 16px', textAlign: 'center',
@@ -96,6 +98,8 @@ const SalesmanReports = () => {
     const [payments, setPayments] = useState([]);
     const [expenses, setExpenses] = useState([]);
     const [transfers, setTransfers] = useState([]);
+    const [vendors, setVendors] = useState([]);
+    const [buyers, setBuyers] = useState([]);
 
     const today = new Date().toLocaleDateString('en-CA');
     const [selectedSalesmanId, setSelectedSalesmanId] = useState('');
@@ -114,7 +118,9 @@ const SalesmanReports = () => {
         const unsubPayments = subscribeToCollection('payments', setPayments);
         const unsubExpenses = subscribeToCollection('salesman_expenses', setExpenses);
         const unsubTransfers = subscribeToCollection('salesman_transfers', setTransfers);
- 
+        const unsubVendors = subscribeToCollection('vendors', setVendors);
+        const unsubBuyers = subscribeToCollection('buyers', setBuyers);
+
         return () => {
             unsubSalesmen();
             unsubCash();
@@ -123,6 +129,8 @@ const SalesmanReports = () => {
             unsubPayments();
             unsubExpenses();
             unsubTransfers();
+            unsubVendors();
+            unsubBuyers();
         };
     }, []);
 
@@ -140,6 +148,9 @@ const SalesmanReports = () => {
             // 1. Opening Balance
             const sCashHist = cashRecords.filter(r => r.salesmanId === salesman.id && r.date < fromDate);
             const sTransInHist = transfers.filter(t => t.toSalesmanId === salesman.id && t.date < fromDate);
+            const sBuyerPaymentsHist = payments.filter(p => (p.type === 'buyer' || !p.type) && p.salesmanId === salesman.id && (
+                (p.date && p.date < fromDate) || (p.timestamp && p.timestamp.split('T')[0] < fromDate)
+            ));
             const sPurchasesHist = purchaseRecords.filter(p => p.salesmanId === salesman.id && p.date < fromDate);
             const sPaymentsHist = payments.filter(p => p.type === 'vendor' && p.salesmanId === salesman.id && p.date < fromDate);
             const sExpensesHist = expenses.filter(e => e.salesmanId === salesman.id && e.date < fromDate);
@@ -147,7 +158,8 @@ const SalesmanReports = () => {
 
             const openingCashInflow = (Number(salesman.openingCash) || 0) + 
                 sCashHist.reduce((sum, r) => sum + (Number(r.openingCash) || 0), 0) + 
-                sTransInHist.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+                sTransInHist.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) +
+                sBuyerPaymentsHist.reduce((sum, p) => sum + (Number(p.amount) || 0) + (Number(p.cashLess) || 0), 0);
 
             const openingCashOutflow = 
                 sPurchasesHist.reduce((sum, p) => sum + (Number(p.grandTotal) || 0), 0) + 
@@ -159,7 +171,7 @@ const SalesmanReports = () => {
 
             if (openingBalance !== 0) {
                 creditList.push({
-                    particulars: lang === 'ta' ? 'ஆரம்ப இருப்பு (Opening Balance)' : 'Opening Balance',
+                    particulars: 'OB',
                     quantity: null,
                     rate: null,
                     total: openingBalance
@@ -183,10 +195,27 @@ const SalesmanReports = () => {
                 const fromSales = salesmen.find(s => s.id === t.fromSalesmanId);
                 const fromName = fromSales ? (lang === 'ta' ? (fromSales.nameTa || fromSales.name) : fromSales.name) : '---';
                 creditList.push({
-                    particulars: lang === 'ta' ? `${fromName}-டமிருந்து வரவு (Transfer)` : `Transfer from ${fromName}`,
+                    particulars: lang === 'ta' ? `${fromName}(Transfer)` : `Transfer from ${fromName}`,
                     quantity: null,
                     rate: null,
                     total: Number(t.amount) || 0
+                });
+            });
+
+            // 4. Buyer Payments Received (Collection)
+            const rangeBuyerPayments = payments.filter(p => (p.type === 'buyer' || !p.type) && p.salesmanId === salesman.id && (
+                (p.date && p.date >= fromDate && p.date <= toDate) ||
+                (p.timestamp && p.timestamp.split('T')[0] >= fromDate && p.timestamp.split('T')[0] <= toDate)
+            ));
+            rangeBuyerPayments.forEach(p => {
+                const buyer = buyers.find(b => b.id === p.entityId);
+                const buyerName = buyer ? buyer.name : (lang === 'ta' ? 'வாடிக்கையாளர்' : 'Buyer');
+                const noteSuffix = p.note ? ` (${p.note})` : '';
+                creditList.push({
+                    particulars: lang === 'ta' ? `${buyerName} வசூல்${noteSuffix}` : `${buyerName} Payment Recd${noteSuffix}`,
+                    quantity: null,
+                    rate: null,
+                    total: (Number(p.amount) || 0) + (Number(p.cashLess) || 0)
                 });
             });
 
@@ -212,8 +241,14 @@ const SalesmanReports = () => {
             // 2. Vendor payments
             const rangePayments = payments.filter(p => p.type === 'vendor' && p.salesmanId === salesman.id && p.date >= fromDate && p.date <= toDate);
             rangePayments.forEach(p => {
+                const vendor = vendors.find(v => v.id === p.entityId);
+                const vendorName = vendor 
+                    ? (lang === 'ta' ? (vendor.nameTa || vendor.name) : vendor.name) 
+                    : (p.note || (lang === 'ta' ? 'விற்பனையாளர்' : 'Vendor'));
+                const noteSuffix = (vendor && p.note && p.note !== '---') ? ` (${p.note})` : '';
+
                 debitList.push({
-                    particulars: `${lang === 'ta' ? 'விற்பனையாளர் செலுத்துகை' : 'Vendor Payment'} (${p.note || '---'})`,
+                    particulars: `${vendorName}${noteSuffix}`,
                     quantity: null,
                     rate: null,
                     total: Number(p.amount) || 0
@@ -237,7 +272,7 @@ const SalesmanReports = () => {
                 const toSales = salesmen.find(s => s.id === t.toSalesmanId);
                 const toName = toSales ? (lang === 'ta' ? (toSales.nameTa || toSales.name) : toSales.name) : '---';
                 debitList.push({
-                    particulars: lang === 'ta' ? `${toName}-க்கு செலுத்தியது (Transfer)` : `Transfer to ${toName}`,
+                    particulars: lang === 'ta' ? `${toName}(Transfer)` : `Transfer to ${toName}`,
                     quantity: null,
                     rate: null,
                     total: Number(t.amount) || 0
@@ -260,7 +295,7 @@ const SalesmanReports = () => {
                 netBalanceAmount
             };
         });
-    }, [salesmen, cashRecords, purchaseRecords, payments, expenses, transfers, flowers, fromDate, toDate, lang, selectedSalesmanId]);
+    }, [salesmen, cashRecords, purchaseRecords, payments, expenses, transfers, flowers, vendors, buyers, fromDate, toDate, lang, selectedSalesmanId]);
 
     const handlePrintSingleSalesman = (group) => {
         try {
@@ -301,12 +336,16 @@ const SalesmanReports = () => {
                     <h2 style="margin:0 0 15px 0; font-size:18px; border-bottom:2px solid #f1f5f9; padding-bottom:10px; color:#0f172a; display:flex; align-items:center; gap:8px;">👤 ${group.salesmanName}</h2>
                     <div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:space-between; margin-bottom:15px;">
                         <div style="flex:1; min-width:250px;">
-                            <h3 style="margin:0 0 10px 0; font-size:11px; font-weight:800; color:#16a34a; text-transform:uppercase; letter-spacing:0.05em;">📤 Credit (Cr) / Sales</h3>
-                            <table style="width:100%; max-width:500px; border-collapse:collapse; font-size:11px;">
+                            <h3 style="margin:0 0 10px 0; font-size:11px; font-weight:800; color:#16a34a; text-transform:uppercase; letter-spacing:0.05em;">📤 ${lang === 'ta' ? 'வரவு (Cr) / விற்பனை' : 'Credit (Cr) / Sales'}</h3>
+                            <table style="width:100%; border-collapse:collapse; font-size:11px; table-layout:fixed;">
+                                <colgroup>
+                                    <col style="width:65%;" />
+                                    <col style="width:35%;" />
+                                </colgroup>
                                 <thead>
                                     <tr style="background:#f8fafc;">
-                                        <th style="border-bottom:1.5px solid #e2e8f0; text-align:left; padding:8px; color:#475569;">Particulars</th>
-                                        <th style="border-bottom:1.5px solid #e2e8f0; text-align:right; padding:8px; color:#475569; width:90px;">Amount</th>
+                                        <th style="border-bottom:1.5px solid #e2e8f0; text-align:left; padding:8px; color:#475569;">${lang === 'ta' ? 'விவரம்' : 'Particulars'}</th>
+                                        <th style="border-bottom:1.5px solid #e2e8f0; text-align:right; padding:8px; color:#475569;">${lang === 'ta' ? 'தொகை' : 'Amount'}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -315,13 +354,17 @@ const SalesmanReports = () => {
                             </table>
                         </div>
 
-                        <div style="flex:1.2; min-width:300px;">
-                            <h3 style="margin:0 0 10px 0; font-size:11px; font-weight:800; color:#ef4444; text-transform:uppercase; letter-spacing:0.05em;">📥 Debit (Dr) / Purchase</h3>
-                            <table style="width:100%; max-width:500px; border-collapse:collapse; font-size:11px;">
+                        <div style="flex:1; min-width:250px;">
+                            <h3 style="margin:0 0 10px 0; font-size:11px; font-weight:800; color:#ef4444; text-transform:uppercase; letter-spacing:0.05em;">📥 ${lang === 'ta' ? 'பற்று (Dr) / கொள்முதல்' : 'Debit (Dr) / Purchase'}</h3>
+                            <table style="width:100%; border-collapse:collapse; font-size:11px; table-layout:fixed;">
+                                <colgroup>
+                                    <col style="width:65%;" />
+                                    <col style="width:35%;" />
+                                </colgroup>
                                 <thead>
                                     <tr style="background:#f8fafc;">
-                                        <th style="border-bottom:1.5px solid #e2e8f0; text-align:left; padding:8px; color:#475569;">Particulars</th>
-                                        <th style="border-bottom:1.5px solid #e2e8f0; text-align:right; padding:8px; color:#475569; width:90px;">Amount</th>
+                                        <th style="border-bottom:1.5px solid #e2e8f0; text-align:left; padding:8px; color:#475569;">${lang === 'ta' ? 'விவரம்' : 'Particulars'}</th>
+                                        <th style="border-bottom:1.5px solid #e2e8f0; text-align:right; padding:8px; color:#475569;">${lang === 'ta' ? 'தொகை' : 'Amount'}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -331,13 +374,13 @@ const SalesmanReports = () => {
                         </div>
                     </div>
 
-                    <div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:space-between; border-top:1.5px solid #f1f5f9; padding-top:10px; font-size:11px; font-weight:bold; color:#475569;">
-                        <div style="flex:1; min-width:250px; max-width:500px; display:flex; justify-content:space-between;">
-                            <span>Total Sales:</span>
+                    <div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:space-between; border-top:1.5px solid #f1f5f9; padding-top:10px; font-size:11px; font-weight:bold;">
+                        <div style="flex:1; min-width:250px; display:flex; justify-content:space-between; background:#f0fdf4; padding:6px 12px; border-radius:8px; border:1px solid #bbf7d0;">
+                            <span style="color:#15803d;">${lang === 'ta' ? 'மொத்த வரவு (Cr):' : 'Total Sales:'}</span>
                             <span style="color:#16a34a;">${fmt(group.totalCredit)}</span>
                         </div>
-                        <div style="flex:1.2; min-width:300px; max-width:500px; display:flex; justify-content:space-between;">
-                            <span>Total Purchase:</span>
+                        <div style="flex:1; min-width:250px; display:flex; justify-content:space-between; background:#fff5f5; padding:6px 12px; border-radius:8px; border:1px solid #fecdd3;">
+                            <span style="color:#b91c1c;">${lang === 'ta' ? 'மொத்த பற்று (Dr):' : 'Total Purchase:'}</span>
                             <span style="color:#ef4444;">${fmt(group.totalDebit)}</span>
                         </div>
                     </div>
@@ -438,12 +481,16 @@ const SalesmanReports = () => {
                         <h2 style="margin:0 0 15px 0; font-size:18px; border-bottom:2px solid #f1f5f9; padding-bottom:10px; color:#0f172a; display:flex; align-items:center; gap:8px;">👤 ${group.salesmanName}</h2>
                         <div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:space-between; margin-bottom:15px;">
                             <div style="flex:1; min-width:250px;">
-                                <h3 style="margin:0 0 10px 0; font-size:11px; font-weight:800; color:#16a34a; text-transform:uppercase; letter-spacing:0.05em;">📤 Credit (Cr) / Sales</h3>
-                                <table style="width:100%; max-width:500px; border-collapse:collapse; font-size:11px;">
+                                <h3 style="margin:0 0 10px 0; font-size:11px; font-weight:800; color:#16a34a; text-transform:uppercase; letter-spacing:0.05em;">📤 ${lang === 'ta' ? 'வரவு (Cr) / விற்பனை' : 'Credit (Cr) / Sales'}</h3>
+                                <table style="width:100%; border-collapse:collapse; font-size:11px; table-layout:fixed;">
+                                    <colgroup>
+                                        <col style="width:65%;" />
+                                        <col style="width:35%;" />
+                                    </colgroup>
                                     <thead>
                                         <tr style="background:#f8fafc;">
-                                            <th style="border-bottom:1.5px solid #e2e8f0; text-align:left; padding:8px; color:#475569;">Particulars</th>
-                                            <th style="border-bottom:1.5px solid #e2e8f0; text-align:right; padding:8px; color:#475569; width:90px;">Amount</th>
+                                            <th style="border-bottom:1.5px solid #e2e8f0; text-align:left; padding:8px; color:#475569;">${lang === 'ta' ? 'விவரம்' : 'Particulars'}</th>
+                                            <th style="border-bottom:1.5px solid #e2e8f0; text-align:right; padding:8px; color:#475569;">${lang === 'ta' ? 'தொகை' : 'Amount'}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -452,13 +499,17 @@ const SalesmanReports = () => {
                                 </table>
                             </div>
 
-                            <div style="flex:1.2; min-width:300px;">
-                                <h3 style="margin:0 0 10px 0; font-size:11px; font-weight:800; color:#ef4444; text-transform:uppercase; letter-spacing:0.05em;">📥 Debit (Dr) / Purchase</h3>
-                                <table style="width:100%; max-width:500px; border-collapse:collapse; font-size:11px;">
+                            <div style="flex:1; min-width:250px;">
+                                <h3 style="margin:0 0 10px 0; font-size:11px; font-weight:800; color:#ef4444; text-transform:uppercase; letter-spacing:0.05em;">📥 ${lang === 'ta' ? 'பற்று (Dr) / கொள்முதல்' : 'Debit (Dr) / Purchase'}</h3>
+                                <table style="width:100%; border-collapse:collapse; font-size:11px; table-layout:fixed;">
+                                    <colgroup>
+                                        <col style="width:65%;" />
+                                        <col style="width:35%;" />
+                                    </colgroup>
                                     <thead>
                                         <tr style="background:#f8fafc;">
-                                            <th style="border-bottom:1.5px solid #e2e8f0; text-align:left; padding:8px; color:#475569;">Particulars</th>
-                                            <th style="border-bottom:1.5px solid #e2e8f0; text-align:right; padding:8px; color:#475569; width:90px;">Amount</th>
+                                            <th style="border-bottom:1.5px solid #e2e8f0; text-align:left; padding:8px; color:#475569;">${lang === 'ta' ? 'விவரம்' : 'Particulars'}</th>
+                                            <th style="border-bottom:1.5px solid #e2e8f0; text-align:right; padding:8px; color:#475569;">${lang === 'ta' ? 'தொகை' : 'Amount'}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -468,13 +519,13 @@ const SalesmanReports = () => {
                             </div>
                         </div>
 
-                        <div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:space-between; border-top:1.5px solid #f1f5f9; padding-top:10px; font-size:11px; font-weight:bold; color:#475569;">
-                            <div style="flex:1; min-width:250px; max-width:500px; display:flex; justify-content:space-between;">
-                                <span>Total Sales:</span>
+                        <div style="display:flex; flex-wrap:wrap; gap:20px; justify-content:space-between; border-top:1.5px solid #f1f5f9; padding-top:10px; font-size:11px; font-weight:bold;">
+                            <div style="flex:1; min-width:250px; display:flex; justify-content:space-between; background:#f0fdf4; padding:6px 12px; border-radius:8px; border:1px solid #bbf7d0;">
+                                <span style="color:#15803d;">${lang === 'ta' ? 'மொத்த வரவு (Cr):' : 'Total Sales:'}</span>
                                 <span style="color:#16a34a;">${fmt(group.totalCredit)}</span>
                             </div>
-                            <div style="flex:1.2; min-width:300px; max-width:500px; display:flex; justify-content:space-between;">
-                                <span>Total Purchase:</span>
+                            <div style="flex:1; min-width:250px; display:flex; justify-content:space-between; background:#fff5f5; padding:6px 12px; border-radius:8px; border:1px solid #fecdd3;">
+                                <span style="color:#b91c1c;">${lang === 'ta' ? 'மொத்த பற்று (Dr):' : 'Total Purchase:'}</span>
                                 <span style="color:#ef4444;">${fmt(group.totalDebit)}</span>
                             </div>
                         </div>
@@ -669,19 +720,23 @@ const SalesmanReports = () => {
                                 </button>
                             </div>
 
-                            {/* Two Columns Grid for Debits and Credits */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '20px', marginTop: '16px' }}>
-                                {/* Credits column */}
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 800, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        📤 {lang === 'ta' ? 'வரவு (Cr) / விற்பனை' : 'Credit (Cr) / Sales'}
-                                    </h4>
-                                    <div style={{ overflowX: 'auto', width: '100%' }}>
+                            {/* Strictly 2 Tables in Single Row */}
+                            <div style={{ overflowX: 'auto', width: '100%' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', minWidth: '650px', marginTop: '16px' }}>
+                                    {/* Credits column */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                                        <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 800, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            📤 {lang === 'ta' ? 'வரவு (Cr) / விற்பனை' : 'Credit (Cr) / Sales'}
+                                        </h4>
                                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                             <thead>
-                                                <tr>
-                                                    <th style={TH_S}>{lang === 'ta' ? 'விவரம் (வாடிக்கையாளர்/ஆரம்ப இருப்பு)' : 'Particulars (Customer/Inflow)'}</th>
-                                                    <th style={{ ...TH_S, textAlign: 'right', width: '80px' }}>Amount</th>
+                                                <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0' }}>
+                                                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                                                        {lang === 'ta' ? 'விவரம்' : 'Particulars'}
+                                                    </th>
+                                                    <th style={{ padding: '8px 10px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', whiteSpace: 'nowrap', width: '110px' }}>
+                                                        {lang === 'ta' ? 'தொகை' : 'Amount'}
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -693,28 +748,30 @@ const SalesmanReports = () => {
                                                     </tr>
                                                 ) : (
                                                     group.creditList.map((item, idx) => (
-                                                        <tr key={idx}>
-                                                            <td style={TD_S}>{item.particulars}</td>
-                                                            <td style={{ ...TD_S, textAlign: 'right', color: '#16a34a', fontWeight: 700 }}>{fmt(item.total)}</td>
+                                                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                            <td style={{ padding: '8px 10px', fontSize: '12px', color: '#334155', wordBreak: 'break-word' }}>{item.particulars}</td>
+                                                            <td style={{ padding: '8px 10px', fontSize: '12px', color: '#16a34a', fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap', width: '110px' }}>{fmt(item.total)}</td>
                                                         </tr>
                                                     ))
                                                 )}
                                             </tbody>
                                         </table>
                                     </div>
-                                </div>
 
-                                {/* Debits column */}
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        📥 {lang === 'ta' ? 'பற்று (Dr) / கொள்முதல்' : 'Debit (Dr) / Purchase'}
-                                    </h4>
-                                    <div style={{ overflowX: 'auto', width: '100%' }}>
+                                    {/* Debits column */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                                        <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            📥 {lang === 'ta' ? 'பற்று (Dr) / கொள்முதல்' : 'Debit (Dr) / Purchase'}
+                                        </h4>
                                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                             <thead>
-                                                <tr>
-                                                    <th style={TH_S}>{lang === 'ta' ? 'விவரம் (விவசாயி/விற்பனையாளர்)' : 'Particulars (Farmer/Vendor)'}</th>
-                                                    <th style={{ ...TH_S, textAlign: 'right', width: '80px' }}>Amount</th>
+                                                <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0' }}>
+                                                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                                                        {lang === 'ta' ? 'விவரம்' : 'Particulars'}
+                                                    </th>
+                                                    <th style={{ padding: '8px 10px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', whiteSpace: 'nowrap', width: '110px' }}>
+                                                        {lang === 'ta' ? 'தொகை' : 'Amount'}
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -726,9 +783,9 @@ const SalesmanReports = () => {
                                                     </tr>
                                                 ) : (
                                                     group.debitList.map((item, idx) => (
-                                                        <tr key={idx}>
-                                                            <td style={TD_S}>{item.particulars}</td>
-                                                            <td style={{ ...TD_S, textAlign: 'right', color: '#ef4444', fontWeight: 700 }}>{fmt(item.total)}</td>
+                                                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                            <td style={{ padding: '8px 10px', fontSize: '12px', color: '#334155', wordBreak: 'break-word' }}>{item.particulars}</td>
+                                                            <td style={{ padding: '8px 10px', fontSize: '12px', color: '#ef4444', fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap', width: '110px' }}>{fmt(item.total)}</td>
                                                         </tr>
                                                     ))
                                                 )}
@@ -738,14 +795,20 @@ const SalesmanReports = () => {
                                 </div>
                             </div>
 
-                            {/* Aligned Subtotals Bar */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '16px', borderTop: '1.5px solid #f1f5f9', paddingTop: '10px', marginTop: '4px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '6px 12px', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
-                                    <span style={{ fontSize: '12px', fontWeight: 850, color: '#475569' }}>
-                                        {lang === 'ta' ? `மொத்த வரவு (Cr):` : `Total Sales:`}
-                                    </span>
-                                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center', fontSize: '13px', fontWeight: 900 }}>
-                                        <span style={{ color: '#16a34a' }}>{fmt(group.totalCredit)}</span>
+                            {/* Aligned Subtotals Bar (Single Row Side-by-Side) */}
+                            <div style={{ overflowX: 'auto', width: '100%', marginTop: '12px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', minWidth: '650px', borderTop: '1.5px solid #f1f5f9', paddingTop: '12px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f0fdf4', padding: '8px 14px', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
+                                        <span style={{ fontSize: '12px', fontWeight: 800, color: '#15803d' }}>
+                                            {lang === 'ta' ? `மொத்த வரவு (Cr):` : `Total Sales:`}
+                                        </span>
+                                        <span style={{ fontSize: '13px', fontWeight: 900, color: '#16a34a' }}>{fmt(group.totalCredit)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff5f5', padding: '8px 14px', borderRadius: '10px', border: '1px solid #fecdd3' }}>
+                                        <span style={{ fontSize: '12px', fontWeight: 800, color: '#b91c1c' }}>
+                                            {lang === 'ta' ? `மொத்த பற்று (Dr):` : `Total Purchase:`}
+                                        </span>
+                                        <span style={{ fontSize: '13px', fontWeight: 900, color: '#ef4444' }}>{fmt(group.totalDebit)}</span>
                                     </div>
                                 </div>
                             </div>
