@@ -13,7 +13,16 @@ const RecycleBin = () => {
         const unsub = subscribeToCollection('recycle_bin', (data) => {
             setItems(data);
         }, true);
-        return () => unsub();
+
+        const handleGlobalSearch = (e) => {
+            setSearch(e.detail);
+        };
+        window.addEventListener('global-voice-search', handleGlobalSearch);
+
+        return () => {
+            unsub();
+            window.removeEventListener('global-voice-search', handleGlobalSearch);
+        };
     }, []);
 
     // Filter in-memory to discard expired docs (>30 days) and apply search filter

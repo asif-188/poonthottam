@@ -33,11 +33,18 @@ const Farmer = () => {
         const u2 = subscribeToCollection('intakes', setIntakes, true);
         const u3 = subscribeToCollection('payments', setPayments, true);
         const u4 = subscribeToCollection('products', setProducts, true);
+
+        const handleGlobalSearch = (e) => {
+            setSearchTerm(e.detail);
+        };
+        window.addEventListener('global-voice-search', handleGlobalSearch);
+
         return () => {
             u1();
             u2();
             u3();
             u4();
+            window.removeEventListener('global-voice-search', handleGlobalSearch);
         };
     }, []);
 

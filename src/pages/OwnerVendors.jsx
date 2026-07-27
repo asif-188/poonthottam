@@ -50,7 +50,16 @@ const OwnerVendors = () => {
 
   useEffect(() => {
     const unsubscribe = subscribeToCollection('vendors', setVendors);
-    return () => unsubscribe();
+
+    const handleGlobalSearch = (e) => {
+      setSearchTerm(e.detail);
+    };
+    window.addEventListener('global-voice-search', handleGlobalSearch);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('global-voice-search', handleGlobalSearch);
+    };
   }, []);
 
   const filteredVendors = useMemo(() => {

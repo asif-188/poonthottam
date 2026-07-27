@@ -70,6 +70,14 @@ const Reports = () => {
         return () => { u1(); u2(); u3(); u4(); u5(); u6(); };
     }, [appliedFrom]);
 
+    useEffect(() => {
+        const handleGlobalSearch = (e) => {
+            setSearch(e.detail);
+        };
+        window.addEventListener('global-voice-search', handleGlobalSearch);
+        return () => window.removeEventListener('global-voice-search', handleGlobalSearch);
+    }, []);
+
     const applyPreset = (preset) => {
         if (preset === 'custom') {
             setActivePreset('custom');

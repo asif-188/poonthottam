@@ -1,6 +1,6 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, ChevronLeft, Globe, User } from 'lucide-react';
+import { LogOut, ChevronLeft, Globe, User, Mic, MicOff } from 'lucide-react';
 import Petals from './Petals';
 import { useTenant } from '../utils/TenantContext';
 
@@ -339,6 +339,116 @@ const Layout = () => {
   };
 
   const isDashboard = location.pathname.includes('/dashboard');
+
+  // ── Global Voice Search State & Effect ──
+  const [searchState, setSearchState] = useState(null); // null, 'listening', 'processing', 'searching', 'error'
+  const searchRecRef = useRef(null);
+  const searchStateTimeoutRef = useRef(null);
+
+  const toggleGlobalSearchVoice = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      window.toast.error('Speech recognition is not supported in this browser.');
+      return;
+    }
+
+    if (searchState === 'listening') {
+      if (searchRecRef.current) {
+        searchRecRef.current.abort();
+      }
+      setSearchState(null);
+      return;
+    }
+
+    setSearchState('listening');
+  };
+
+  useEffect(() => {
+    if (searchState !== 'listening') {
+      if (searchRecRef.current) {
+        searchRecRef.current.abort();
+      }
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const rec = new SpeechRecognition();
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = lang === 'ta' ? 'ta-IN' : 'en-IN';
+
+    rec.onstart = () => {
+      setSearchState('listening');
+    };
+
+    rec.onresult = (e) => {
+      setSearchState('processing');
+      const resultText = e.results[0][0].transcript;
+      
+      const cleanQuery = resultText
+        .replace(/^(search for|find|look up|show|தேடு|காட்டு|please)\s+/i, '')
+        .replace(/\.$/, '')
+        .trim();
+
+      if (cleanQuery) {
+        setSearchState('searching');
+        window.dispatchEvent(new CustomEvent('global-voice-search', { detail: cleanQuery }));
+        
+        if (searchStateTimeoutRef.current) clearTimeout(searchStateTimeoutRef.current);
+        searchStateTimeoutRef.current = setTimeout(() => {
+          setSearchState(null);
+        }, 1500);
+      } else {
+        handleSearchError('no-speech');
+      }
+    };
+
+    rec.onerror = (e) => {
+      console.error('Global search voice error:', e.error);
+      handleSearchError(e.error);
+    };
+
+    rec.onend = () => {
+      setSearchState(prev => {
+        if (prev === 'listening') return null;
+        return prev;
+      });
+    };
+
+    const handleSearchError = (errorType) => {
+      setSearchState('error');
+      if (errorType === 'not-allowed') {
+        window.toast.error(lang === 'ta' ? 'மைக்ரோஃபோன் அனுமதி மறுக்கப்பட்டது!' : 'Microphone permission denied!');
+      } else {
+        window.toast.warning(lang === 'ta' ? 'குரல் அங்கீகரிக்கப்படவில்லை' : 'Voice not recognized');
+      }
+      
+      if (searchStateTimeoutRef.current) clearTimeout(searchStateTimeoutRef.current);
+      searchStateTimeoutRef.current = setTimeout(() => {
+        setSearchState(null);
+      }, 2000);
+    };
+
+    searchRecRef.current = rec;
+
+    try {
+      rec.start();
+    } catch (err) {
+      console.error('Failed to start global search recognition:', err);
+      setSearchState(null);
+    }
+
+    return () => {
+      if (searchRecRef.current) {
+        searchRecRef.current.abort();
+      }
+      if (searchStateTimeoutRef.current) {
+        clearTimeout(searchStateTimeoutRef.current);
+      }
+    };
+  }, [searchState, lang]);
 
   // ── Smart Back Navigation ──
   const getParentRoute = () => {
@@ -757,17 +867,35 @@ const Layout = () => {
             {/* Left: Hamburger menu toggle / Back button */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               {isMobile && (
-                <button
-                  onClick={() => setIsDrawerOpen(true)}
-                  style={{
-                    background: '#f1f5f9', border: 'none', borderRadius: '8px',
-                    width: '36px', height: '36px', display: 'flex',
-                    alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', color: '#475569', fontSize: '18px'
-                  }}
-                >
-                  ☰
-                </button>
+                <>
+                  <button
+                    onClick={() => setIsDrawerOpen(true)}
+                    style={{
+                      background: '#f1f5f9', border: 'none', borderRadius: '8px',
+                      width: '36px', height: '36px', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', color: '#475569', fontSize: '18px'
+                    }}
+                  >
+                    ☰
+                  </button>
+                  
+                  {/* Mobile Voice Search Mic Button */}
+                  <button
+                    onClick={toggleGlobalSearchVoice}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: '36px', height: '36px',
+                      background: searchState === 'listening' ? '#fee2e2' : '#f1f5f9',
+                      border: `1.5px solid ${searchState === 'listening' ? '#f87171' : 'transparent'}`,
+                      borderRadius: '8px',
+                      color: searchState === 'listening' ? '#ef4444' : '#475569',
+                      cursor: 'pointer', boxSizing: 'border-box'
+                    }}
+                  >
+                    {searchState === 'listening' ? <MicOff size={15} className="animate-pulse" /> : <Mic size={15} />}
+                  </button>
+                </>
               )}
               {!isDashboard && (
                 <button
@@ -794,7 +922,23 @@ const Layout = () => {
 
             {/* Center: Page Title */}
             <div>
-              {getTitle() && (
+              {searchState ? (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                  padding: '4px 10px',
+                  background: searchState === 'listening' ? '#fef2f2' : searchState === 'error' ? '#fff5f5' : '#f0fdf4',
+                  borderRadius: '100px',
+                  border: `1px solid ${searchState === 'listening' ? '#fca5a5' : searchState === 'error' ? '#fecaca' : '#bbf7d0'}`,
+                  color: searchState === 'listening' ? '#dc2626' : searchState === 'error' ? '#e11d48' : '#16a34a',
+                  fontSize: '11px',
+                  fontWeight: 700
+                }}>
+                  {searchState === 'listening' && `🎤 ${lang === 'ta' ? 'கேட்கிறது...' : 'Listening...'}`}
+                  {searchState === 'processing' && `⏳ ${lang === 'ta' ? 'செயலாக்குகிறது...' : 'Processing...'}`}
+                  {searchState === 'searching' && `✅ ${lang === 'ta' ? 'தேடுகிறது...' : 'Searching...'}`}
+                  {searchState === 'error' && `❌ ${lang === 'ta' ? 'அங்கீகரிக்கப்படவில்லை' : 'Voice not recognized'}`}
+                </div>
+              ) : getTitle() && (
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: '8px',
                   padding: isMobile ? '4px 12px' : '6px 18px',
@@ -814,6 +958,57 @@ const Layout = () => {
             {/* Right: Actions (Desktop Only, hidden on Mobile) */}
             {!isMobile ? (
               <div style={{ width: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                
+                {/* Voice Search Status Badge */}
+                {searchState && (
+                  <div style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    background: searchState === 'listening' ? '#fef2f2' : searchState === 'error' ? '#fff5f5' : '#f0fdf4',
+                    border: `1.5px solid ${searchState === 'listening' ? '#fca5a5' : searchState === 'error' ? '#fecaca' : '#bbf7d0'}`,
+                    color: searchState === 'listening' ? '#dc2626' : searchState === 'error' ? '#e11d48' : '#16a34a',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontFamily: 'var(--font-sans)'
+                  }} className={searchState === 'listening' ? 'animate-pulse' : ''}>
+                    {searchState === 'listening' && `🎤 ${lang === 'ta' ? 'கேட்கிறது...' : 'Listening...'}`}
+                    {searchState === 'processing' && `⏳ ${lang === 'ta' ? 'செயலாக்குகிறது...' : 'Processing...'}`}
+                    {searchState === 'searching' && `✅ ${lang === 'ta' ? 'தேடுகிறது...' : 'Searching...'}`}
+                    {searchState === 'error' && `❌ ${lang === 'ta' ? 'அங்கீகரிக்கப்படவில்லை' : 'Voice not recognized'}`}
+                  </div>
+                )}
+
+                {/* Header Voice Search Mic Button */}
+                <button
+                  onClick={toggleGlobalSearchVoice}
+                  title={lang === 'ta' ? 'குரல் தேடல்' : 'Voice Search'}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: '34px', height: '34px',
+                    background: searchState === 'listening' ? '#fee2e2' : '#f8fafc',
+                    border: `1.5px solid ${searchState === 'listening' ? '#f87171' : '#e2e8f0'}`,
+                    borderRadius: '10px',
+                    color: searchState === 'listening' ? '#ef4444' : '#475569',
+                    cursor: 'pointer', transition: 'all 0.2s',
+                    boxSizing: 'border-box'
+                  }}
+                  onMouseEnter={e => {
+                    if (searchState !== 'listening') {
+                      Object.assign(e.currentTarget.style, { background: '#f1f5f9', borderColor: '#cbd5e1' });
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (searchState !== 'listening') {
+                      Object.assign(e.currentTarget.style, { background: '#f8fafc', borderColor: '#e2e8f0' });
+                    }
+                  }}
+                >
+                  {searchState === 'listening' ? <MicOff size={15} className="animate-pulse" /> : <Mic size={15} />}
+                </button>
+
                 {/* Language picker */}
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: '5px',

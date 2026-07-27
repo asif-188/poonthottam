@@ -36,7 +36,16 @@ const DailyReport = () => {
         const u2 = subscribeToCollection('buyers',   setBuyers);
         const u3 = subscribeToCollection('payments', setPayments);
         const u4 = subscribeToCollection('outside_purchases', setOutsidePurchases, true);
-        return () => { u1(); u2(); u3(); u4(); };
+
+        const handleGlobalSearch = (e) => {
+            setSearch(e.detail);
+        };
+        window.addEventListener('global-voice-search', handleGlobalSearch);
+
+        return () => {
+            u1(); u2(); u3(); u4();
+            window.removeEventListener('global-voice-search', handleGlobalSearch);
+        };
     }, []);
 
     const reportData = useMemo(() => {

@@ -154,7 +154,16 @@ const Buyer = () => {
         const u1 = subscribeToCollection('buyers', setBuyers);
         const u2 = subscribeToCollection('sales', setSales);
         const u3 = subscribeToCollection('payments', setPayments);
-        return () => { u1(); u2(); u3(); };
+
+        const handleGlobalSearch = (e) => {
+            setSearchTerm(e.detail);
+        };
+        window.addEventListener('global-voice-search', handleGlobalSearch);
+
+        return () => {
+            u1(); u2(); u3();
+            window.removeEventListener('global-voice-search', handleGlobalSearch);
+        };
     }, []);
 
     useEffect(() => {

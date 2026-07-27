@@ -198,6 +198,12 @@ const SalesmanMaster = () => {
         const unsubExpenses = subscribeToCollection('salesman_expenses', setExpenses);
         const unsubTransfers = subscribeToCollection('salesman_transfers', setTransfers);
         const unsubPayments = subscribeToCollection('payments', setPayments);
+
+        const handleGlobalSearch = (e) => {
+            setSearchTerm(e.detail);
+        };
+        window.addEventListener('global-voice-search', handleGlobalSearch);
+
         return () => {
             unsubSalesmen();
             unsubCash();
@@ -205,6 +211,7 @@ const SalesmanMaster = () => {
             unsubExpenses();
             unsubTransfers();
             unsubPayments();
+            window.removeEventListener('global-voice-search', handleGlobalSearch);
         };
     }, []);
 
