@@ -24,6 +24,7 @@ import InvoiceView from './pages/InvoiceView';
 import Payments from './pages/Payments';
 import DailyFlowerPrices from './pages/DailyFlowerPrices';
 import SalesmanReports from './pages/SalesmanReports';
+import QuickEntry from './pages/QuickEntry';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useTenant();
@@ -80,6 +81,7 @@ const AppRoutes = () => {
           <Route path="daily-flower-prices" element={<DailyFlowerPrices />} />
           <Route path="reports" element={<Reports />} />
           <Route path="flower-wise-report" element={<FlowerWiseReport />} />
+          <Route path="quick-entry" element={<QuickEntry />} />
           <Route path="settings" element={<DashboardSettings />} />
           <Route path="business-info" element={<BusinessSettings />} />
       </Route>

@@ -294,13 +294,13 @@ const SalesmanPurchases = () => {
                             />
                         </div>
                         <div style={{ width: '180px' }}>
-                            <label style={LABEL_S}>Salesman</label>
+                            <label style={LABEL_S}>Staff</label>
                             <select
                                 value={formData.salesmanId}
                                 onChange={e => setFormData({ ...formData, salesmanId: e.target.value })}
                                 style={{ ...INPUT_S, padding: '6px 10px', fontSize: '13px' }}
                             >
-                                <option value="">Select Salesman</option>
+                                <option value="">Select Staff</option>
                                 {salesmen.map(s => (
                                     <option key={s.id} value={s.id}>{s.name}</option>
                                 ))}
@@ -528,7 +528,7 @@ const SalesmanPurchases = () => {
                         <thead>
                             <tr style={{ background: '#fff', borderBottom: '1.5px solid #f1f5f9' }}>
                                 <th style={TH_S}>Date</th>
-                                <th style={TH_S}>Salesman</th>
+                                <th style={TH_S}>Staff</th>
                                 <th style={TH_S}>Farmer</th>
                                 <th style={TH_S}>Bill Number</th>
                                 <th style={TH_S}>Flower Details</th>

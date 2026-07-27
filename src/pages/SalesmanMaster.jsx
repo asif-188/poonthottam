@@ -4,6 +4,8 @@ import { Plus, Edit2, Trash2, Search, X, User, Download, Upload } from 'lucide-r
 import { saveSalesman, deleteSalesman, subscribeToCollection } from '../utils/storage';
 import { LangContext } from '../components/Layout';
 import * as XLSX from 'xlsx';
+import VoiceSearchButton from '../components/VoiceSearchButton';
+
 
 const S = {
     page: {
@@ -276,11 +278,11 @@ const SalesmanMaster = () => {
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm("Are you sure you want to delete this salesman? This action cannot be undone.")) {
+        if (window.confirm("Are you sure you want to delete this staff member? This action cannot be undone.")) {
             try {
                 await deleteSalesman(id);
             } catch (error) {
-                console.error("Error deleting salesman:", error);
+                console.error("Error deleting staff:", error);
                 alert("Failed to delete.");
             }
         }
@@ -306,9 +308,9 @@ const SalesmanMaster = () => {
             const balance = (opening + transInAmt) - (purchasesAmt + expensesAmt + transOutAmt + vendorPayAmt);
             return {
                 'S.No': idx + 1,
-                'Salesman ID': s.displayId || '---',
-                'Salesman Name': s.name,
-                'Salesman Name (Tamil)': s.nameTa || '',
+                'Staff ID': s.displayId || '---',
+                'Staff Name': s.name,
+                'Staff Name (Tamil)': s.nameTa || '',
                 'Opening Cash (₹)': opening,
                 'Purchase Amount (₹)': purchasesAmt,
                 'Available Balance (₹)': balance,
@@ -317,19 +319,19 @@ const SalesmanMaster = () => {
         });
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Salesmen');
-        XLSX.writeFile(wb, `SalesmanMaster_${Date.now()}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, 'Staff');
+        XLSX.writeFile(wb, `StaffRegistry_${Date.now()}.xlsx`);
     };
 
     const handleDownloadTemplate = () => {
         const templateRows = [
-            { 'Salesman Name': 'Kumar', 'Salesman Name (Tamil)': 'குமார்', 'Contact Number': '9876543210', 'Location': 'Tindivanam', 'Status': 'Active' },
-            { 'Salesman Name': 'Ravi', 'Salesman Name (Tamil)': 'ரவி', 'Contact Number': '9988776655', 'Location': 'Pondicherry', 'Status': 'Active' }
+            { 'Staff Name': 'Kumar', 'Staff Name (Tamil)': 'குமார்', 'Contact Number': '9876543210', 'Location': 'Tindivanam', 'Status': 'Active' },
+            { 'Staff Name': 'Ravi', 'Staff Name (Tamil)': 'ரவி', 'Contact Number': '9988776655', 'Location': 'Pondicherry', 'Status': 'Active' }
         ];
         const ws = XLSX.utils.json_to_sheet(templateRows);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Template');
-        XLSX.writeFile(wb, `Salesman_Import_Template.xlsx`);
+        XLSX.writeFile(wb, `Staff_Import_Template.xlsx`);
     };
 
     const handleImportExcel = (e) => {
@@ -346,8 +348,8 @@ const SalesmanMaster = () => {
 
                 let importedCount = 0;
                 for (const row of data) {
-                    const name = row['Salesman Name'] || row['Name'];
-                    const nameTa = row['Salesman Name (Tamil)'] || row['Tamil Name'] || '';
+                    const name = row['Staff Name'] || row['Salesman Name'] || row['Name'];
+                    const nameTa = row['Staff Name (Tamil)'] || row['Salesman Name (Tamil)'] || row['Tamil Name'] || '';
                     if (!name) continue;
 
                     const contact = row['Contact Number'] || row['Contact'] || row['Phone'] || '';
@@ -365,7 +367,7 @@ const SalesmanMaster = () => {
                     });
                     importedCount++;
                 }
-                alert(`Successfully imported ${importedCount} salesmen!`);
+                alert(`Successfully imported ${importedCount} staff members!`);
             } catch (err) {
                 alert('Error importing Excel: ' + err.message);
             }
@@ -390,8 +392,8 @@ const SalesmanMaster = () => {
                 <div style={S.titleRow}>
                     <User size={22} color="#4338ca" />
                     <div style={S.titleCol}>
-                        <h2 style={S.title}>Salesman Master</h2>
-                        <span style={S.subtitle}>Manage active and inactive salesmen</span>
+                        <h2 style={S.title}>Staff Registry</h2>
+                        <span style={S.subtitle}>Manage active and inactive staff members</span>
                     </div>
                 </div>
                 
@@ -419,7 +421,7 @@ const SalesmanMaster = () => {
                         onMouseEnter={e => { e.currentTarget.style.background='#6366f1'; e.currentTarget.style.color='#fff'; }}
                         onMouseLeave={e => { e.currentTarget.style.background='#ffffff'; e.currentTarget.style.color='#6366f1'; }}
                     >
-                        <Plus size={15} /> Add Salesman
+                        <Plus size={15} /> Add Staff
                     </button>
                 </div>
             </div>
@@ -430,10 +432,13 @@ const SalesmanMaster = () => {
                 <input 
                     type="text" 
                     placeholder="Search by name, ID, contact..." 
-                    style={S.searchInput}
+                    style={{ ...S.searchInput, paddingRight: '40px' }}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
+                <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+                    <VoiceSearchButton onSpeechResult={setSearchTerm} langSetting={lang} />
+                </div>
             </div>
 
             {/* Table */}
@@ -442,7 +447,7 @@ const SalesmanMaster = () => {
                     <thead>
                         <tr style={{ background: '#fff', borderBottom: '1.5px solid #f1f5f9' }}>
                             <th style={S.th}>ID</th>
-                            <th style={S.th}>Salesman Name</th>
+                            <th style={S.th}>Staff Name</th>
                             <th style={{...S.th, textAlign: 'right'}}>Opening Cash</th>
                             <th style={{...S.th, textAlign: 'right'}}>Purchase Amount</th>
                             <th style={{...S.th, textAlign: 'right'}}>Available Balance</th>
@@ -530,8 +535,8 @@ const SalesmanMaster = () => {
                         <div style={S.modalHeader}>
                             <h3 style={S.modalTitle}>
                                 {currentSalesman.id 
-                                    ? (lang === 'ta' ? '✏️ விற்பனையாளர் விவரம் மாற்று' : '✏️ Edit Salesman') 
-                                    : (lang === 'ta' ? '👤 புதிய விற்பனையாளர் சேர்க்க' : '👤 New Salesman')}
+                                    ? (lang === 'ta' ? '✏️ பணியாளர் விவரம் மாற்று' : '✏️ Edit Staff') 
+                                    : (lang === 'ta' ? '👤 புதிய பணியாளர் சேர்க்க' : '👤 New Staff')}
                             </h3>
                             <button onClick={() => setIsModalOpen(false)} style={S.modalCloseBtn}>
                                 <X size={20} />
@@ -541,7 +546,7 @@ const SalesmanMaster = () => {
                             <div style={S.modalBody}>
                                 <div style={S.formGroup}>
                                     <label style={S.label}>
-                                        {lang === 'ta' ? 'விற்பனையாளர் பெயர் (ஆங்கிலம்)' : 'Salesman Name (English)'}
+                                        {lang === 'ta' ? 'பணியாளர் பெயர் (ஆங்கிலம்)' : 'Staff Name (English)'}
                                     </label>
                                     <input 
                                         type="text" 
@@ -557,7 +562,7 @@ const SalesmanMaster = () => {
                                 </div>
                                 <div style={S.formGroup}>
                                     <label style={S.label}>
-                                        {lang === 'ta' ? 'விற்பனையாளர் பெயர் (தமிழ்)' : 'Salesman Name (Tamil)'}
+                                        {lang === 'ta' ? 'பணியாளர் பெயர் (தமிழ்)' : 'Staff Name (Tamil)'}
                                     </label>
                                     <input 
                                         type="text" 

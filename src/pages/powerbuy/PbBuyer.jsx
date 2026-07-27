@@ -3,6 +3,8 @@ import { Plus, Edit2, Trash2, Search, X, User, FileText, Upload } from 'lucide-r
 import { savePbBuyer, deletePbBuyer, subscribeToCollection, db } from '../../utils/storage';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { LangContext } from '../../components/Layout';
+import VoiceSearchButton from '../../components/VoiceSearchButton';
+
 
 // ── Accent palette for Power Buy ──
 const PB = {
@@ -334,11 +336,14 @@ const PbBuyer = () => {
           placeholder={lang === 'ta' ? 'ஐடி மற்றும் பெயர் மூலம் தேடவும்...' : 'Search by ID and Name...'}
           value={searchTerm}
           onChange={e => { setSearchTerm(e.target.value); setTableSelectedIndex(-1); }}
-          style={S.searchInput}
+          style={{ ...S.searchInput, paddingRight: '40px' }}
           onFocus={e => e.target.style.borderColor = PB.primary}
           onBlur={e => e.target.style.borderColor = PB.border}
           onKeyDown={e => { if (e.key === 'ArrowDown' && filteredBuyers.length > 0) { e.preventDefault(); setTableSelectedIndex(0); } }}
         />
+        <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+          <VoiceSearchButton onSpeechResult={setSearchTerm} langSetting={lang} />
+        </div>
       </div>
 
       {/* ── Table ── */}

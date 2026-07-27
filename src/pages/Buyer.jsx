@@ -4,6 +4,8 @@ import { saveBuyer, subscribeToCollection } from '../utils/storage';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../utils/storage';
 import { LangContext } from '../components/Layout';
+import VoiceSearchButton from '../components/VoiceSearchButton';
+
 
 const S = {
     page: {
@@ -383,7 +385,7 @@ const Buyer = () => {
                         setSearchTerm(e.target.value);
                         setTableSelectedIndex(-1);
                     }}
-                    style={S.searchInput}
+                    style={{ ...S.searchInput, paddingRight: '40px' }}
                     onFocus={e => e.target.style.borderColor='#16a34a'}
                     onBlur={e => e.target.style.borderColor='#d1fae5'}
                     onKeyDown={e => {
@@ -393,6 +395,9 @@ const Buyer = () => {
                         }
                     }}
                 />
+                <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+                    <VoiceSearchButton onSpeechResult={setSearchTerm} langSetting={lang} />
+                </div>
             </div>
 
             {/* ── Table ── */}

@@ -9,6 +9,10 @@ import WhatsAppIcon from '../components/WhatsAppIcon';
 import { useTenant } from '../utils/TenantContext';
 import { getTemplateForTenant, TEMPLATE_TYPES } from '../utils/invoiceTemplates';
 import { jsPDF } from 'jspdf';
+import VoiceSearchButton from '../components/VoiceSearchButton';
+import LedgerTable from '../components/LedgerTable';
+import { generateUniversalLedger } from '../utils/ledgerHelper';
+
 
 const fmt = (n) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(n || 0);
@@ -180,6 +184,21 @@ const Reports = () => {
         });
         return res.sort((a, b) => b.date.localeCompare(a.date));
     }, [detailBuyer, sales, payments, appliedFrom, appliedTo]);
+
+    const universalLedgerData = useMemo(() => {
+        if (!detailBuyer) return null;
+        return generateUniversalLedger({
+            personId: detailBuyer.id,
+            personType: 'buyer',
+            fromDate: appliedFrom,
+            toDate: appliedTo,
+            personObj: buyers.find(b => b.id === detailBuyer.id) || detailBuyer,
+            sales,
+            payments,
+            products,
+            lang
+        });
+    }, [detailBuyer, buyers, sales, payments, products, appliedFrom, appliedTo, lang]);
 
     // ── Per-row WhatsApp receipt share ──
     // ── Detailed Ledger Print ──
@@ -948,10 +967,13 @@ const Reports = () => {
                     <Search size={14} style={{ position: 'absolute', left: '12px', color: '#9ca3af', pointerEvents: 'none' }} />
                     <input type="text" placeholder="Search by name or ID..."
                         value={search} onChange={e => setSearch(e.target.value)}
-                        style={{ width: '100%', padding: '10px 12px 10px 34px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '13px', color: '#374151', background: '#fff', outline: 'none', fontFamily: 'var(--font-sans)' }}
+                        style={{ width: '100%', padding: '10px 36px 10px 34px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '13px', color: '#374151', background: '#fff', outline: 'none', fontFamily: 'var(--font-sans)' }}
                         onFocus={e => e.target.style.borderColor = '#16a34a'}
                         onBlur={e => e.target.style.borderColor = '#e2e8f0'}
                     />
+                    <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+                        <VoiceSearchButton onSpeechResult={setSearch} langSetting={lang} />
+                    </div>
                 </div>
             </div>
 
@@ -1201,90 +1223,8 @@ const Reports = () => {
                                 </div>
                             </div>
                             {showFullLedger ? (
-                                <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                                        <thead>
-                                            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                                                <th style={{ padding: '10px', textAlign: 'left' }}>{t('date')}</th>
-                                                <th style={{ padding: '10px', textAlign: 'left' }}>{t('particulars')}</th>
-                                                <th style={{ padding: '10px', textAlign: 'right' }}>{t('weight')}</th>
-                                                <th style={{ padding: '10px', textAlign: 'right' }}>{t('rate')}</th>
-                                                <th style={{ padding: '10px', textAlign: 'right' }}>{t('total')}</th>
-                                                <th style={{ padding: '10px', textAlign: 'right' }}>{t('cashRec')}</th>
-                                                <th style={{ padding: '10px', textAlign: 'right' }}>{t('cashLess')}</th>
-                                                <th style={{ padding: '10px', textAlign: 'right', background: '#fffbeb' }}>{t('balance')}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {(() => {
-                                                // Pre-calculate ledger logic for system view
-                                                const d = detailBuyer;
-                                                const buyerObj = buyers.find(b => b.id === d.id) || d;
-                                                const futureSales = sales.filter(s => {
-                                                    if (s.buyerId !== d.id) return false;
-                                                    const dt = s.date || (s.timestamp?.toDate ? toDateStr(s.timestamp.toDate()) : null);
-                                                    return dt && dt >= appliedFrom;
-                                                });
-                                                const futurePayments = payments.filter(p => {
-                                                    if (p.entityId !== d.id || p.type !== 'buyer') return false;
-                                                    const dt = p.timestamp ? (typeof p.timestamp === 'string' ? p.timestamp.substring(0, 10) : toDateStr(p.timestamp.toDate ? p.timestamp.toDate() : new Date(p.timestamp))) : null;
-                                                    return dt && dt >= appliedFrom;
-                                                });
-                                                const futureSalesAmt = futureSales.reduce((s, x) => s + (Number(x.grandTotal) || 0), 0);
-                                                const futurePayAmt   = futurePayments.reduce((s, x) => s + (Number(x.amount) || 0) + (Number(x.cashLess) || 0), 0);
-                                                let runningBal = (buyerObj.balance || 0) - futureSalesAmt + futurePayAmt;
-
-                                                // Interleave sales items and payments
-                                                const periodSales = sales.filter(s => s.buyerId === d.id && (s.date || toDateStr(s.timestamp?.toDate ? s.timestamp.toDate() : new Date())) >= appliedFrom && (s.date || toDateStr(s.timestamp?.toDate ? s.timestamp.toDate() : new Date())) <= appliedTo);
-                                                const periodPayments = payments.filter(p => p.entityId === d.id && p.type === 'buyer' && (p.timestamp ? (typeof p.timestamp === 'string' ? p.timestamp.substring(0, 10) : toDateStr(p.timestamp.toDate ? p.timestamp.toDate() : new Date(p.timestamp))) : '') >= appliedFrom && (p.timestamp ? (typeof p.timestamp === 'string' ? p.timestamp.substring(0, 10) : toDateStr(p.timestamp.toDate ? p.timestamp.toDate() : new Date(p.timestamp))) : '') <= appliedTo);
-
-                                                const sysItems = [];
-                                                periodSales.forEach(s => {
-                                                    const date = s.date || (s.timestamp?.toDate ? toDateStr(s.timestamp.toDate()) : '');
-                                                    (s.items || []).forEach(item => {
-                                                        let descLocalized = item.flowerType;
-                                                        if (lang === 'ta') {
-                                                            const foundFlower = products.find(f => f.name?.trim().toLowerCase() === item.flowerType?.trim().toLowerCase());
-                                                            descLocalized = item.flowerTypeTa || foundFlower?.taName || item.flowerType;
-                                                        }
-                                                        sysItems.push({ date, desc: descLocalized, qty: item.quantity, price: item.price, total: item.total, credit: 0, less: 0 });
-                                                    });
-                                                });
-                                                periodPayments.forEach(p => {
-                                                    const date = p.timestamp ? (typeof p.timestamp === 'string' ? p.timestamp.substring(0, 10) : toDateStr(p.timestamp.toDate ? p.timestamp.toDate() : new Date(p.timestamp))) : '';
-                                                    if (p.amount > 0) sysItems.push({ date, desc: t('cashRec'), qty: 0, price: 0, total: 0, credit: p.amount, less: 0 });
-                                                    if (p.cashLess > 0) sysItems.push({ date, desc: t('cashLess'), qty: 0, price: 0, total: 0, credit: 0, less: p.cashLess });
-                                                });
-                                                sysItems.sort((a,b) => a.date.localeCompare(b.date));
-
-                                                return (
-                                                    <>
-                                                        <tr style={{ background: '#fef3c7', fontWeight: 700 }}>
-                                                            <td style={{ padding: '8px' }}>{displayDate(appliedFrom)}</td>
-                                                            <td style={{ padding: '8px' }}>{t('openingBalance')}</td>
-                                                            <td colSpan={5}></td>
-                                                            <td style={{ padding: '8px', textAlign: 'right' }}>{fmt(runningBal)}</td>
-                                                        </tr>
-                                                        {sysItems.map((it, idx) => {
-                                                            runningBal = runningBal + it.total - it.credit - it.less;
-                                                            return (
-                                                                <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                                                    <td style={{ padding: '8px' }}>{displayDate(it.date)}</td>
-                                                                    <td style={{ padding: '8px', fontWeight: 600 }}>{it.desc}</td>
-                                                                    <td style={{ padding: '8px', textAlign: 'right' }}>{it.qty > 0 ? parseFloat(it.qty).toFixed(2) : '—'}</td>
-                                                                    <td style={{ padding: '8px', textAlign: 'right' }}>{it.price > 0 ? it.price : '—'}</td>
-                                                                    <td style={{ padding: '8px', textAlign: 'right', fontWeight: 700, color: it.total > 0 ? '#dc2626' : 'inherit' }}>{it.total > 0 ? fmt(it.total) : '—'}</td>
-                                                                    <td style={{ padding: '8px', textAlign: 'right', color: '#16a34a', fontWeight: 700 }}>{it.credit > 0 ? fmt(it.credit) : '—'}</td>
-                                                                    <td style={{ padding: '8px', textAlign: 'right', color: '#dc2626', fontWeight: 700 }}>{it.less > 0 ? fmt(it.less) : '—'}</td>
-                                                                    <td style={{ padding: '8px', textAlign: 'right', fontWeight: 800, background: '#fffbeb' }}>{fmt(runningBal)}</td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </>
-                                                );
-                                            })()}
-                                        </tbody>
-                                    </table>
+                                <div style={{ overflowY: 'auto', maxHeight: '50vh', padding: '4px' }}>
+                                    <LedgerTable ledgerData={universalLedgerData} personType="buyer" lang={lang} />
                                 </div>
                             ) : detailTransactionsForList.length === 0 ? (
                                 <div style={{ padding: '36px 16px', textAlign: 'center', color: '#9ca3af', fontStyle: 'italic' }}>No transactions in this period.</div>

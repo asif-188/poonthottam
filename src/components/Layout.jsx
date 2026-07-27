@@ -11,7 +11,7 @@ const strings = {
   en: {
     back: 'Back',
     sales: 'Sales',
-    salesman: 'Salesman',
+    salesman: 'Staff',
     customer: 'Customer',
     cashReceive: 'Cash Receive',
     salesEntry: 'Sales Entry',
@@ -140,7 +140,7 @@ const strings = {
   ta: {
     back: 'பின்',
     sales: 'விற்பனை',
-    salesman: 'விற்பனையாளர்',
+    salesman: 'பணியாளர்',
     customer: 'வாடிக்கையாளர்',
     cashReceive: 'பண வரவு',
     salesEntry: 'விற்பனை பதிவு',
@@ -372,9 +372,10 @@ const Layout = () => {
     if (p.includes('/flowers'))      return `🌸 ${lang === 'ta' ? 'பூக்கள்' : 'Flowers Master'}`;
     if (p.includes('/daily-report')) return `📅 ${lang === 'ta' ? 'தினசரி அறிக்கை' : 'Daily Report'}`;
     if (p.includes('/daily-statement')) return `📖 ${lang === 'ta' ? 'தினசரி கணக்கு அறிக்கை' : 'Daily Statement'}`;
-    if (p.includes('/salesman-ledger')) return `📖 ${lang === 'ta' ? 'வரலாற்று/பேரேடு தரவு' : 'Salesman Ledger'}`;
-    if (p.includes('/salesman-master')) return `👥 ${lang === 'ta' ? 'விற்பனையாளர் பட்டியல்' : 'Salesman List'}`;
-    if (p.includes('/salesman-credit-expenses')) return `💸 ${lang === 'ta' ? 'கடன் / செலவுகள்' : 'Credit / Expenses'}`;
+    if (p.includes('/salesman-ledger')) return `📖 ${lang === 'ta' ? 'பணியாளர் வரலாற்று/பேரேடு தரவு' : 'Staff Ledger'}`;
+    if (p.includes('/salesman-master')) return `👥 ${lang === 'ta' ? 'பணியாளர் பட்டியல்' : 'Staff List'}`;
+    if (p.includes('/salesman-credit-expenses')) return `💸 ${lang === 'ta' ? 'பணியாளர் கடன் / செலவுகள்' : 'Staff Credit / Expenses'}`;
+    if (p.includes('/payments'))      return `💳 ${lang === 'ta' ? 'பணம் செலுத்துதல்' : 'Payments'}`;
     if (p.includes('/flower-wise-report')) return `🌸 ${lang === 'ta' ? 'பூக்கள் வாரியான அறிக்கை' : 'Flower Wise Report'}`;
     if (p.includes('/settings'))      return `⚙️ ${lang === 'ta' ? 'அமைப்புகள்' : 'Settings'}`;
     if (p.includes('/business-info'))  return `🏢 ${lang === 'ta' ? 'வணிக தகவல்' : 'Business Info'}`;
@@ -388,9 +389,11 @@ const Layout = () => {
 
   const menuItems = [
     { label: lang === 'ta' ? 'விற்பனை' : 'Sales', icon: '💰', path: '/app/sales-menu' },
-    { label: lang === 'ta' ? 'விற்பனையாளர்' : 'Vendor', icon: '🚚', path: '/app/vendor-menu' },
-    { label: lang === 'ta' ? 'விற்பனையாளர் பிரிவு' : 'Salesman', icon: '👨💼', path: '/app/salesman-menu' },
+    { label: lang === 'ta' ? 'கொள்முதல்' : 'Purchase', icon: '🚚', path: '/app/vendor-menu' },
+    { label: lang === 'ta' ? 'பணியாளர் பிரிவு' : 'Staff', icon: '👨💼', path: '/app/salesman-menu' },
+    { label: lang === 'ta' ? 'பணம் செலுத்துதல்' : 'Payments', icon: '💳', path: '/app/payments' },
     { label: lang === 'ta' ? 'பூ அறிக்கை' : 'Flower Report', icon: '🌸', path: '/app/flower-wise-report' },
+    { label: lang === 'ta' ? 'விரைவு பதிவு' : 'Quick Entry', icon: '⚡', path: '/app/quick-entry' },
     { label: lang === 'ta' ? 'அமைப்புகள்' : 'Settings', icon: '⚙️', path: '/app/business-info' }
   ];
 

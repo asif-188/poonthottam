@@ -4,6 +4,8 @@ import { LangContext } from '../components/Layout';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import { Search, Calendar, User, Printer, Download, FileText } from 'lucide-react';
+import LedgerTable from '../components/LedgerTable';
+import { generateUniversalLedger } from '../utils/ledgerHelper';
 
 const S = {
     page: {
@@ -99,7 +101,7 @@ const displayDate = (iso) => {
 };
 
 const SalesmanLedger = () => {
-    const { t } = useContext(LangContext);
+    const { t, lang } = useContext(LangContext);
     const [salesmen, setSalesmen] = useState([]);
     const [cashRecords, setCashRecords] = useState([]);
     const [purchaseRecords, setPurchaseRecords] = useState([]);
@@ -213,6 +215,42 @@ const SalesmanLedger = () => {
         return salesmen.find(s => s.id === selectedSalesmanId);
     }, [salesmen, selectedSalesmanId]);
 
+    const { activeFrom, activeTo } = useMemo(() => {
+        if (filterType === 'month') {
+            if (!selectedMonth) {
+                const now = new Date();
+                const start = `${now.getFullYear()}-01-01`;
+                const end = `${now.getFullYear()}-12-31`;
+                return { activeFrom: start, activeTo: end };
+            }
+            const year = parseInt(selectedMonth.substring(0, 4));
+            const month = parseInt(selectedMonth.substring(5, 7));
+            const start = `${selectedMonth}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const end = `${selectedMonth}-${String(lastDay).padStart(2, '0')}`;
+            return { activeFrom: start, activeTo: end };
+        }
+        return { activeFrom: fromDate, activeTo: toDate };
+    }, [filterType, selectedMonth, fromDate, toDate]);
+
+    const universalLedgerData = useMemo(() => {
+        if (!selectedSalesmanId) return null;
+        return generateUniversalLedger({
+            personId: selectedSalesmanId,
+            personType: 'salesman',
+            fromDate: activeFrom,
+            toDate: activeTo,
+            personObj: activeSalesman,
+            purchases: purchaseRecords,
+            expenses,
+            transfers,
+            payments,
+            cashRecords,
+            salesmen,
+            lang: lang || 'en'
+        });
+    }, [selectedSalesmanId, activeSalesman, activeFrom, activeTo, purchaseRecords, expenses, transfers, payments, cashRecords, salesmen, lang]);
+
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-IN', {
             style: 'currency',
@@ -248,8 +286,8 @@ const SalesmanLedger = () => {
             </head>
             <body onload="window.print(); window.close();">
                 <div class="header">
-                    <h2>SALESMAN LEDGER STATEMENT</h2>
-                    <p>Salesman: <strong>${activeSalesman?.name}</strong> | ID: #${activeSalesman?.displayId}</p>
+                    <h2>STAFF LEDGER STATEMENT</h2>
+                    <p>Staff: <strong>${activeSalesman?.name}</strong> | ID: #${activeSalesman?.displayId}</p>
                     <p>${rangeText}</p>
                 </div>
                 <table>
@@ -298,7 +336,7 @@ const SalesmanLedger = () => {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Ledger');
-        XLSX.writeFile(wb, `SalesmanLedger_${activeSalesman?.name.replace(/\s+/g, '_')}_${Date.now()}.xlsx`);
+        XLSX.writeFile(wb, `StaffLedger_${activeSalesman?.name.replace(/\s+/g, '_')}_${Date.now()}.xlsx`);
     };
 
     const handleExportPDF = () => {
@@ -308,11 +346,11 @@ const SalesmanLedger = () => {
             const doc = new jsPDF('p', 'mm', 'a4');
             doc.setFont('Helvetica', 'bold');
             doc.setFontSize(18);
-            doc.text('SALESMAN LEDGER STATEMENT', 14, 20);
+            doc.text('STAFF LEDGER STATEMENT', 14, 20);
             
             doc.setFont('Helvetica', 'normal');
             doc.setFontSize(11);
-            doc.text(`Salesman Name: ${activeSalesman?.name} (#${activeSalesman?.displayId})`, 14, 28);
+            doc.text(`Staff Name: ${activeSalesman?.name} (#${activeSalesman?.displayId})`, 14, 28);
             doc.text(`Location: ${activeSalesman?.location || 'N/A'} | Contact: ${activeSalesman?.contact || 'N/A'}`, 14, 34);
             
             const rangeText = filterType === 'month' 
@@ -380,7 +418,7 @@ const SalesmanLedger = () => {
                 <div style={S.titleRow}>
                     <User size={22} color="#d97706" />
                     <div style={S.titleCol}>
-                        <h2 style={S.title}>Salesman Ledger</h2>
+                        <h2 style={S.title}>Staff Ledger</h2>
                         <span style={S.subtitle}>View running balances and statements</span>
                     </div>
                 </div>
@@ -414,13 +452,13 @@ const SalesmanLedger = () => {
                 
                 {/* Salesman Select */}
                 <div style={S.filterGroup}>
-                    <label style={S.label}>Select Salesman</label>
+                    <label style={S.label}>Select Staff</label>
                     <select
                         style={{...S.input, minWidth: '200px'}}
                         value={selectedSalesmanId}
                         onChange={(e) => setSelectedSalesmanId(e.target.value)}
                     >
-                        <option value="">Choose Salesman...</option>
+                        <option value="">Choose Staff...</option>
                         {salesmen.map(s => (
                             <option key={s.id} value={s.id}>{s.name} (#{s.displayId || s.id.slice(-4)})</option>
                         ))}
@@ -493,63 +531,12 @@ const SalesmanLedger = () => {
 
             {/* Ledger Content */}
             {selectedSalesmanId ? (
-                <div style={{ overflowX: 'auto' }}>
-                    <table style={S.table}>
-                        <thead>
-                            <tr style={{ background: '#fff', borderBottom: '1.5px solid #f1f5f9' }}>
-                                <th style={S.th}>Date</th>
-                                <th style={{...S.th, textAlign: 'right'}}>Opening Cash</th>
-                                <th style={{...S.th, textAlign: 'right'}}>Purchase Amount</th>
-                                <th style={{...S.th, textAlign: 'right'}}>Balance Cash</th>
-                                <th style={{...S.th, textAlign: 'right'}}>Closing Balance</th>
-                                <th style={{...S.th, textAlign: 'right'}}>Carry Forward</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {ledgerData.length === 0 ? (
-                                <tr>
-                                    <td colSpan={6} style={S.emptyRow}>
-                                        No ledger entries found for the selected parameters.
-                                    </td>
-                                </tr>
-                            ) : (
-                                ledgerData.map((row) => (
-                                    <tr key={row.date} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                        <td style={{...S.td, fontWeight: 700, color: '#334155'}}>
-                                            {displayDate(row.date)}
-                                        </td>
-                                        <td style={{...S.td, textAlign: 'right'}}>
-                                            <div>{formatCurrency(row.openingCash)}</div>
-                                            {(row.issuedCash > 0 || row.transIn > 0) && (
-                                                <div style={{ fontSize: '10.5px', color: '#16a34a', fontWeight: 600 }}>
-                                                    {row.issuedCash > 0 && `Cash: +${row.issuedCash} `}
-                                                    {row.transIn > 0 && `Recv: +${row.transIn}`}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td style={{...S.td, textAlign: 'right', color: '#dc2626', fontWeight: 700}}>
-                                            <div>{formatCurrency(row.purchaseAmount)}</div>
-                                            {(row.purchases > 0 || row.expenses > 0 || row.transOut > 0 || row.vendorPayments > 0) && (
-                                                <div style={{ fontSize: '10.5px', color: '#ef4444', fontWeight: 600 }}>
-                                                    {row.purchases > 0 && `Pur: ${row.purchases} `}
-                                                    {row.expenses > 0 && `Exp: ${row.expenses} `}
-                                                    {row.transOut > 0 && `Sent: ${row.transOut} `}
-                                                    {row.vendorPayments > 0 && `VPay: ${row.vendorPayments}`}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td style={{...S.td, textAlign: 'right'}}>{formatCurrency(row.balanceCash)}</td>
-                                        <td style={{...S.td, textAlign: 'right'}}>{formatCurrency(row.closingBalance)}</td>
-                                        <td style={{...S.td, textAlign: 'right', fontStyle: 'italic', fontWeight: 900, color: '#b45309'}}>{formatCurrency(row.carryForwardBalance)}</td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                <div style={{ overflowX: 'hidden', padding: '4px' }}>
+                    <LedgerTable ledgerData={universalLedgerData} personType="salesman" lang={lang} />
                 </div>
             ) : (
                 <div style={S.emptyRow}>
-                    Select a salesman from the filters above to load their ledger statement.
+                    Select a staff member from the filters above to load their ledger statement.
                 </div>
             )}
         </div>

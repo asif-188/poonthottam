@@ -13,6 +13,9 @@ const S = {
         padding: '28px 32px',
         minHeight: '70vh',
         fontFamily: 'var(--font-sans)',
+        maxWidth: '100%',
+        margin: '0 auto',
+        boxSizing: 'border-box',
     },
     header: {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -448,7 +451,7 @@ const SalesmanReports = () => {
             const biz = { name: 'S.V.M', motto: 'SRI RAMA JAYAM', type: 'Sri Valli Flower Merchant', address: 'B-7, Flower Market, Tindivanam.', phone1: '', phone2: '' };
             const formattedFrom = fromDate.split('-').reverse().join('/');
             const formattedTo = toDate.split('-').reverse().join('/');
-            const title = lang === 'ta' ? 'விற்பனையாளர் அறிக்கைகள்' : 'Salesman Reports';
+            const title = lang === 'ta' ? 'பணியாளர் அறிக்கைகள்' : 'Staff Reports';
             const dateRangeText = `${formattedFrom} - ${formattedTo}`;
 
             const pagesHtml = salesmanCardsData.map(group => {
@@ -593,9 +596,9 @@ const SalesmanReports = () => {
     const handleExportExcel = () => {
         if (salesmanCardsData.length === 0) return alert('No data to export.');
 
-        const filename = `Salesman_Reports_${Date.now()}.xlsx`;
+        const filename = `Staff_Reports_${Date.now()}.xlsx`;
         const wsData = salesmanCardsData.map(group => ({
-            'Salesman Name': group.salesmanName,
+            'Staff Name': group.salesmanName,
             'Total Credit (Inflow) (₹)': group.totalCredit,
             'Total Debit (Outflow) (₹)': group.totalDebit,
             'Total Purchase (KG)': group.totalDebitKg,
@@ -604,18 +607,28 @@ const SalesmanReports = () => {
 
         const ws = XLSX.utils.json_to_sheet(wsData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Salesmen Summary');
+        XLSX.utils.book_append_sheet(wb, ws, 'Staff Summary');
         XLSX.writeFile(wb, filename);
     };
 
     return (
         <div style={S.page}>
+            <style>{`
+                div[style*="overflow-x"] table.salesman-report-table,
+                div[style*="overflow: auto"] table.salesman-report-table,
+                div[style*="overflow:auto"] table.salesman-report-table,
+                div:has(> table) table.salesman-report-table,
+                table.salesman-report-table {
+                    min-width: 0px !important;
+                    width: 100% !important;
+                }
+            `}</style>
             {/* Title & Exports */}
             <div style={S.header}>
                 <div style={S.titleRow}>
                     <BarChart2 size={22} color="#0d9488" />
                     <div style={S.titleCol}>
-                        <h2 style={S.title}>{lang === 'ta' ? 'விற்பனையாளர் அறிக்கைகள்' : 'Salesman Reports'}</h2>
+                        <h2 style={S.title}>{lang === 'ta' ? 'பணியாளர் அறிக்கைகள்' : 'Staff Reports'}</h2>
                         <span style={S.subtitle}>{lang === 'ta' ? 'வரவு மற்றும் பற்று விவரங்கள்' : 'Credit and Debit Details'}</span>
                     </div>
                 </div>
@@ -660,13 +673,13 @@ const SalesmanReports = () => {
                 </div>
 
                 <div style={S.filterGroup}>
-                    <label style={S.label}>{lang === 'ta' ? 'விற்பனையாளர் வடிகட்டி' : 'Filter Salesman'}</label>
+                    <label style={S.label}>{lang === 'ta' ? 'பணியாளர் வடிகட்டி' : 'Filter Staff'}</label>
                     <select
                         style={{...S.input, minWidth: '200px'}}
                         value={selectedSalesmanId}
                         onChange={(e) => setSelectedSalesmanId(e.target.value)}
                     >
-                        <option value="">{lang === 'ta' ? 'அனைத்து விற்பனையாளர்களும்...' : 'All Salesmen...'}</option>
+                        <option value="">{lang === 'ta' ? 'அனைத்து பணியாளர்களும்...' : 'All Staff...'}</option>
                         {salesmen.filter(s => s.status === 'Active').map(s => (
                             <option key={s.id} value={s.id}>
                                 {lang === 'ta' ? (s.nameTa || s.name) : s.name}
@@ -722,21 +735,17 @@ const SalesmanReports = () => {
 
                             {/* Strictly 2 Tables in Single Row */}
                             <div style={{ overflowX: 'auto', width: '100%' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', minWidth: '650px', marginTop: '16px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', minWidth: '550px', marginTop: '16px' }}>
                                     {/* Credits column */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '500px', minWidth: 0 }}>
                                         <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 800, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                            📤 {lang === 'ta' ? 'வரவு (Cr) / விற்பனை' : 'Credit (Cr) / Sales'}
+                                            📤 {lang === 'ta' ? 'வரவு (Cr)/விற்பனை' : 'Credit (Cr)/Sales'}
                                         </h4>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <table className="salesman-report-table" style={{ width: '100%', minWidth: 0, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                                             <thead>
-                                                <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0' }}>
-                                                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
-                                                        {lang === 'ta' ? 'விவரம்' : 'Particulars'}
-                                                    </th>
-                                                    <th style={{ padding: '8px 10px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', whiteSpace: 'nowrap', width: '110px' }}>
-                                                        {lang === 'ta' ? 'தொகை' : 'Amount'}
-                                                    </th>
+                                                <tr>
+                                                    <th style={{ ...TH_S, whiteSpace: 'normal', wordBreak: 'break-word', width: '75%' }}>{lang === 'ta' ? 'விவரம் (வாடிக்கையாளர்/ஆரம்ப இருப்பு)' : 'Particulars (Customer/Inflow)'}</th>
+                                                    <th style={{ ...TH_S, textAlign: 'right', width: '25%' }}>Amount</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -750,7 +759,7 @@ const SalesmanReports = () => {
                                                     group.creditList.map((item, idx) => (
                                                         <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                                             <td style={{ padding: '8px 10px', fontSize: '12px', color: '#334155', wordBreak: 'break-word' }}>{item.particulars}</td>
-                                                            <td style={{ padding: '8px 10px', fontSize: '12px', color: '#16a34a', fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap', width: '110px' }}>{fmt(item.total)}</td>
+                                                            <td style={{ padding: '8px 10px', fontSize: '12px', color: '#16a34a', fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap' }}>{fmt(item.total)}</td>
                                                         </tr>
                                                     ))
                                                 )}
@@ -759,19 +768,15 @@ const SalesmanReports = () => {
                                     </div>
 
                                     {/* Debits column */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '500px', minWidth: 0 }}>
                                         <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                            📥 {lang === 'ta' ? 'பற்று (Dr) / கொள்முதல்' : 'Debit (Dr) / Purchase'}
+                                            📥 {lang === 'ta' ? 'பற்று (Dr)/கொள்முதல்' : 'Debit (Dr)/Purchase'}
                                         </h4>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <table className="salesman-report-table" style={{ width: '100%', minWidth: 0, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                                             <thead>
-                                                <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0' }}>
-                                                    <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
-                                                        {lang === 'ta' ? 'விவரம்' : 'Particulars'}
-                                                    </th>
-                                                    <th style={{ padding: '8px 10px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', whiteSpace: 'nowrap', width: '110px' }}>
-                                                        {lang === 'ta' ? 'தொகை' : 'Amount'}
-                                                    </th>
+                                                <tr>
+                                                    <th style={{ ...TH_S, whiteSpace: 'normal', wordBreak: 'break-word', width: '75%' }}>{lang === 'ta' ? 'விவரம் (விவசாயி/விற்பனையாளர்)' : 'Particulars (Farmer/Vendor)'}</th>
+                                                    <th style={{ ...TH_S, textAlign: 'right', width: '25%' }}>Amount</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -785,7 +790,7 @@ const SalesmanReports = () => {
                                                     group.debitList.map((item, idx) => (
                                                         <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                                             <td style={{ padding: '8px 10px', fontSize: '12px', color: '#334155', wordBreak: 'break-word' }}>{item.particulars}</td>
-                                                            <td style={{ padding: '8px 10px', fontSize: '12px', color: '#ef4444', fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap', width: '110px' }}>{fmt(item.total)}</td>
+                                                            <td style={{ padding: '8px 10px', fontSize: '12px', color: '#ef4444', fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap' }}>{fmt(item.total)}</td>
                                                         </tr>
                                                     ))
                                                 )}
@@ -797,14 +802,14 @@ const SalesmanReports = () => {
 
                             {/* Aligned Subtotals Bar (Single Row Side-by-Side) */}
                             <div style={{ overflowX: 'auto', width: '100%', marginTop: '12px' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', minWidth: '650px', borderTop: '1.5px solid #f1f5f9', paddingTop: '12px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f0fdf4', padding: '8px 14px', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', minWidth: '550px', borderTop: '1.5px solid #f1f5f9', paddingTop: '12px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f0fdf4', padding: '8px 14px', borderRadius: '10px', border: '1px solid #bbf7d0', width: '100%', maxWidth: '500px', boxSizing: 'border-box' }}>
                                         <span style={{ fontSize: '12px', fontWeight: 800, color: '#15803d' }}>
                                             {lang === 'ta' ? `மொத்த வரவு (Cr):` : `Total Sales:`}
                                         </span>
                                         <span style={{ fontSize: '13px', fontWeight: 900, color: '#16a34a' }}>{fmt(group.totalCredit)}</span>
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff5f5', padding: '8px 14px', borderRadius: '10px', border: '1px solid #fecdd3' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff5f5', padding: '8px 14px', borderRadius: '10px', border: '1px solid #fecdd3', width: '100%', maxWidth: '500px', boxSizing: 'border-box' }}>
                                         <span style={{ fontSize: '12px', fontWeight: 800, color: '#b91c1c' }}>
                                             {lang === 'ta' ? `மொத்த பற்று (Dr):` : `Total Purchase:`}
                                         </span>

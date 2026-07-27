@@ -159,7 +159,7 @@ const SalesmanCreditExpenses = () => {
         if (e) e.preventDefault();
         if (!fromSalesmanId || !toSalesmanId || !transAmount || savingTransfer) return;
         if (fromSalesmanId === toSalesmanId) {
-            alert('❌ Sender and receiver cannot be the same salesman.');
+            alert('❌ Sender and receiver cannot be the same staff member.');
             return;
         }
         setSavingTransfer(true);
@@ -274,9 +274,9 @@ const SalesmanCreditExpenses = () => {
                         </h3>
                         <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <div>
-                                <label style={LABEL_S}>{lang === 'ta' ? 'விற்பனையாளர்' : 'Select Salesman'}</label>
+                                <label style={LABEL_S}>{lang === 'ta' ? 'பணியாளர்' : 'Select Staff'}</label>
                                 <select value={expSalesmanId} onChange={e => setExpSalesmanId(e.target.value)} required style={INPUT_S}>
-                                    <option value="">{lang === 'ta' ? 'தேர்வு செய்க...' : 'Choose Salesman...'}</option>
+                                    <option value="">{lang === 'ta' ? 'தேர்வு செய்க...' : 'Choose Staff...'}</option>
                                     {activeSalesmen.map(s => (
                                         <option key={s.id} value={s.id}>{s.name} (#{s.displayId})</option>
                                     ))}
@@ -354,7 +354,7 @@ const SalesmanCreditExpenses = () => {
                                     <tr>
                                         <th style={{ ...TH_S, width: '40px' }}>S.No</th>
                                         <th style={TH_S}>{lang === 'ta' ? 'தேதி' : 'Date'}</th>
-                                        <th style={TH_S}>{lang === 'ta' ? 'பெயர்' : 'Salesman'}</th>
+                                        <th style={TH_S}>{lang === 'ta' ? 'பணியாளர் பெயர்' : 'Staff'}</th>
                                         <th style={TH_S}>{lang === 'ta' ? 'வகை' : 'Category'}</th>
                                         <th style={{ ...TH_S, textAlign: 'right' }}>{lang === 'ta' ? 'தொகை' : 'Amount'}</th>
                                         <th style={{ ...TH_S, textAlign: 'center' }}>{lang === 'ta' ? 'செயல்' : 'Action'}</th>
@@ -421,9 +421,9 @@ const SalesmanCreditExpenses = () => {
                         </h3>
                         <form onSubmit={handleAddTransfer} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <div>
-                                <label style={LABEL_S}>{lang === 'ta' ? 'அனுப்புபவர் (நபர்)' : 'From Salesman (Giver)'}</label>
+                                <label style={LABEL_S}>{lang === 'ta' ? 'அனுப்பிய பணியாளர்' : 'From Staff (Giver)'}</label>
                                 <select value={fromSalesmanId} onChange={e => setFromSalesmanId(e.target.value)} required style={INPUT_S}>
-                                    <option value="">{lang === 'ta' ? 'தேர்வு செய்க...' : 'Choose Salesman...'}</option>
+                                    <option value="">{lang === 'ta' ? 'தேர்வு செய்க...' : 'Choose Staff...'}</option>
                                     {activeSalesmen.filter(s => s.id !== toSalesmanId).map(s => (
                                         <option key={s.id} value={s.id}>{s.name} (#{s.displayId})</option>
                                     ))}
@@ -431,9 +431,9 @@ const SalesmanCreditExpenses = () => {
                             </div>
 
                             <div>
-                                <label style={LABEL_S}>{lang === 'ta' ? 'பெறுபவர் (நபர்)' : 'To Salesman (Receiver)'}</label>
+                                <label style={LABEL_S}>{lang === 'ta' ? 'பெறும் பணியாளர்' : 'To Staff (Receiver)'}</label>
                                 <select value={toSalesmanId} onChange={e => setToSalesmanId(e.target.value)} required style={INPUT_S}>
-                                    <option value="">{lang === 'ta' ? 'தேர்வு செய்க...' : 'Choose Salesman...'}</option>
+                                    <option value="">{lang === 'ta' ? 'தேர்வு செய்க...' : 'Choose Staff...'}</option>
                                     {activeSalesmen.filter(s => s.id !== fromSalesmanId).map(s => (
                                         <option key={s.id} value={s.id}>{s.name} (#{s.displayId})</option>
                                     ))}

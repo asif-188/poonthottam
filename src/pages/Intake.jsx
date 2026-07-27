@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Calendar, User, Trash2, Users, ShoppingBag, Tag, Calculator, Package, Save, Printer, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect, useContext } from 'react';
+import { Plus, Calendar, User, Trash2, Users, ShoppingBag, Tag, Calculator, Package, Save, Printer, CheckCircle2, Mic } from 'lucide-react';
 import { saveIntake, subscribeToCollection, db } from '../utils/storage';
 import { doc, updateDoc, increment } from 'firebase/firestore';
+import { LangContext } from '../components/Layout';
+import VoiceEntryModal from '../components/VoiceEntryModal';
 
 const FLOWER_TYPES = [
     'Rose / ரோஜா',
@@ -32,6 +34,61 @@ const Intake = () => {
         outstanding: 0,
         amountPaid: ''
     });
+
+    const { lang } = useContext(LangContext);
+    const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+
+    const handleVoiceConfirm = async (payload) => {
+        const { customer, items: voiceItems } = payload;
+        const fId = customer.id;
+        
+        let total = 0;
+        const mappedItems = voiceItems.map(item => {
+            const qty = parseFloat(item.quantity);
+            const rate = parseFloat(item.price);
+            const itemTotal = qty * rate;
+            total += itemTotal;
+            
+            const flower = item.flowerType;
+            const flowerTa = item.flowerTypeTa || '';
+            const matchingType = FLOWER_TYPES.find(t => t.toLowerCase().includes(flower.toLowerCase())) || `${flower} / ${flowerTa}`;
+            
+            return {
+                flowerType: matchingType,
+                quantity: qty,
+                price: rate,
+                total: itemTotal,
+                unit: 'Kg'
+            };
+        });
+        
+        const farmer = farmers.find(f => f.id === fId);
+        const balanceAmount = total; // Default voice entries have 0 amount paid initially
+
+        const intakeBatch = {
+            farmerId: fId,
+            date: formData.date || new Date().toISOString().split('T')[0],
+            farmerName: farmer?.name || 'Unknown',
+            items: mappedItems,
+            summary: {
+                totalCost: total,
+                amountPaid: 0,
+                newBalance: balanceAmount
+            },
+            timestamp: new Date().toISOString()
+        };
+        
+        await saveIntake(intakeBatch);
+        
+        await updateDoc(doc(db, 'farmers', fId), {
+            balance: increment(balanceAmount)
+        });
+        
+        // Sync local states
+        setFormData(prev => ({ ...prev, farmerId: fId }));
+        setItems([]);
+        setSummary({ outstanding: balanceAmount, amountPaid: '' });
+    };
 
     useEffect(() => {
         const unsubscribeFarmers = subscribeToCollection('farmers', setFarmers);
@@ -289,18 +346,27 @@ const Intake = () => {
 
                     {/* Action Block */}
                     <div className="mt-auto relative z-10 space-y-6">
-                        <button
-                            onClick={handleSubmit}
-                            disabled={items.length === 0 || !formData.farmerId}
-                            className={`w-full py-8 rounded-[32px] flex items-center justify-center gap-4 font-black text-2xl uppercase tracking-[0.1em] transition-all shadow-2xl ${
-                                 items.length > 0 && formData.farmerId
-                                ? 'bg-white text-emerald-600 hover:scale-[1.05] active:scale-95'
-                                : 'bg-white/10 text-white/20 cursor-not-allowed'
-                            }`}
-                        >
-                            <Save size={32} />
-                            Log Purchase
-                        </button>
+                        <div className="flex gap-4 items-center">
+                            <button
+                                onClick={handleSubmit}
+                                disabled={items.length === 0 || !formData.farmerId}
+                                className={`flex-1 py-8 rounded-[32px] flex items-center justify-center gap-4 font-black text-2xl uppercase tracking-[0.1em] transition-all shadow-2xl ${
+                                     items.length > 0 && formData.farmerId
+                                    ? 'bg-white text-emerald-600 hover:scale-[1.05] active:scale-95'
+                                    : 'bg-white/10 text-white/20 cursor-not-allowed'
+                                }`}
+                            >
+                                <Save size={32} />
+                                Log Purchase
+                            </button>
+                            <button
+                                onClick={() => setIsVoiceModalOpen(true)}
+                                className="py-8 px-8 rounded-[32px] bg-emerald-700/50 border-2 border-white/10 flex items-center justify-center hover:bg-emerald-500 transition-all text-white active:scale-95"
+                                title="Voice Entry"
+                            >
+                                <Mic size={32} />
+                            </button>
+                        </div>
                         
                         <div className="flex gap-4">
                             <button className="flex-1 py-5 rounded-[24px] bg-emerald-700/50 border-2 border-white/10 flex items-center justify-center gap-3 font-black text-sm uppercase hover:bg-emerald-500 transition-colors">
@@ -311,10 +377,23 @@ const Intake = () => {
                             </button>
                         </div>
                     </div>
-
+ 
                     <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
                 </div>
             </div>
+
+            <VoiceEntryModal
+                isOpen={isVoiceModalOpen}
+                onClose={() => setIsVoiceModalOpen(false)}
+                onConfirm={handleVoiceConfirm}
+                entities={farmers}
+                flowers={FLOWER_TYPES.map(f => {
+                    const parts = f.split('/');
+                    return { name: parts[0].trim(), taName: (parts[1] || '').trim() };
+                })}
+                type="farmer"
+                langSetting={lang}
+            />
         </div>
     );
 };

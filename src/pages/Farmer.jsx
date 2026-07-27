@@ -1,18 +1,60 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { Plus, Edit2, Trash2, Search, X, User, FileText, Download, Upload } from 'lucide-react';
 import { saveFarmer, subscribeToCollection } from '../utils/storage';
+import { LangContext } from '../components/Layout';
+import LedgerTable from '../components/LedgerTable';
+import { generateUniversalLedger } from '../utils/ledgerHelper';
 
 const Farmer = () => {
+    const { lang } = useContext(LangContext);
     const [farmers, setFarmers] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [currentFarmer, setCurrentFarmer] = useState({ id: '', name: '', contact: '', location: '', balance: 0 });
 
+    // Ledger States
+    const [showLedger, setShowLedger] = useState(false);
+    const [viewingFarmer, setViewingFarmer] = useState(null);
+    const [intakes, setIntakes] = useState([]);
+    const [payments, setPayments] = useState([]);
+    const [products, setProducts] = useState([]);
+
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const [fromDate, setFromDate] = useState(() => {
+        const d = new Date();
+        d.setDate(1); // start of month
+        return d.toLocaleDateString('en-CA');
+    });
+    const [toDate, setToDate] = useState(todayStr);
+
     useEffect(() => {
-        const unsubscribe = subscribeToCollection('farmers', setFarmers);
-        return () => unsubscribe();
+        const u1 = subscribeToCollection('farmers', setFarmers);
+        const u2 = subscribeToCollection('intakes', setIntakes, true);
+        const u3 = subscribeToCollection('payments', setPayments, true);
+        const u4 = subscribeToCollection('products', setProducts, true);
+        return () => {
+            u1();
+            u2();
+            u3();
+            u4();
+        };
     }, []);
+
+    const universalLedgerData = useMemo(() => {
+        if (!viewingFarmer) return null;
+        return generateUniversalLedger({
+            personId: viewingFarmer.id,
+            personType: 'farmer',
+            fromDate,
+            toDate,
+            personObj: farmers.find(f => f.id === viewingFarmer.id) || viewingFarmer,
+            intakes,
+            payments,
+            products,
+            lang
+        });
+    }, [viewingFarmer, fromDate, toDate, intakes, payments, products, farmers, lang]);
 
     const handleOpenModal = (farmer = null) => {
         if (farmer) {
@@ -110,7 +152,10 @@ const Farmer = () => {
                                 <td className="px-6 py-5 text-gray-600 font-medium">{farmer.contact || '---'}</td>
                                 <td className="px-6 py-5 text-red-600 font-black">{formatCurrency(farmer.balance || 0)}</td>
                                 <td className="px-6 py-5">
-                                    <button className="flex items-center gap-2 px-4 py-1.5 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-bold border border-yellow-100 hover:bg-yellow-100 transition-colors">
+                                    <button 
+                                        onClick={() => { setViewingFarmer(farmer); setShowLedger(true); }}
+                                        className="flex items-center gap-2 px-4 py-1.5 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-bold border border-yellow-100 hover:bg-yellow-100 transition-colors"
+                                    >
                                         <FileText size={14} /> View
                                     </button>
                                 </td>
@@ -191,6 +236,64 @@ const Farmer = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {showLedger && viewingFarmer && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl animate-in zoom-in duration-200 flex flex-col max-h-[90vh] overflow-hidden">
+                        {/* Header */}
+                        <div className="p-6 border-b flex justify-between items-center bg-orange-50/50">
+                            <div>
+                                <h3 className="text-xl font-black text-orange-950 tracking-tight">
+                                    {lang === 'ta' ? `${viewingFarmer.name} - பேரேடு` : `${viewingFarmer.name} - Ledger Statement`}
+                                </h3>
+                                <p className="text-xs font-bold text-orange-600 mt-1 uppercase tracking-widest">
+                                    Farmer ID: #{viewingFarmer.id.slice(-4)}
+                                </p>
+                            </div>
+                            <button onClick={() => { setShowLedger(false); setViewingFarmer(null); }} className="text-orange-900 hover:text-orange-700 bg-orange-100 hover:bg-orange-200 p-2 rounded-full transition-all">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Date Filters */}
+                        <div className="p-6 border-b bg-gray-50/50 flex flex-wrap gap-4 items-end">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{lang === 'ta' ? 'தொடக்க தேதி' : 'From Date'}</label>
+                                <input 
+                                    type="date" 
+                                    value={fromDate} 
+                                    onChange={e => setFromDate(e.target.value)} 
+                                    className="px-4 py-2 border-2 border-orange-100 rounded-xl outline-none focus:border-orange-500 font-bold text-gray-700" 
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{lang === 'ta' ? 'முடிவு தேதி' : 'To Date'}</label>
+                                <input 
+                                    type="date" 
+                                    value={toDate} 
+                                    onChange={e => setToDate(e.target.value)} 
+                                    className="px-4 py-2 border-2 border-orange-100 rounded-xl outline-none focus:border-orange-500 font-bold text-gray-700" 
+                                />
+                            </div>
+                        </div>
+
+                        {/* Scrollable Ledger Body */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <LedgerTable ledgerData={universalLedgerData} personType="farmer" lang={lang} />
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 border-t flex justify-end bg-gray-50/50">
+                            <button 
+                                onClick={() => { setShowLedger(false); setViewingFarmer(null); }}
+                                className="px-8 py-3 bg-orange-950 text-white rounded-full font-black uppercase tracking-widest hover:bg-orange-900 shadow-lg transition-all"
+                            >
+                                {lang === 'ta' ? 'மூடு' : 'Close'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

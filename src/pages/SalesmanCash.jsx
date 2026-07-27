@@ -234,7 +234,7 @@ const SalesmanCash = () => {
                     <Plus size={22} color="#7c3aed" />
                     <div style={S.titleCol}>
                         <h2 style={S.title}>Cash Issue</h2>
-                        <span style={S.subtitle}>Issue morning cash balance to salesmen</span>
+                        <span style={S.subtitle}>Issue morning cash balance to staff</span>
                     </div>
                 </div>
                 
@@ -265,7 +265,7 @@ const SalesmanCash = () => {
                 <table style={S.table}>
                     <thead>
                         <tr style={{ background: '#fff', borderBottom: '1.5px solid #f1f5f9' }}>
-                            <th style={S.th}>Salesman</th>
+                            <th style={S.th}>Staff</th>
                             <th style={S.th}>Cash Issued</th>
                             <th style={S.th}>Remarks</th>
                             <th style={{...S.th, textAlign: 'center'}}>Action</th>
@@ -338,14 +338,14 @@ const SalesmanCash = () => {
                                     />
                                 </div>
                                 <div style={S.formGroup}>
-                                    <label style={S.label}>Salesman</label>
+                                    <label style={S.label}>Staff</label>
                                     <select
                                         style={S.input}
                                         value={formData.salesmanId}
                                         onChange={(e) => setFormData({ ...formData, salesmanId: e.target.value })}
                                         required
                                     >
-                                        <option value="">Select Salesman</option>
+                                        <option value="">Select Staff</option>
                                         {salesmen.map(s => (
                                             <option key={s.id} value={s.id}>{s.name} (Location: {s.location || '---'})</option>
                                         ))}

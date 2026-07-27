@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Plus, Edit2, Trash2, Search, X, Tag, Package, Download, Upload, Boxes } from 'lucide-react';
 import { subscribeToCollection, saveProduct, db } from '../utils/storage';
 import { deleteDoc, doc } from 'firebase/firestore';
+import { LangContext } from '../components/Layout';
+import VoiceSearchButton from '../components/VoiceSearchButton';
 
 const Products = () => {
+    const { lang } = useContext(LangContext);
     const [products, setProducts] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -77,10 +80,13 @@ const Products = () => {
                     <input 
                         type="text" 
                         placeholder="Search flower catalog..." 
-                        className="w-full pl-16 pr-8 py-5 border-3 border-orange-50 rounded-[30px] outline-none focus:border-orange-500 focus:bg-white transition-all font-black text-gray-700 text-lg shadow-sm"
+                        className="w-full pl-16 pr-14 py-5 border-3 border-orange-50 rounded-[30px] outline-none focus:border-orange-500 focus:bg-white transition-all font-black text-gray-700 text-lg shadow-sm"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
+                    <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center">
+                        <VoiceSearchButton onSpeechResult={setSearchTerm} langSetting={lang} />
+                    </div>
                 </div>
                 <div className="flex gap-2">
                     <span className="px-4 py-2 bg-orange-100 text-orange-600 rounded-full text-xs font-black uppercase tracking-widest">{filteredProducts.length} Items</span>

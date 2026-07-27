@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Trash2, Plus, History, IndianRupee, Save, X, ChevronLeft, Printer, FileText, Search, Download, MessageCircle, Pencil, Users, Upload, FileSpreadsheet, Download as DownloadIcon, Scan, Eye } from 'lucide-react';
+import { Trash2, Plus, History, IndianRupee, Save, X, ChevronLeft, Printer, FileText, Search, Download, MessageCircle, Pencil, Users, Upload, FileSpreadsheet, Download as DownloadIcon, Scan, Eye, Mic } from 'lucide-react';
 import { db, subscribeToCollection, saveOutsidePurchase, saveVendor, deleteVendor, getTenant } from '../utils/storage';
 import { doc, updateDoc, increment, serverTimestamp, deleteDoc, collection, addDoc, getDoc } from 'firebase/firestore';
 import { LangContext } from '../components/Layout';
@@ -9,6 +9,9 @@ import { generateLedgerCanvas, generatePaymentReceiptCanvas, generatePurchaseRec
 import WhatsAppIcon from '../components/WhatsAppIcon';
 import { useTenant } from '../utils/TenantContext';
 import Tesseract from 'tesseract.js';
+import VoiceEntryModal from '../components/VoiceEntryModal';
+import LedgerTable from '../components/LedgerTable';
+import { generateUniversalLedger } from '../utils/ledgerHelper';
 
 /* ── Shared Style Tokens (Matching Sales UI) ── */
 const INPUT_S = {
@@ -238,6 +241,49 @@ const OutsideShop = () => {
 
     // Purchase editing state
     const [editingPurchaseId, setEditingPurchaseId] = useState(null);
+    const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+
+    const handleVoiceConfirm = async (payload) => {
+        const { customer, items: voiceItems } = payload;
+        const vId = customer.id;
+        
+        let total = 0;
+        const mappedItems = voiceItems.map(item => {
+            const qty = parseFloat(item.quantity);
+            const rate = parseFloat(item.price);
+            const itemTotal = qty * rate;
+            total += itemTotal;
+            
+            return {
+                flowerType: item.flowerType,
+                flowerTypeTa: item.flowerTypeTa || '',
+                quantity: qty,
+                price: rate,
+                total: itemTotal
+            };
+        });
+        
+        const vendor = vendors.find(v => v.id === vId);
+        const purchaseData = {
+            vendorId: vId,
+            vendorName: vendor?.name || '',
+            date,
+            items: mappedItems,
+            grandTotal: total,
+            cashPaid: 0,
+            timestamp: serverTimestamp(),
+        };
+        await saveOutsidePurchase(purchaseData);
+        await updateDoc(doc(db, 'vendors', vId), { 
+            balance: increment(total),
+            lastPurchase: serverTimestamp()
+        });
+        
+        // Sync local states
+        setVendorId(vId);
+        setCurrentItem({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
+        setDraftItems([]);
+    };
 
     // Vendor Payment State
     const [paymentForm, setPaymentForm] = useState({ vendorId: '', salesmanId: '', amount: '', date: new Date().toLocaleDateString('en-CA'), note: '' });
@@ -1693,6 +1739,20 @@ const OutsideShop = () => {
                     >
                         {isSaving ? '...' : <><Save size={18}/> {editingPurchaseId ? t('update') : t('saveReceipt') || 'Save Receipt'}</>}
                     </button>
+                    <button
+                        onClick={() => setIsVoiceModalOpen(true)}
+                        style={{
+                            height: '42px', padding: '0 15px', borderRadius: '10px', border: '1.5px solid #10b981',
+                            background: '#fff', color: '#10b981', fontWeight: 700, fontSize: '14px',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#ecfdf5'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+                        title="Voice Entry"
+                    >
+                        <Mic size={18} /> {lang === 'ta' ? 'குரல் பதிவு' : 'Voice Entry'}
+                    </button>
                     {editingPurchaseId && (
                         <button 
                             onClick={() => {
@@ -2705,6 +2765,13 @@ const OutsideShop = () => {
                                                 <td style={{...TD_S, textAlign: 'center'}}>
                                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                                                         <button 
+                                                            onClick={() => { setViewingVendor(v); setViewingLedgerRow(null); setShowDetailModal(true); }}
+                                                            title="View Ledger Statement"
+                                                            style={{ width: '28px', height: '28px', borderRadius: '6px', border: '1px solid #bfdbfe', background: '#fff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                                        >
+                                                            <Eye size={14}/>
+                                                        </button>
+                                                        <button 
                                                             onClick={() => handleOpenSettlement(v)}
                                                             title="Month-End Settlement"
                                                             style={{ width: '28px', height: '28px', borderRadius: '6px', border: '1px solid #bfdbfe', background: '#fff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
@@ -2734,11 +2801,19 @@ const OutsideShop = () => {
     const renderDetailModal = () => {
         if (!viewingVendor) return null;
 
-        // Fallback to old period ledger if viewingLedgerRow is not set
+        // Fallback to running ledger if viewingLedgerRow is not set
         if (!viewingLedgerRow) {
-            const vPurchases = purchases.filter(p => p.vendorId === viewingVendor.id && p.date >= reportFilters.fromDate && p.date <= reportFilters.toDate).map(p => ({...p, type: 'PURCHASE'}));
-            const vPayments = payments.filter(p => p.entityId === viewingVendor.id && p.type === 'vendor' && p.date >= reportFilters.fromDate && p.date <= reportFilters.toDate).map(p => ({...p, type: 'PAYMENT'}));
-            const ledger = [...vPurchases, ...vPayments].sort((a,b) => new Date(b.date) - new Date(a.date) || (b.timestamp?.toMillis?.() || 0) - (a.timestamp?.toMillis?.() || 0));
+            const universalLedgerData = generateUniversalLedger({
+                personId: viewingVendor.id,
+                personType: 'vendor',
+                fromDate: reportFilters.fromDate,
+                toDate: reportFilters.toDate,
+                personObj: vendors.find(v => v.id === viewingVendor.id) || viewingVendor,
+                purchases,
+                payments,
+                products: flowers,
+                lang
+            });
 
             return (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
@@ -2777,65 +2852,7 @@ const OutsideShop = () => {
                             <button onClick={() => { setShowDetailModal(false); setViewingVendor(null); }} style={{ background: '#fff', border: '1.5px solid #fed7aa', padding: '8px', borderRadius: '12px', cursor: 'pointer', color: '#92400e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20}/></button>
                         </div>
                         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '2px solid #f1f5f9' }}>
-                                        <th style={TH_S}>{lang === 'ta' ? 'பரிவர்த்தனை தேதி' : 'Transaction Date'}</th>
-                                        <th style={TH_S}>{t('type') || 'Type'}</th>
-                                        <th style={TH_S}>{t('particulars') || 'Details'}</th>
-                                        <th style={{...TH_S, textAlign: 'right'}}>{t('amount')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {ledger.map((item, idx) => (
-                                        <tr key={idx} style={{ borderBottom: '1px solid #f8fafc', background: '#fef2f2' }}>
-                                            <td style={TD_S}>{item.date.split('-').reverse().join('-')}</td>
-                                            <td style={TD_S}>
-                                                <span style={{ fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '6px', background: '#fee2e2', color: '#b91c1c' }}>
-                                                    {item.type}
-                                                </span>
-                                            </td>
-                                            <td style={TD_S}>
-                                                {item.type === 'PURCHASE' ? (
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                        <div style={{ fontWeight: 600, color: '#dc2626' }}>{item.items.map(i => lang==='ta' ? (i.flowerTypeTa || i.flowerType) : i.flowerType).join(', ')}</div>
-                                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                            <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b' }}>
-                                                                Total: {fmt(item.grandTotal)}
-                                                            </span>
-                                                            <span style={{ fontSize: '11px', fontWeight: 700, color: '#475569' }}>
-                                                                Paid: {fmt(item.paidAmount || 0)}
-                                                            </span>
-                                                            <span style={{ 
-                                                                fontSize: '10px', 
-                                                                fontWeight: 800, 
-                                                                padding: '2px 6px', 
-                                                                borderRadius: '4px', 
-                                                                background: item.status === 'Paid' ? '#dcfce7' : (item.paidAmount > 0 ? '#ffedd5' : '#f1f5f9'), 
-                                                                color: item.status === 'Paid' ? '#15803d' : (item.paidAmount > 0 ? '#ea580c' : '#475569') 
-                                                            }}>
-                                                                {item.status === 'Paid' ? 'Paid' : (item.paidAmount > 0 ? 'Partially Paid' : 'Pending')}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div style={{ color: '#16a34a', fontWeight: 600 }}>
-                                                        {item.note || 'Cash Payment'}
-                                                        {item.paymentMode && (
-                                                            <span style={{ marginLeft: '6px', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontWeight: 800 }}>
-                                                                {item.paymentMode.toUpperCase()}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td style={{...TD_S, textAlign: 'right', fontWeight: 800, color: item.type === 'PAYMENT' ? '#16a34a' : '#dc2626'}}>
-                                                {item.type === 'PAYMENT' ? '-' : ''}{fmt(item.grandTotal || item.amount)}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            <LedgerTable ledgerData={universalLedgerData} personType="vendor" lang={lang} />
                         </div>
                     </div>
                 </div>
@@ -3317,6 +3334,16 @@ const OutsideShop = () => {
                     </div>
                 </div>
             )}
+
+            <VoiceEntryModal
+                isOpen={isVoiceModalOpen}
+                onClose={() => setIsVoiceModalOpen(false)}
+                onConfirm={handleVoiceConfirm}
+                entities={vendors}
+                flowers={flowers}
+                type="vendor"
+                langSetting={lang}
+            />
         </div>
     );
 };

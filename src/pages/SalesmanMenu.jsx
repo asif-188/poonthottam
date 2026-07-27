@@ -5,15 +5,15 @@ import { LangContext } from '../components/Layout';
 const MENU_ITEMS = [
     {
         emoji: '👥',
-        label: 'Salesman List',
-        labelTa: 'விற்பனையாளர் பட்டியல்',
+        label: 'Staff List',
+        labelTa: 'பணியாளர் பட்டியல்',
         color: { border: '#10b981', text: '#047857', bg: '#ecfdf5', glow: 'rgba(16,185,129,0.15)' },
         route: '/app/salesman-master',
     },
     {
         emoji: '➕',
-        label: 'Add Salesman',
-        labelTa: 'விற்பனையாளர் சேர்க்கவும்',
+        label: 'Add Staff',
+        labelTa: 'பணியாளர் சேர்க்கவும்',
         color: { border: '#4f46e5', text: '#3730a3', bg: '#eef2ff', glow: 'rgba(79,70,229,0.15)' },
         route: '/app/salesman-master',
         state: { openAddModal: true }

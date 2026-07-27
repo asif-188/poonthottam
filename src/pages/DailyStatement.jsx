@@ -244,13 +244,13 @@ const DailyStatement = () => {
             })
             .map(p => {
                 const salesman = salesmen.find(s => s.id === p.salesmanId);
-                const name = salesman ? (lang === 'ta' ? (salesman.nameTa || salesman.name) : salesman.name) : (p.salesmanName || 'Salesman');
+                const name = salesman ? (lang === 'ta' ? (salesman.nameTa || salesman.name) : salesman.name) : (p.salesmanName || 'Staff');
                 return {
                     id: p.id,
                     date: p.date || parseDateStr(p.timestamp),
-                    desc: lang === 'ta' ? `விற்பனையாளர் பணம் வழங்கியது: ${name}` : `Cash to Salesman: ${name}`,
+                    desc: lang === 'ta' ? `பணியாளர் பணம் வழங்கியது: ${name}` : `Cash to Staff: ${name}`,
                     ref: name,
-                    type: 'SALESMAN CASH',
+                    type: 'STAFF CASH',
                     debit: p.openingCash || 0,
                     credit: 0,
                     timestamp: p.timestamp
@@ -264,13 +264,13 @@ const DailyStatement = () => {
             })
             .map(p => {
                 const salesman = salesmen.find(s => s.id === p.salesmanId);
-                const name = salesman ? (lang === 'ta' ? (salesman.nameTa || salesman.name) : salesman.name) : (p.salesmanName || 'Salesman');
+                const name = salesman ? (lang === 'ta' ? (salesman.nameTa || salesman.name) : salesman.name) : (p.salesmanName || 'Staff');
                 return {
                     id: p.id,
                     date: p.date || parseDateStr(p.timestamp),
-                    desc: lang === 'ta' ? `விற்பனையாளர் கொள்முதல்: ${name}` : `Salesman Purchase: ${name}`,
+                    desc: lang === 'ta' ? `பணியாளர் கொள்முதல்: ${name}` : `Staff Purchase: ${name}`,
                     ref: name,
-                    type: 'SALESMAN PURCHASE',
+                    type: 'STAFF PURCHASE',
                     debit: p.grandTotal || 0,
                     credit: 0,
                     timestamp: p.timestamp
