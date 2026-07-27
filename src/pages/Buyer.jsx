@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Plus, Edit2, Trash2, Search, X, User, FileText, Upload } from 'lucide-react';
-import { saveBuyer, subscribeToCollection } from '../utils/storage';
-import { deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../utils/storage';
+import { saveBuyer, subscribeToCollection, deleteDoc, db } from '../utils/storage';
+import { doc } from 'firebase/firestore';
 import { LangContext } from '../components/Layout';
 import VoiceSearchButton from '../components/VoiceSearchButton';
 
@@ -516,79 +515,62 @@ const Buyer = () => {
 
             {/* ── Add/Edit Modal ── */}
             {isModalOpen && (
-                <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.35)',backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,padding:'16px'}}>
-                    <div style={{background:'#fff',borderRadius:'16px',width:'100%',maxWidth:'460px',maxHeight:'90vh',display:'flex',flexDirection:'column',boxShadow:'0 20px 60px rgba(0,0,0,0.15)',overflow:'hidden',fontFamily:'var(--font-sans)'}}>
-                        <div style={{padding:'22px 24px 18px',borderBottom:'1px solid #f1f5f9',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
-                            <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
-                                <div style={{background:'#f0fdf4',borderRadius:'10px',padding:'6px'}}>
-                                    <User size={20} color="#16a34a"/>
-                                </div>
-                                <span style={{fontSize:'16px',fontWeight:800,color:'#1e293b',fontFamily:'var(--font-display)'}}>
-                                    {currentBuyer.id ? 'Edit Customer' : t('addCustomer')}
-                                </span>
-                            </div>
-                            <button onClick={() => setIsModalOpen(false)} style={{background:'none',border:'none',cursor:'pointer',color:'#9ca3af',display:'flex'}}>
-                                <X size={20}/>
-                            </button>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '16px' }}>
+                    <div style={{ background: '#fff', borderRadius: '24px', width: '400px', padding: '24px', boxShadow: '0 20px 50px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto', fontFamily: 'var(--font-sans)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+                            <h3 style={{ margin: 0, fontWeight: 900, color: '#92400e' }}>
+                                {currentBuyer.id ? 'Edit Customer' : t('addCustomer')}
+                            </h3>
+                            <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X/></button>
                         </div>
-                        <form onSubmit={handleSave} style={{display:'flex',flexDirection:'column',flex:1,overflow:'hidden'}}>
-                            <div style={{padding:'20px 24px',display:'flex',flexDirection:'column',gap:'14px',overflowY:'auto',flex:1}}>
-                                {[
-                                    {label:t('id'), key:'displayId', type:'text', disabled:true},
-                                    {label:`${t('name')} (English) *`, key:'name', type:'text', required:true, autoFocus:true},
-                                    {label:`பெயர் (தமிழ்) *`, key:'nameTa', type:'text', required:true},
-                                    {label:`Place (English)`, key:'place', type:'text'},
-                                    {label:`ஊர் (தமிழ்)`, key:'placeTa', type:'text'},
-                                    {label:`WhatsApp Number / வாட்ஸ்அப் *`, key:'contact', type:'tel', required:true, maxLength: 10, pattern: '[0-9]{10}'},
-                                    {label:t('initialDues'), key:'balance', type:'number'},
-                                    {label:t('oldBalanceDate'), key:'balanceDate', type:'date'},
-                                ].map(f => (
-                                    <div key={f.key}>
-                                        <label style={{display:'block',marginBottom:'5px',fontSize:'12px',fontWeight:600,color:'#64748b'}}>{f.label}</label>
-                                        <input
-                                            type={f.type}
-                                            disabled={f.disabled}
-                                            required={f.required}
-                                            autoFocus={f.autoFocus}
-                                            maxLength={f.maxLength}
-                                            pattern={f.pattern}
-                                            value={currentBuyer[f.key] ?? ''}
-                                            onChange={e => {
-                                                let val = e.target.value;
-                                                if (f.key === 'contact') {
-                                                    val = val.replace(/\D/g, '').slice(0, 10);
-                                                    setCurrentBuyer({...currentBuyer, [f.key]: val});
-                                                } else if (['name', 'nameTa', 'place', 'placeTa'].includes(f.key)) {
-                                                    // Mark as touched so auto-translate doesn't overwrite manual edits later
-                                                    setTouched(prev => ({ ...prev, [f.key]: true }));
-                                                    handleAutoTranslate(val, f.key);
-                                                } else {
-                                                    setCurrentBuyer({...currentBuyer, [f.key]: val});
-                                                }
-                                            }}
-                                            min={f.type==='number' ? '0' : undefined}
-                                            style={{
-                                                width:'100%',padding:'10px 12px',borderRadius:'10px',
-                                                border:'1.5px solid #e2e8f0',background:f.disabled?'#f8fafc':'#fff',
-                                                fontSize:'14px',fontWeight:600,color:'#1e293b',
-                                                outline:'none',fontFamily:'var(--font-sans)',
-                                            }}
-                                            onFocus={e => !f.disabled && (e.target.style.borderColor='#16a34a')}
-                                            onBlur={e => e.target.style.borderColor='#e2e8f0'}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                            <div style={{padding:'16px 24px',borderTop:'1px solid #f1f5f9',background:'#fafafa',display:'flex',justifyContent:'flex-end',gap:'10px',flexShrink:0}}>
-                                <button type="button" onClick={() => setIsModalOpen(false)}
-                                    style={{padding:'9px 20px',borderRadius:'9px',border:'1.5px solid #e2e8f0',background:'#fff',color:'#64748b',fontWeight:600,fontSize:'13px',cursor:'pointer',fontFamily:'var(--font-sans)'}}>
-                                    {t('cancel')}
-                                </button>
-                                <button type="submit" disabled={isSaving}
-                                    style={{padding:'9px 22px',borderRadius:'9px',border:'1.5px solid #16a34a',background:'#fff',color:'#16a34a',fontWeight:700,fontSize:'13px',cursor:isSaving?'not-allowed':'pointer',opacity:isSaving?0.6:1,fontFamily:'var(--font-sans)'}}>
-                                    {isSaving ? 'Saving...' : (currentBuyer.id ? t('update') : t('register'))}
-                                </button>
-                            </div>
+                        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {[
+                                {label: t('id'), key: 'displayId', type: 'text', disabled: true},
+                                {label: `${t('name')} (English) *`, key: 'name', type: 'text', required: true, autoFocus: true},
+                                {label: `பெயர் (தமிழ்) *`, key: 'nameTa', type: 'text', required: true},
+                                {label: `Place (English)`, key: 'place', type: 'text'},
+                                {label: `ஊர் (தமிழ்)`, key: 'placeTa', type: 'text'},
+                                {label: `WhatsApp Number / வாட்ஸ்அப் *`, key: 'contact', type: 'tel', required: true, maxLength: 10, pattern: '[0-9]{10}'},
+                                {label: t('initialDues'), key: 'balance', type: 'number'},
+                                {label: t('oldBalanceDate'), key: 'balanceDate', type: 'date'},
+                            ].map(f => (
+                                <div key={f.key}>
+                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</label>
+                                    <input
+                                        type={f.type}
+                                        disabled={f.disabled}
+                                        required={f.required}
+                                        autoFocus={f.autoFocus}
+                                        maxLength={f.maxLength}
+                                        pattern={f.pattern}
+                                        value={currentBuyer[f.key] ?? ''}
+                                        onChange={e => {
+                                            let val = e.target.value;
+                                            if (f.key === 'contact') {
+                                                val = val.replace(/\D/g, '').slice(0, 10);
+                                                setCurrentBuyer({...currentBuyer, [f.key]: val});
+                                            } else if (['name', 'nameTa', 'place', 'placeTa'].includes(f.key)) {
+                                                setTouched(prev => ({ ...prev, [f.key]: true }));
+                                                handleAutoTranslate(val, f.key);
+                                            } else {
+                                                setCurrentBuyer({...currentBuyer, [f.key]: val});
+                                            }
+                                        }}
+                                        min={f.type==='number' ? '0' : undefined}
+                                        style={{
+                                            width: '100%', padding: '10px 12px', borderRadius: '10px',
+                                            border: '1.5px solid #e2e8f0', background: f.disabled ? '#f8fafc' : '#fff',
+                                            fontSize: '14px', fontWeight: 600, color: '#1e293b',
+                                            outline: 'none', fontFamily: 'var(--font-sans)',
+                                        }}
+                                        onFocus={e => !f.disabled && (e.target.style.borderColor = '#d97706')}
+                                        onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                                    />
+                                </div>
+                            ))}
+                            <button type="submit" disabled={isSaving} style={{ padding: '12px', background: '#d97706', color: '#fff', borderRadius: '12px', border: 'none', fontWeight: 800, marginTop: '10px', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.6 : 1 }}>
+                                {isSaving ? 'Saving...' : (currentBuyer.id ? t('update') : t('register'))}
+                            </button>
                         </form>
                     </div>
                 </div>

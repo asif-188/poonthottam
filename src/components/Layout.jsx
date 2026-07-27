@@ -343,21 +343,30 @@ const Layout = () => {
   // ── Smart Back Navigation ──
   const getParentRoute = () => {
     const p = location.pathname;
-    if (p.includes('/salesman-ledger') || p.includes('/salesman-master') || p.includes('/salesman-credit-expenses')) return '/app/salesman-menu';
-    if (p.includes('/sales-entry') || 
-        p.includes('/buyer') || 
-        p.includes('/reports') ||
-        p.includes('/daily-flower-prices')) {
+    if (p.includes('/salesman-ledger') ||
+      p.includes('/salesman-master') ||
+      p.includes('/salesman-credit-expenses') ||
+      p.includes('/salesman-reports')) {
+      return '/app/salesman-menu';
+    }
+    if (p.includes('/sales-entry') ||
+      p.includes('/buyer') ||
+      p.includes('/reports') ||
+      p.includes('/daily-flower-prices')) {
       return '/app/sales-menu';
     }
     if (p.includes('/flower-wise-report')) {
       return '/app/dashboard';
     }
-    if (p.includes('/outside-shop') || 
-        p.includes('/flowers') || 
-        p.includes('/daily-report') ||
-        p.includes('/daily-statement')) {
+    if (p.includes('/outside-shop') ||
+      p.includes('/flowers') ||
+      p.includes('/daily-report') ||
+      p.includes('/daily-statement')) {
       return '/app/vendor-menu';
+    }
+    if (p.includes('/history') ||
+      p.includes('/recycle-bin')) {
+      return '/app/others-menu';
     }
     return '/app/dashboard';
   };
@@ -365,20 +374,23 @@ const Layout = () => {
   // ── Page title ──
   const getTitle = () => {
     const p = location.pathname;
-    if (p.includes('/sales-entry'))  return `🧾 ${lang === 'ta' ? 'விற்பனை பக்கம்' : 'Sales Page'}`;
+    if (p.includes('/sales-entry')) return `🧾 ${lang === 'ta' ? 'விற்பனை பக்கம்' : 'Sales Page'}`;
     if (p.includes('/daily-flower-prices')) return `🌸 ${lang === 'ta' ? 'தினசரி பூக்கள் விலை பட்டியல்' : 'Daily Flower Price List'}`;
-    if (p.includes('/buyer'))        return `👥 ${lang === 'ta' ? 'வாடிக்கையாளர் பட்டியல்' : 'Customer Registry'}`;
+    if (p.includes('/buyer')) return `👥 ${lang === 'ta' ? 'வாடிக்கையாளர் பட்டியல்' : 'Customer Registry'}`;
     if (p.includes('/outside-shop')) return `🏪 ${lang === 'ta' ? 'விற்பனையாளர்' : 'Vendor'}`;
-    if (p.includes('/flowers'))      return `🌸 ${lang === 'ta' ? 'பூக்கள்' : 'Flowers Master'}`;
+    if (p.includes('/flowers')) return `🌸 ${lang === 'ta' ? 'பூக்கள்' : 'Flowers Master'}`;
     if (p.includes('/daily-report')) return `📅 ${lang === 'ta' ? 'தினசரி அறிக்கை' : 'Daily Report'}`;
     if (p.includes('/daily-statement')) return `📖 ${lang === 'ta' ? 'தினசரி கணக்கு அறிக்கை' : 'Daily Statement'}`;
     if (p.includes('/salesman-ledger')) return `📖 ${lang === 'ta' ? 'பணியாளர் வரலாற்று/பேரேடு தரவு' : 'Staff Ledger'}`;
     if (p.includes('/salesman-master')) return `👥 ${lang === 'ta' ? 'பணியாளர் பட்டியல்' : 'Staff List'}`;
     if (p.includes('/salesman-credit-expenses')) return `💸 ${lang === 'ta' ? 'பணியாளர் கடன் / செலவுகள்' : 'Staff Credit / Expenses'}`;
-    if (p.includes('/payments'))      return `💳 ${lang === 'ta' ? 'பணம் செலுத்துதல்' : 'Payments'}`;
+    if (p.includes('/payments')) return `💳 ${lang === 'ta' ? 'பணம் செலுத்துதல்' : 'Payments'}`;
     if (p.includes('/flower-wise-report')) return `🌸 ${lang === 'ta' ? 'பூக்கள் வாரியான அறிக்கை' : 'Flower Wise Report'}`;
-    if (p.includes('/settings'))      return `⚙️ ${lang === 'ta' ? 'அமைப்புகள்' : 'Settings'}`;
-    if (p.includes('/business-info'))  return `🏢 ${lang === 'ta' ? 'வணிக தகவல்' : 'Business Info'}`;
+    if (p.includes('/settings')) return `⚙️ ${lang === 'ta' ? 'அமைப்புகள்' : 'Settings'}`;
+    if (p.includes('/business-info')) return `🏢 ${lang === 'ta' ? 'வணிக தகவல்' : 'Business Info'}`;
+    if (p.includes('/others-menu')) return `📁 ${lang === 'ta' ? 'மற்றவை' : 'Others'}`;
+    if (p.includes('/history')) return `📜 ${lang === 'ta' ? 'வரலாறு' : 'History Log'}`;
+    if (p.includes('/recycle-bin')) return `🗑️ ${lang === 'ta' ? 'குப்பைத் தொட்டி' : 'Recycle Bin'}`;
     return '';
   };
 
@@ -394,6 +406,7 @@ const Layout = () => {
     { label: lang === 'ta' ? 'பணம் செலுத்துதல்' : 'Payments', icon: '💳', path: '/app/payments' },
     { label: lang === 'ta' ? 'பூ அறிக்கை' : 'Flower Report', icon: '🌸', path: '/app/flower-wise-report' },
     { label: lang === 'ta' ? 'விரைவு பதிவு' : 'Quick Entry', icon: '⚡', path: '/app/quick-entry' },
+    { label: lang === 'ta' ? 'மற்றவை' : 'Others', icon: '📁', path: '/app/others-menu' },
     { label: lang === 'ta' ? 'அமைப்புகள்' : 'Settings', icon: '⚙️', path: '/app/business-info' }
   ];
 
@@ -451,7 +464,7 @@ const Layout = () => {
                   setShowDevModal(true);
                 }}>🌸</span>
               )}
-              <button 
+              <button
                 onClick={toggleSidebar}
                 style={{
                   background: '#f1f5f9',
@@ -579,8 +592,8 @@ const Layout = () => {
         {/* Mobile Navigation Drawer Overlay & Content */}
         {isMobile && isDrawerOpen && (
           <>
-            <div 
-              className="mobile-drawer-overlay" 
+            <div
+              className="mobile-drawer-overlay"
               onClick={() => setIsDrawerOpen(false)}
             />
             <div className="mobile-drawer">
@@ -600,7 +613,7 @@ const Layout = () => {
                     {tenantData?.name || 'SVM Flowers'}
                   </span>
                 </div>
-                <button 
+                <button
                   onClick={() => setIsDrawerOpen(false)}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#64748b' }}
                 >
@@ -651,19 +664,19 @@ const Layout = () => {
               <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', background: '#f8fafc' }}>
                 {/* Language selection */}
                 <div style={{
-                  display:'flex', alignItems:'center', gap:'10px',
-                  padding:'10px 14px', background:'#ffffff',
-                  border:'1.5px solid #e2e8f0', borderRadius:'12px'
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  padding: '10px 14px', background: '#ffffff',
+                  border: '1.5px solid #e2e8f0', borderRadius: '12px'
                 }}>
-                  <Globe size={16} style={{color:'#10b981', flexShrink:0}} />
+                  <Globe size={16} style={{ color: '#10b981', flexShrink: 0 }} />
                   <select
                     value={lang}
                     onChange={handleLangChange}
                     style={{
-                      background:'transparent', outline:'none', border:'none',
-                      cursor:'pointer', color:'#475569', fontWeight:700,
-                      fontFamily:'var(--font-sans)', fontSize: '13px',
-                      padding:0, width:'100%'
+                      background: 'transparent', outline: 'none', border: 'none',
+                      cursor: 'pointer', color: '#475569', fontWeight: 700,
+                      fontFamily: 'var(--font-sans)', fontSize: '13px',
+                      padding: 0, width: '100%'
                     }}
                   >
                     <option value="ta">தமிழ் (Tamil)</option>
@@ -709,12 +722,12 @@ const Layout = () => {
                     handleLogout();
                   }}
                   style={{
-                    display:'flex', alignItems:'center', justifyContent: 'center', gap:'8px',
-                    padding:'12px', background:'#fff1f2',
-                    border:'1.5px solid #fecdd3', borderRadius:'12px',
-                    color:'#f43f5e', fontFamily:'var(--font-sans)',
-                    fontWeight:800, fontSize:'13px', cursor:'pointer',
-                    transition:'all 0.2s', width: '100%'
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                    padding: '12px', background: '#fff1f2',
+                    border: '1.5px solid #fecdd3', borderRadius: '12px',
+                    color: '#f43f5e', fontFamily: 'var(--font-sans)',
+                    fontWeight: 800, fontSize: '13px', cursor: 'pointer',
+                    transition: 'all 0.2s', width: '100%'
                   }}
                 >
                   <LogOut size={14} />
@@ -727,7 +740,7 @@ const Layout = () => {
 
         {/* Content Area Wrapper */}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, minHeight: '100vh' }}>
-          
+
           {/* ── Top Bar ── */}
           <header style={{
             height: '68px', flexShrink: 0,
@@ -760,9 +773,9 @@ const Layout = () => {
                 <button
                   onClick={() => navigate(getParentRoute())}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95"
-                  style={{background:'#f8fafc', border:'1.5px solid #e2e8f0', color:'#64748b', fontFamily:'var(--font-sans)'}}
-                  onMouseEnter={e => Object.assign(e.currentTarget.style, {background:'#ecfdf5', borderColor:'#6ee7b7', color:'#047857'})}
-                  onMouseLeave={e => Object.assign(e.currentTarget.style, {background:'#f8fafc', borderColor:'#e2e8f0', color:'#64748b'})}
+                  style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', color: '#64748b', fontFamily: 'var(--font-sans)' }}
+                  onMouseEnter={e => Object.assign(e.currentTarget.style, { background: '#ecfdf5', borderColor: '#6ee7b7', color: '#047857' })}
+                  onMouseLeave={e => Object.assign(e.currentTarget.style, { background: '#f8fafc', borderColor: '#e2e8f0', color: '#64748b' })}
                 >
                   <ChevronLeft size={13} /> {t('back')}
                 </button>
@@ -783,15 +796,15 @@ const Layout = () => {
             <div>
               {getTitle() && (
                 <div style={{
-                  display:'flex', alignItems:'center', gap:'8px',
+                  display: 'flex', alignItems: 'center', gap: '8px',
                   padding: isMobile ? '4px 12px' : '6px 18px',
-                  background:'linear-gradient(135deg,#ecfdf5,#f0fdf4)',
-                  borderRadius:'100px', border:'1px solid #a7f3d0',
-                  boxShadow:'0 1px 3px rgba(16,185,129,0.1)',
+                  background: 'linear-gradient(135deg,#ecfdf5,#f0fdf4)',
+                  borderRadius: '100px', border: '1px solid #a7f3d0',
+                  boxShadow: '0 1px 3px rgba(16,185,129,0.1)',
                   maxWidth: isMobile ? '160px' : 'none',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                 }}>
-                  <span style={{fontFamily:'var(--font-display)', fontWeight:750, fontSize: isMobile ? '11px' : '13.5px', color:'#065f46', letterSpacing:'-0.01em', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap'}}>
+                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 750, fontSize: isMobile ? '11px' : '13.5px', color: '#065f46', letterSpacing: '-0.01em', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     {getTitle()}
                   </span>
                 </div>
@@ -800,22 +813,22 @@ const Layout = () => {
 
             {/* Right: Actions (Desktop Only, hidden on Mobile) */}
             {!isMobile ? (
-              <div style={{width:'auto', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'flex-end', gap:'8px'}}>
+              <div style={{ width: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
                 {/* Language picker */}
                 <div style={{
-                  display:'flex', alignItems:'center', gap:'5px',
-                  padding:'7px 11px', background:'#f8fafc',
-                  border:'1.5px solid #e2e8f0', borderRadius:'10px'
+                  display: 'flex', alignItems: 'center', gap: '5px',
+                  padding: '7px 11px', background: '#f8fafc',
+                  border: '1.5px solid #e2e8f0', borderRadius: '10px'
                 }}>
-                  <Globe size={13} style={{color:'#10b981', flexShrink:0}} />
+                  <Globe size={13} style={{ color: '#10b981', flexShrink: 0 }} />
                   <select
                     value={lang}
                     onChange={handleLangChange}
                     style={{
-                      background:'transparent', outline:'none', border:'none',
-                      cursor:'pointer', color:'#475569', fontWeight:600,
-                      fontFamily:'var(--font-sans)', fontSize:'12px',
-                      padding:0, width:'auto'
+                      background: 'transparent', outline: 'none', border: 'none',
+                      cursor: 'pointer', color: '#475569', fontWeight: 600,
+                      fontFamily: 'var(--font-sans)', fontSize: '12px',
+                      padding: 0, width: 'auto'
                     }}
                   >
                     <option value="ta">தமிழ்</option>
@@ -828,13 +841,13 @@ const Layout = () => {
                   onClick={() => navigate('/app/business-info')}
                   title={lang === 'ta' ? 'அமைப்புகள்' : 'Settings'}
                   style={{
-                    display:'flex', alignItems:'center', justifyContent: 'center',
-                    width: '34px', height: '34px', background:'#f8fafc',
-                    border:'1.5px solid #e2e8f0', borderRadius:'10px',
-                    color:'#475569', cursor:'pointer', transition:'all 0.2s'
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: '34px', height: '34px', background: '#f8fafc',
+                    border: '1.5px solid #e2e8f0', borderRadius: '10px',
+                    color: '#475569', cursor: 'pointer', transition: 'all 0.2s'
                   }}
-                  onMouseEnter={e => Object.assign(e.currentTarget.style, {background:'#f1f5f9', borderColor:'#cbd5e1'})}
-                  onMouseLeave={e => Object.assign(e.currentTarget.style, {background:'#f8fafc', borderColor:'#e2e8f0'})}
+                  onMouseEnter={e => Object.assign(e.currentTarget.style, { background: '#f1f5f9', borderColor: '#cbd5e1' })}
+                  onMouseLeave={e => Object.assign(e.currentTarget.style, { background: '#f8fafc', borderColor: '#e2e8f0' })}
                 >
                   <span style={{ fontSize: '15px' }}>⚙️</span>
                 </button>
@@ -844,16 +857,16 @@ const Layout = () => {
                   onClick={handleLogout}
                   title="Sign Out"
                   style={{
-                    display:'flex', alignItems:'center', gap:'5px',
-                    padding:'7px 13px', background:'#fff1f2',
-                    border:'1.5px solid #fecdd3', borderRadius:'10px',
-                    color:'#f43f5e', fontFamily:'var(--font-sans)',
-                    fontWeight:700, fontSize:'12px', cursor:'pointer',
-                    letterSpacing:'0.04em', textTransform:'uppercase',
-                    transition:'all 0.2s'
+                    display: 'flex', alignItems: 'center', gap: '5px',
+                    padding: '7px 13px', background: '#fff1f2',
+                    border: '1.5px solid #fecdd3', borderRadius: '10px',
+                    color: '#f43f5e', fontFamily: 'var(--font-sans)',
+                    fontWeight: 700, fontSize: '12px', cursor: 'pointer',
+                    letterSpacing: '0.04em', textTransform: 'uppercase',
+                    transition: 'all 0.2s'
                   }}
-                  onMouseEnter={e => Object.assign(e.currentTarget.style, {background:'#f43f5e', color:'white', borderColor:'#f43f5e', transform:'translateY(-1px)', boxShadow:'0 4px 12px rgba(244,63,94,0.3)'})}
-                  onMouseLeave={e => Object.assign(e.currentTarget.style, {background:'#fff1f2', color:'#f43f5e', borderColor:'#fecdd3', transform:'none', boxShadow:'none'})}
+                  onMouseEnter={e => Object.assign(e.currentTarget.style, { background: '#f43f5e', color: 'white', borderColor: '#f43f5e', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(244,63,94,0.3)' })}
+                  onMouseLeave={e => Object.assign(e.currentTarget.style, { background: '#fff1f2', color: '#f43f5e', borderColor: '#fecdd3', transform: 'none', boxShadow: 'none' })}
                 >
                   <LogOut size={13} />
                   Logout
@@ -864,8 +877,8 @@ const Layout = () => {
             )}
           </header>
 
-          <main style={{flex:1, padding: isMobile ? '12px' : '28px', position:'relative', zIndex:10, overflowX:'hidden'}}>
-            <div style={{maxWidth:'1700px', margin:'0 auto', width:'100%'}}>
+          <main style={{ flex: 1, padding: isMobile ? '12px' : '28px', position: 'relative', zIndex: 10, overflowX: 'hidden' }}>
+            <div style={{ maxWidth: '1700px', margin: '0 auto', width: '100%' }}>
               <Outlet />
             </div>
           </main>
@@ -886,10 +899,10 @@ const Layout = () => {
           }}>
             {/* Close */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-              <button 
+              <button
                 onClick={() => {
                   setShowDevModal(false);
-                }} 
+                }}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '18px', fontWeight: 'bold' }}
               >
                 ✕
@@ -1019,7 +1032,7 @@ const Layout = () => {
             text = '#075985';
             icon = 'ℹ️';
           }
-          
+
           return (
             <div
               key={t.id}

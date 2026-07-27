@@ -2,22 +2,217 @@
 import { 
   collection, 
   getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
+  addDoc as firestoreAddDoc, 
+  updateDoc as firestoreUpdateDoc, 
+  deleteDoc as firestoreDeleteDoc, 
   doc, 
   onSnapshot, 
   query, 
   orderBy,
   where,
-  setDoc,
+  setDoc as firestoreSetDoc, 
   getDoc,
   serverTimestamp,
   increment
 } from "firebase/firestore";
 import { db } from "../firebase";
 
+// User-friendly descriptive logs helper
+const getDetailsForDoc = (colName, data, action) => {
+  if (!data) return `${action} record in ${colName}`;
+  const name = data.name || data.nameTa || data.buyerName || data.vendorName || data.farmerName || '';
+  const displayId = data.displayId || '';
+  const idStr = displayId ? ` (ID: ${displayId})` : '';
+  const nameStr = name ? `'${name}'${idStr}` : '';
+
+  switch (colName) {
+    case 'buyers':
+      return action === 'DELETE' ? `Deleted Customer ${nameStr}` : `${action === 'CREATE' ? 'Registered' : 'Updated'} Customer ${nameStr}`;
+    case 'farmers':
+      return action === 'DELETE' ? `Deleted Farmer ${nameStr}` : `${action === 'CREATE' ? 'Registered' : 'Updated'} Farmer ${nameStr}`;
+    case 'vendors':
+      return action === 'DELETE' ? `Deleted Outside Vendor ${nameStr}` : `${action === 'CREATE' ? 'Registered' : 'Updated'} Outside Vendor ${nameStr}`;
+    case 'salesmen':
+      return action === 'DELETE' ? `Deleted Staff ${nameStr}` : `${action === 'CREATE' ? 'Registered' : 'Updated'} Staff ${nameStr}`;
+    case 'sales':
+      return `${action === 'DELETE' ? 'Deleted' : action === 'CREATE' ? 'Recorded' : 'Updated'} Sale of ₹${(data.grandTotal || 0).toLocaleString('en-IN')} for Customer '${data.buyerName || 'Unknown'}'`;
+    case 'outside_purchases':
+      return `${action === 'DELETE' ? 'Deleted' : action === 'CREATE' ? 'Recorded' : 'Updated'} Purchase of ₹${(data.grandTotal || 0).toLocaleString('en-IN')} from Vendor '${data.vendorName || 'Unknown'}'`;
+    case 'intakes':
+      return `${action === 'DELETE' ? 'Deleted' : action === 'CREATE' ? 'Recorded' : 'Updated'} Flower Intake from Farmer '${data.farmerName || 'Unknown'}'`;
+    case 'payments':
+      const amountVal = data.amount || data.cashLess || 0;
+      const typeStr = data.type === 'buyer' ? 'Customer' : data.type === 'vendor' ? 'Vendor' : data.type === 'farmer' ? 'Farmer' : 'Entity';
+      const modeStr = data.paymentMode || data.method || 'Cash';
+      return `${action === 'DELETE' ? 'Deleted' : action === 'CREATE' ? 'Recorded' : 'Updated'} Payment of ₹${amountVal.toLocaleString('en-IN')} to/from ${typeStr} (${modeStr})`;
+    case 'salesman_expenses':
+      return `${action === 'DELETE' ? 'Deleted' : action === 'CREATE' ? 'Recorded' : 'Updated'} Staff Expense of ₹${(data.amount || 0).toLocaleString('en-IN')} (${data.expenseType || 'General'})`;
+    case 'salesman_transfers':
+      return `${action === 'DELETE' ? 'Deleted' : action === 'CREATE' ? 'Recorded' : 'Updated'} Staff Transfer of ₹${(data.amount || 0).toLocaleString('en-IN')}`;
+    case 'products':
+      return `${action === 'DELETE' ? 'Deleted' : action === 'CREATE' ? 'Added' : 'Updated'} Flower Variety '${data.name || ''}'`;
+    default:
+      return `${action === 'DELETE' ? 'Deleted' : action === 'CREATE' ? 'Created' : 'Updated'} record in ${colName}`;
+  }
+};
+
+export const addDoc = async (collRef, data) => {
+  const tenantId = getTenant();
+  const res = await firestoreAddDoc(collRef, data);
+  try {
+    const colName = collRef.id;
+    if (colName !== 'history' && colName !== 'recycle_bin') {
+      const details = getDetailsForDoc(colName, data, 'CREATE');
+      await firestoreAddDoc(collection(db, 'history'), {
+        action: 'CREATE',
+        collectionName: colName,
+        docId: res.id,
+        tenantId,
+        timestamp: serverTimestamp(),
+        details,
+        data: data
+      });
+    }
+  } catch (e) {
+    console.error("History logging error:", e);
+  }
+  return res;
+};
+
+export const updateDoc = async (docRef, data) => {
+  const tenantId = getTenant();
+  let oldData = null;
+  const colName = docRef.parent.id;
+  try {
+    if (colName !== 'history' && colName !== 'recycle_bin') {
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        oldData = snap.data();
+      }
+    }
+  } catch (e) {}
+
+  await firestoreUpdateDoc(docRef, data);
+
+  try {
+    if (colName !== 'history' && colName !== 'recycle_bin') {
+      const fullData = { ...oldData, ...data };
+      const details = getDetailsForDoc(colName, fullData, 'UPDATE');
+      await firestoreAddDoc(collection(db, 'history'), {
+        action: 'UPDATE',
+        collectionName: colName,
+        docId: docRef.id,
+        tenantId,
+        timestamp: serverTimestamp(),
+        details,
+        data: data
+      });
+    }
+  } catch (e) {
+    console.error("History logging error:", e);
+  }
+};
+
+export const setDoc = async (docRef, data, options) => {
+  const tenantId = getTenant();
+  await firestoreSetDoc(docRef, data, options);
+  try {
+    const colName = docRef.parent.id;
+    if (colName !== 'history' && colName !== 'recycle_bin') {
+      const details = getDetailsForDoc(colName, data, 'UPDATE');
+      await firestoreAddDoc(collection(db, 'history'), {
+        action: 'UPDATE',
+        collectionName: colName,
+        docId: docRef.id,
+        tenantId,
+        timestamp: serverTimestamp(),
+        details,
+        data: data
+      });
+    }
+  } catch (e) {
+    console.error("History logging error:", e);
+  }
+};
+
+export const deleteDoc = async (docRef) => {
+  const tenantId = getTenant();
+  let deletedData = null;
+  const colName = docRef.parent.id;
+
+  try {
+    if (colName !== 'history' && colName !== 'recycle_bin') {
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        deletedData = snap.data();
+      }
+    }
+  } catch (e) {
+    console.error("Error reading doc before delete:", e);
+  }
+
+  await firestoreDeleteDoc(docRef);
+
+  try {
+    if (colName !== 'history' && colName !== 'recycle_bin' && deletedData) {
+      const details = getDetailsForDoc(colName, deletedData, 'DELETE');
+      
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 30);
+
+      await firestoreAddDoc(collection(db, 'recycle_bin'), {
+        originalId: docRef.id,
+        collectionName: colName,
+        deletedAt: serverTimestamp(),
+        expiryDate: expiryDate,
+        tenantId,
+        data: deletedData,
+        details
+      });
+
+      await firestoreAddDoc(collection(db, 'history'), {
+        action: 'DELETE',
+        collectionName: colName,
+        docId: docRef.id,
+        tenantId,
+        timestamp: serverTimestamp(),
+        details,
+        data: deletedData
+      });
+    }
+  } catch (e) {
+    console.error("Recycle/History logging error:", e);
+  }
+};
+
+export const restoreDocument = async (recycleBinId) => {
+  const tenantId = getTenant();
+  const recycleRef = doc(db, 'recycle_bin', recycleBinId);
+  const snap = await getDoc(recycleRef);
+  if (!snap.exists()) throw new Error("Document not found in Recycle Bin");
+
+  const archive = snap.data();
+  const { originalId, collectionName, data } = archive;
+
+  const targetRef = doc(db, collectionName, originalId);
+  await firestoreSetDoc(targetRef, data);
+
+  const details = `Restored: ${archive.details || 'document'}`;
+  await firestoreAddDoc(collection(db, 'history'), {
+    action: 'RESTORE',
+    collectionName: collectionName,
+    docId: originalId,
+    tenantId,
+    timestamp: serverTimestamp(),
+    details,
+    data: data
+  });
+
+  await firestoreDeleteDoc(recycleRef);
+};
+
 export { db };
+
 
 export const COLLECTIONS = {
   FARMERS: 'farmers',

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Plus, Trash2, Printer, MessageCircle, Pencil, History, Clock, Mic } from 'lucide-react';
-import { saveSale, subscribeToCollection, db } from '../utils/storage';
-import { doc, updateDoc, increment, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { saveSale, subscribeToCollection, db, updateDoc, deleteDoc } from '../utils/storage';
+import { doc, increment, serverTimestamp } from 'firebase/firestore';
 import { LangContext } from '../components/Layout';
 import { generateBuyerReceiptCanvas } from '../utils/receiptCanvas';
 import WhatsAppIcon from '../components/WhatsAppIcon';

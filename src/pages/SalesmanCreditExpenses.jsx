@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { Plus, Trash2, Calendar, DollarSign, FileText, User, Pencil, X } from 'lucide-react';
-import { doc, deleteDoc } from 'firebase/firestore';
-import { subscribeToCollection, addData, updateData, db } from '../utils/storage';
+import { doc } from 'firebase/firestore';
+import { subscribeToCollection, addData, updateData, db, deleteDoc } from '../utils/storage';
 import { LangContext } from '../components/Layout';
 
 const fmt = (n) =>

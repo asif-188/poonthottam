@@ -25,6 +25,9 @@ import Payments from './pages/Payments';
 import DailyFlowerPrices from './pages/DailyFlowerPrices';
 import SalesmanReports from './pages/SalesmanReports';
 import QuickEntry from './pages/QuickEntry';
+import OthersMenu from './pages/OthersMenu';
+import History from './pages/History';
+import RecycleBin from './pages/RecycleBin';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useTenant();
@@ -84,6 +87,9 @@ const AppRoutes = () => {
           <Route path="quick-entry" element={<QuickEntry />} />
           <Route path="settings" element={<DashboardSettings />} />
           <Route path="business-info" element={<BusinessSettings />} />
+          <Route path="others-menu" element={<OthersMenu />} />
+          <Route path="history" element={<History />} />
+          <Route path="recycle-bin" element={<RecycleBin />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

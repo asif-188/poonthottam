@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Plus, Trash2, Calendar, DollarSign, FileText, User, Pencil, X, History, Clock, Mic } from 'lucide-react';
-import { subscribeToCollection, db, savePayment, addData, updateData, getTenant } from '../utils/storage';
-import { doc, updateDoc, increment, deleteDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { subscribeToCollection, db, savePayment, addData, updateData, getTenant, addDoc, updateDoc, deleteDoc } from '../utils/storage';
+import { doc, increment, collection, serverTimestamp } from 'firebase/firestore';
 import { LangContext } from '../components/Layout';
 import { useTenant } from '../utils/TenantContext';
 import VoiceEntryModal from '../components/VoiceEntryModal';
 
 /* ── Keyboard-navigable Generic Searchable Dropdown ── */
 const SearchSelect = ({ items, value, onChange, onKeyDown, inputRef, placeholder }) => {
-    const [query, setQuery]         = useState('');
-    const [open, setOpen]           = useState(false);
-    const [cursor, setCursor]       = useState(0);
-    const listRef                   = useRef(null);
+    const [query, setQuery] = useState('');
+    const [open, setOpen] = useState(false);
+    const [cursor, setCursor] = useState(0);
+    const listRef = useRef(null);
 
     const formatName = (item) => {
         if (!item) return '';
@@ -188,7 +188,7 @@ const Payments = () => {
         }
         return 'cash_receive';
     };
-    
+
     const getVoiceModalEntities = () => {
         const vType = getVoiceModalType();
         if (vType === 'cash_receive') return buyers;
@@ -261,6 +261,15 @@ const Payments = () => {
         return () => { u1(); u2(); u3(); u4(); u5(); u6(); };
     }, []);
 
+    // Auto-focus first entry field (Customer / Vendor / Category / Receiver Staff) when sub-form renders
+    useEffect(() => {
+        if (transactionType && (transactionType !== 'internal' || internalSubtype)) {
+            setTimeout(() => {
+                refEntity.current?.focus();
+            }, 150);
+        }
+    }, [transactionType, internalSubtype]);
+
     // --- Keyboard Navigation ---
     const onKey = (e, nextRef, valToCheck = null, prevRef = null) => {
         if (e.key === 'Enter') {
@@ -282,17 +291,17 @@ const Payments = () => {
     };
 
     // --- Reset Form Fields ---
-    const resetForm = () => {
-        setFormData({
-            entityId: '',
+    const resetForm = (keepSelection = false) => {
+        setFormData(prev => ({
+            entityId: keepSelection ? prev.entityId : '',
             amount: '',
             cashLess: '',
-            method: 'Cash',
-            category: 'Petrol',
-            source: 'Cash',
-            toSalesmanId: '',
+            method: prev.method,
+            category: prev.category,
+            source: prev.source,
+            toSalesmanId: keepSelection ? prev.toSalesmanId : '',
             note: '',
-        });
+        }));
     };
 
     // --- Save Actions ---
@@ -392,10 +401,16 @@ const Payments = () => {
                 });
             }
 
-            resetForm();
+            resetForm(true);
             alert('✅ Recorded successfully!');
             setTimeout(() => {
-                refEntity.current?.focus();
+                if (transactionType === 'credit') {
+                    refCashLess.current?.focus();
+                    if (refCashLess.current?.select) refCashLess.current.select();
+                } else {
+                    refAmount.current?.focus();
+                    if (refAmount.current?.select) refAmount.current.select();
+                }
             }, 100);
         } catch (err) {
             alert('❌ Save failed: ' + err.message);
@@ -433,10 +448,10 @@ const Payments = () => {
         const currentVal = item[fieldName] || '';
         const newNote = window.prompt('Edit Note:', currentVal);
         if (newNote === null) return;
-        
+
         try {
-            const colName = (item.rowType === 'credit' || item.rowType === 'debit') 
-                ? 'payments' 
+            const colName = (item.rowType === 'credit' || item.rowType === 'debit')
+                ? 'payments'
                 : (item.rowType === 'expense' ? 'salesman_expenses' : 'salesman_transfers');
             await updateDoc(doc(db, colName, item.id), { [fieldName]: newNote });
             alert('Note updated successfully!');
@@ -463,7 +478,7 @@ const Payments = () => {
         if (!salesmanId) return [];
 
         const list = [];
-        
+
         // 1. Credits (Buyer payments)
         payments.forEach(p => {
             const d = p.timestamp ? (typeof p.timestamp === 'string' ? p.timestamp.substring(0, 10) : p.timestamp.toDate ? p.timestamp.toDate().toISOString().substring(0, 10) : '') : p.date;
@@ -498,13 +513,13 @@ const Payments = () => {
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: 'var(--font-sans)' }}>
-            
+
             {/* ── Page Container (Matching Sales Entry style) ── */}
             <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', padding: '24px' }}>
-                
+
                 {/* ── Header Row ── */}
                 <div className="mobile-stack-grid-header" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '20px', marginBottom: '32px', paddingBottom: '20px', borderBottom: '1px solid #f1f5f9' }}>
-                    
+
                     {/* Left: Date selector */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -518,11 +533,11 @@ const Payments = () => {
                                 type="date"
                                 value={date}
                                 onChange={e => setDate(e.target.value)}
-                                style={{ 
-                                    ...INPUT_S, 
-                                    padding: '6px 12px', 
-                                    border: '1.5px solid #d1fae5', 
-                                    borderRadius: '10px', 
+                                style={{
+                                    ...INPUT_S,
+                                    padding: '6px 12px',
+                                    border: '1.5px solid #d1fae5',
+                                    borderRadius: '10px',
                                     fontSize: '13px',
                                     color: '#475569'
                                 }}
@@ -534,14 +549,14 @@ const Payments = () => {
                     </div>
 
                     {/* Center: Title */}
-                    <h1 style={{ 
-                        fontSize: '32px', 
-                        fontWeight: 900, 
-                        color: '#16a34a', 
-                        fontFamily: 'var(--font-display)', 
-                        letterSpacing: '0.05em', 
-                        margin: 0, 
-                        textTransform: 'uppercase' 
+                    <h1 style={{
+                        fontSize: '32px',
+                        fontWeight: 900,
+                        color: '#16a34a',
+                        fontFamily: 'var(--font-display)',
+                        letterSpacing: '0.05em',
+                        margin: 0,
+                        textTransform: 'uppercase'
                     }}>
                         {lang === 'ta' ? 'பணம் செலுத்துதல்' : 'Payments'}
                     </h1>
@@ -576,7 +591,7 @@ const Payments = () => {
 
                 {/* ── Step Workflow Controls ── */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '24px', background: '#f8fafc', padding: '20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
-                    
+
                     {/* Step 1: Select Staff */}
                     <div>
                         <label style={LABEL_S}>{lang === 'ta' ? 'பணியாளர் தேர்வு' : 'Select Staff'}</label>
@@ -645,7 +660,7 @@ const Payments = () => {
                 {salesmanId && transactionType && (transactionType !== 'internal' || internalSubtype) && (
                     <div style={{ padding: '20px 0 10px 0', borderTop: '1px solid #f1f5f9' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', alignItems: 'flex-end' }}>
-                            
+
                             {/* --- Credit Form (Sales Cash Receive) --- */}
                             {transactionType === 'credit' && (
                                 <>
@@ -870,18 +885,18 @@ const Payments = () => {
                             {todayEntries.length} {todayEntries.length === 1 ? 'ENTRY' : 'ENTRIES'}
                         </div>
                     </div>
-                    
+
                     <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ background: '#fff', borderBottom: '1.5px solid #f1f5f9' }}>
-                                    <th style={TH_S}><Clock size={12} style={{marginRight: '6px', display: 'inline'}}/>Time</th>
+                                    <th style={TH_S}><Clock size={12} style={{ marginRight: '6px', display: 'inline' }} />Time</th>
                                     <th style={TH_S}>Type</th>
                                     <th style={TH_S}>Particulars</th>
-                                    <th style={{...TH_S, textAlign: 'right'}}>Amount</th>
+                                    <th style={{ ...TH_S, textAlign: 'right' }}>Amount</th>
                                     <th style={TH_S}>Method</th>
                                     <th style={TH_S}>Notes</th>
-                                    <th style={{...TH_S, textAlign: 'center'}}>Action</th>
+                                    <th style={{ ...TH_S, textAlign: 'center' }}>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -902,18 +917,18 @@ const Payments = () => {
                                             const buyer = buyers.find(b => b.id === item.entityId);
                                             displayParticulars = buyer ? `${buyer.name} (#${buyer.displayId || ''})` : '—';
                                             amountColor = '#16a34a'; // Green for cash received
-                                        } 
+                                        }
                                         else if (item.rowType === 'debit') {
                                             displayType = 'Debit (Purchase Paid)';
                                             const vendor = vendors.find(v => v.id === item.entityId);
                                             displayParticulars = vendor ? `${vendor.name} (#${vendor.displayId || ''})` : '—';
                                             amountColor = '#f43f5e'; // Rose for cash paid
-                                        } 
+                                        }
                                         else if (item.rowType === 'expense') {
                                             displayType = `Expense (${item.category})`;
                                             displayParticulars = item.category || '—';
                                             amountColor = '#ef4444'; // Red for expense
-                                        } 
+                                        }
                                         else if (item.rowType === 'transfer') {
                                             displayType = 'Credit Transfer';
                                             const from = salesmen.find(s => s.id === item.fromSalesmanId)?.name || item.fromSalesmanName;
@@ -954,11 +969,11 @@ const Payments = () => {
                                                 </td>
                                                 <td style={{ ...TD_S, textAlign: 'center' }}>
                                                     <button onClick={() => handleDelete(item)}
-                                                        style={{ 
-                                                            background: '#fff1f2', 
-                                                            border: 'none', borderRadius: '6px', width: '28px', height: '28px', 
-                                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', 
-                                                            cursor: 'pointer', color: '#f43f5e' 
+                                                        style={{
+                                                            background: '#fff1f2',
+                                                            border: 'none', borderRadius: '6px', width: '28px', height: '28px',
+                                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                            cursor: 'pointer', color: '#f43f5e'
                                                         }}
                                                         onMouseEnter={e => { e.currentTarget.style.background = '#f43f5e'; e.currentTarget.style.color = '#fff'; }}
                                                         onMouseLeave={e => { e.currentTarget.style.background = '#fff1f2'; e.currentTarget.style.color = '#f43f5e'; }}

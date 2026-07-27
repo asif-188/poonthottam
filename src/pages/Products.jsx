@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Plus, Edit2, Trash2, Search, X, Tag, Package, Download, Upload, Boxes } from 'lucide-react';
-import { subscribeToCollection, saveProduct, db } from '../utils/storage';
-import { deleteDoc, doc } from 'firebase/firestore';
+import { subscribeToCollection, saveProduct, db, deleteDoc } from '../utils/storage';
+import { doc } from 'firebase/firestore';
 import { LangContext } from '../components/Layout';
 import VoiceSearchButton from '../components/VoiceSearchButton';
 

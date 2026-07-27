@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useContext, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Trash2, Plus, History, IndianRupee, Save, X, ChevronLeft, Printer, FileText, Search, Download, MessageCircle, Pencil, Users, Upload, FileSpreadsheet, Download as DownloadIcon, Scan, Eye, Mic } from 'lucide-react';
-import { db, subscribeToCollection, saveOutsidePurchase, saveVendor, deleteVendor, getTenant } from '../utils/storage';
-import { doc, updateDoc, increment, serverTimestamp, deleteDoc, collection, addDoc, getDoc } from 'firebase/firestore';
+import { db, subscribeToCollection, saveOutsidePurchase, saveVendor, deleteVendor, getTenant, addDoc, updateDoc, deleteDoc } from '../utils/storage';
+import { doc, increment, serverTimestamp, collection, getDoc } from 'firebase/firestore';
 import { LangContext } from '../components/Layout';
 import * as XLSX from 'xlsx';
 import { generateLedgerCanvas, generatePaymentReceiptCanvas, generatePurchaseReceiptCanvas } from '../utils/receiptCanvas';

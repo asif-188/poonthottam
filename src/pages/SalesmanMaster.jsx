@@ -530,120 +530,112 @@ const SalesmanMaster = () => {
 
             {/* Modal */}
             {isModalOpen && (
-                <div style={S.modalOverlay}>
-                    <div style={S.modalCard}>
-                        <div style={S.modalHeader}>
-                            <h3 style={S.modalTitle}>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
+                    <div style={{ background: '#fff', borderRadius: '24px', width: '400px', padding: '24px', boxShadow: '0 20px 50px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto', fontFamily: 'var(--font-sans)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+                            <h3 style={{ margin: 0, fontWeight: 900, color: '#92400e' }}>
                                 {currentSalesman.id 
                                     ? (lang === 'ta' ? '✏️ பணியாளர் விவரம் மாற்று' : '✏️ Edit Staff') 
                                     : (lang === 'ta' ? '👤 புதிய பணியாளர் சேர்க்க' : '👤 New Staff')}
                             </h3>
-                            <button onClick={() => setIsModalOpen(false)} style={S.modalCloseBtn}>
-                                <X size={20} />
-                            </button>
+                            <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={20} /></button>
                         </div>
-                        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-                            <div style={S.modalBody}>
-                                <div style={S.formGroup}>
-                                    <label style={S.label}>
-                                        {lang === 'ta' ? 'பணியாளர் பெயர் (ஆங்கிலம்)' : 'Staff Name (English)'}
-                                    </label>
-                                    <input 
-                                        type="text" 
-                                        style={S.input}
-                                        value={currentSalesman.name}
-                                        onChange={(e) => {
-                                            setTouched(p => ({ ...p, name: true }));
-                                            handleAutoTranslate(e.target.value, 'name');
-                                        }}
-                                        placeholder={lang === 'ta' ? 'பெயர் ஆங்கிலத்தில்' : 'Full Name in English'}
-                                        required
-                                    />
-                                </div>
-                                <div style={S.formGroup}>
-                                    <label style={S.label}>
-                                        {lang === 'ta' ? 'பணியாளர் பெயர் (தமிழ்)' : 'Staff Name (Tamil)'}
-                                    </label>
-                                    <input 
-                                        type="text" 
-                                        style={S.input}
-                                        value={currentSalesman.nameTa || ''}
-                                        onChange={(e) => {
-                                            setTouched(p => ({ ...p, nameTa: true }));
-                                            handleAutoTranslate(e.target.value, 'nameTa');
-                                        }}
-                                        placeholder={lang === 'ta' ? 'பெயர் தமிழில்' : 'Full Name in Tamil'}
-                                    />
-                                </div>
-                                <div style={S.formGroup}>
-                                    <label style={S.label}>
-                                        {lang === 'ta' ? 'தொடர்பு எண்' : 'Contact Number'}
-                                    </label>
-                                    <input 
-                                        type="text" 
-                                        style={S.input}
-                                        value={currentSalesman.contact}
-                                        onChange={(e) => setCurrentSalesman({ ...currentSalesman, contact: e.target.value })}
-                                        placeholder={lang === 'ta' ? 'அலைபேசி எண்' : 'Mobile Number'}
-                                    />
-                                </div>
-                                <div style={S.formGroup}>
-                                    <label style={S.label}>
-                                        {lang === 'ta' ? 'இருப்பிடம் / ஊர்' : 'Location'}
-                                    </label>
-                                    <input 
-                                        type="text" 
-                                        style={S.input}
-                                        value={currentSalesman.location}
-                                        onChange={(e) => setCurrentSalesman({ ...currentSalesman, location: e.target.value })}
-                                        placeholder={lang === 'ta' ? 'நகரம்' : 'City/Town'}
-                                    />
-                                </div>
-                                <div style={S.formGroup}>
-                                    <label style={S.label}>
-                                        {lang === 'ta' ? 'தொடக்க ரொக்கம்' : 'Opening Cash'}
-                                    </label>
-                                    <input 
-                                        type="number" 
-                                        style={S.input}
-                                        value={currentSalesman.openingCash || ''}
-                                        onChange={(e) => setCurrentSalesman({ ...currentSalesman, openingCash: e.target.value })}
-                                        placeholder={lang === 'ta' ? 'தொடக்க ரொக்கம் (ரூ)' : 'Opening Cash (₹)'}
-                                    />
-                                </div>
-                                <div style={S.formGroup}>
-                                    <label style={S.label}>{lang === 'ta' ? 'நிலை' : 'Status'}</label>
-                                    <select 
-                                        style={S.input}
-                                        value={currentSalesman.status}
-                                        onChange={(e) => setCurrentSalesman({ ...currentSalesman, status: e.target.value })}
-                                    >
-                                        <option value="Active">{lang === 'ta' ? 'செயலில் உள்ளது (Active)' : 'Active'}</option>
-                                        <option value="Inactive">{lang === 'ta' ? 'செயலில் இல்லை (Inactive)' : 'Inactive'}</option>
-                                    </select>
-                                </div>
+                        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    {lang === 'ta' ? 'பணியாளர் பெயர் (ஆங்கிலம்)' : 'Staff Name (English)'}
+                                </label>
+                                <input 
+                                    type="text" 
+                                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', fontSize: '14px', fontWeight: 600, color: '#1e293b', outline: 'none', fontFamily: 'var(--font-sans)' }}
+                                    value={currentSalesman.name}
+                                    onChange={(e) => {
+                                        setTouched(p => ({ ...p, name: true }));
+                                        handleAutoTranslate(e.target.value, 'name');
+                                    }}
+                                    placeholder={lang === 'ta' ? 'பெயர் ஆங்கிலத்தில்' : 'Full Name in English'}
+                                    required
+                                    onFocus={e => e.target.style.borderColor = '#d97706'}
+                                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                                />
                             </div>
-
-                            <div style={S.modalFooter}>
-                                <button 
-                                    type="button" 
-                                    onClick={() => setIsModalOpen(false)}
-                                    style={S.btnCancel}
-                                >
-                                    {lang === 'ta' ? 'ரத்து செய்' : 'Cancel'}
-                                </button>
-                                <button 
-                                    type="submit" 
-                                    disabled={isSaving}
-                                    style={S.btnSave}
-                                    onMouseEnter={e => e.currentTarget.style.background='#4f46e5'}
-                                    onMouseLeave={e => e.currentTarget.style.background='#6366f1'}
-                                >
-                                    {isSaving 
-                                        ? (lang === 'ta' ? 'சேமிக்கப்படுகிறது...' : 'Saving...') 
-                                        : (lang === 'ta' ? 'சேமி' : 'Save')}
-                                </button>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    {lang === 'ta' ? 'பணியாளர் பெயர் (தமிழ்)' : 'Staff Name (Tamil)'}
+                                </label>
+                                <input 
+                                    type="text" 
+                                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', fontSize: '14px', fontWeight: 600, color: '#1e293b', outline: 'none', fontFamily: 'var(--font-sans)' }}
+                                    value={currentSalesman.nameTa || ''}
+                                    onChange={(e) => {
+                                        setTouched(p => ({ ...p, nameTa: true }));
+                                        handleAutoTranslate(e.target.value, 'nameTa');
+                                    }}
+                                    placeholder={lang === 'ta' ? 'பெயர் தமிழில்' : 'Full Name in Tamil'}
+                                    onFocus={e => e.target.style.borderColor = '#d97706'}
+                                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                                />
                             </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    {lang === 'ta' ? 'தொடர்பு எண்' : 'Contact Number'}
+                                </label>
+                                <input 
+                                    type="text" 
+                                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', fontSize: '14px', fontWeight: 600, color: '#1e293b', outline: 'none', fontFamily: 'var(--font-sans)' }}
+                                    value={currentSalesman.contact}
+                                    onChange={(e) => setCurrentSalesman({ ...currentSalesman, contact: e.target.value })}
+                                    placeholder={lang === 'ta' ? 'அலைபேசி எண்' : 'Mobile Number'}
+                                    onFocus={e => e.target.style.borderColor = '#d97706'}
+                                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    {lang === 'ta' ? 'இருப்பிடம் / ஊர்' : 'Location'}
+                                </label>
+                                <input 
+                                    type="text" 
+                                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', fontSize: '14px', fontWeight: 600, color: '#1e293b', outline: 'none', fontFamily: 'var(--font-sans)' }}
+                                    value={currentSalesman.location}
+                                    onChange={(e) => setCurrentSalesman({ ...currentSalesman, location: e.target.value })}
+                                    placeholder={lang === 'ta' ? 'நகரம்' : 'City/Town'}
+                                    onFocus={e => e.target.style.borderColor = '#d97706'}
+                                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    {lang === 'ta' ? 'தொடக்க ரொக்கம்' : 'Opening Cash'}
+                                </label>
+                                <input 
+                                    type="number" 
+                                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', fontSize: '14px', fontWeight: 600, color: '#1e293b', outline: 'none', fontFamily: 'var(--font-sans)' }}
+                                    value={currentSalesman.openingCash || ''}
+                                    onChange={(e) => setCurrentSalesman({ ...currentSalesman, openingCash: e.target.value })}
+                                    placeholder={lang === 'ta' ? 'தொடக்க ரொக்கம் (ரூ)' : 'Opening Cash (₹)'}
+                                    onFocus={e => e.target.style.borderColor = '#d97706'}
+                                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{lang === 'ta' ? 'நிலை' : 'Status'}</label>
+                                <select 
+                                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', fontSize: '14px', fontWeight: 600, color: '#1e293b', outline: 'none', fontFamily: 'var(--font-sans)' }}
+                                    value={currentSalesman.status}
+                                    onChange={(e) => setCurrentSalesman({ ...currentSalesman, status: e.target.value })}
+                                    onFocus={e => e.target.style.borderColor = '#d97706'}
+                                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                                >
+                                    <option value="Active">{lang === 'ta' ? 'செயலில் உள்ளது (Active)' : 'Active'}</option>
+                                    <option value="Inactive">{lang === 'ta' ? 'செயலில் இல்லை (Inactive)' : 'Inactive'}</option>
+                                </select>
+                            </div>
+                            <button type="submit" disabled={isSaving} style={{ padding: '12px', background: '#d97706', color: '#fff', borderRadius: '12px', border: 'none', fontWeight: 800, marginTop: '10px', cursor: isSaving ? 'not-allowed' : 'pointer', opacity: isSaving ? 0.6 : 1 }}>
+                                {isSaving 
+                                    ? (lang === 'ta' ? 'சேமிக்கப்படுகிறது...' : 'Saving...') 
+                                    : (lang === 'ta' ? 'சேமி' : 'Save')}
+                            </button>
                         </form>
                     </div>
                 </div>
