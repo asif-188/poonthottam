@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Mic, MicOff, Check, Trash2, X, Plus, AlertCircle, RefreshCw } from 'lucide-react';
+import { Mic, MicOff, Check, Trash2, X, Plus, AlertCircle, RefreshCw, Search, ChevronDown } from 'lucide-react';
 
 /* ── Smart Name Fuzzy Matcher ── */
 const getMatchScore = (spokenText, name, nameTa) => {
@@ -579,6 +579,125 @@ const parseMultiLineSpeech = (transcript, config) => {
 
 const EMPTY_ARRAY = [];
 
+/* ── Keyboard-navigable Searchable Dropdown ── */
+const SearchSelect = ({ items, value, onChange, onKeyDown, inputRef, placeholder, lang }) => {
+    const [query, setQuery]         = useState('');
+    const [open, setOpen]           = useState(false);
+    const [cursor, setCursor]       = useState(0);
+    const listRef                   = useRef(null);
+
+    const formatName = (item) => {
+        if (!item) return '';
+        if (lang === 'ta') {
+            return item.nameTa || item.taName || item.name;
+        }
+        return item.name;
+    };
+
+    const selectedItem = items.find(i => i.id === value || i.name === value);
+    const selectedName = selectedItem ? formatName(selectedItem) : '';
+
+    const filtered = query.trim()
+        ? items
+            .filter(i => {
+                const n = i.name?.toLowerCase() || '';
+                const tn = (i.nameTa || i.taName || '').toLowerCase();
+                const q = query.toLowerCase();
+                return n.includes(q) || tn.includes(q) || (i.displayId && String(i.displayId).includes(query));
+            })
+            .sort((a, b) => {
+                const q = query.toLowerCase();
+                const getScore = (item) => {
+                    const n = item.name?.toLowerCase() || '';
+                    const tn = (item.nameTa || item.taName || '').toLowerCase();
+                    const id = item.displayId ? String(item.displayId).toLowerCase() : '';
+                    if (n.startsWith(q) || tn.startsWith(q) || id.startsWith(q)) return 3;
+                    if (n.includes(' ' + q) || tn.includes(' ' + q) || n.includes('-' + q) || tn.includes('-' + q)) return 2;
+                    if (n.includes(q) || tn.includes(q) || id.includes(q)) return 1;
+                    return 0;
+                };
+                return getScore(b) - getScore(a);
+            })
+        : items;
+
+    const choose = (item) => {
+        onChange(item);
+        setQuery(formatName(item));
+        setOpen(false);
+    };
+
+    const handleKey = (e) => {
+        if (e.key === 'ArrowDown') { e.preventDefault(); setCursor(c => Math.min(c + 1, filtered.length - 1)); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); setCursor(c => Math.max(c - 1, 0)); }
+        else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (open && filtered[cursor]) {
+                choose(filtered[cursor]);
+                if (onKeyDown) onKeyDown(e);
+            }
+        }
+        else if (e.key === 'Escape') setOpen(false);
+        else if (e.key === 'Tab') {
+            if (open && filtered[cursor]) choose(filtered[cursor]);
+            setOpen(false);
+            if (onKeyDown) onKeyDown(e);
+        }
+    };
+
+    useEffect(() => {
+        if (listRef.current) {
+            const els = listRef.current.querySelectorAll('li');
+            els[cursor]?.scrollIntoView({ block: 'nearest' });
+        }
+    }, [cursor]);
+
+    return (
+        <div style={{ position: 'relative', width: '100%' }}>
+            <input
+                ref={inputRef}
+                type="text"
+                placeholder={placeholder}
+                value={open ? query : selectedName}
+                onFocus={() => { setQuery(''); setOpen(true); setCursor(0); }}
+                onBlur={() => setTimeout(() => setOpen(false), 200)}
+                onChange={e => { setQuery(e.target.value); setCursor(0); }}
+                onKeyDown={handleKey}
+                autoComplete="off"
+                style={{ ...styles.selectInput, paddingRight: '40px' }}
+            />
+            <div style={{
+                position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)',
+                color: '#cbd5e1', pointerEvents: 'none', display: 'flex', alignItems: 'center'
+            }}>
+                {open ? <Search size={16} /> : <ChevronDown size={16} />}
+            </div>
+            {open && filtered.length > 0 && (
+                <ul ref={listRef} style={{
+                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+                    background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.10)', maxHeight: '200px',
+                    overflowY: 'auto', listStyle: 'none', margin: '4px 0', padding: '4px',
+                }}>
+                    {filtered.map((item, i) => (
+                        <li key={item.id || item.name} onMouseDown={() => choose(item)}
+                            style={{
+                                padding: '8px 12px', borderRadius: '7px', cursor: 'pointer', fontSize: '13px',
+                                fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px',
+                                background: i === cursor ? '#f0fdf4' : 'transparent',
+                                color: i === cursor ? '#15803d' : '#374151',
+                            }}
+                            onMouseEnter={() => setCursor(i)}
+                        >
+                            {item.displayId && <span style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8' }}>#{item.displayId}</span>}
+                            {item.nameTa || item.taName ? `${item.name} - ${item.nameTa || item.taName}` : item.name}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+};
+
 const VoiceEntryModal = ({
     isOpen,
     onClose,
@@ -993,21 +1112,15 @@ const VoiceEntryModal = ({
                             <label style={styles.label}>
                                 {type === 'vendor' || type === 'purchase' ? 'Select Farmer/Vendor Manually' : 'Select Customer Manually'}
                             </label>
-                            <select 
-                                onChange={e => {
-                                    const matched = entities.find(ent => ent.id === e.target.value);
+                            <SearchSelect
+                                items={entities}
+                                value={selectedCustomer ? selectedCustomer.id : ''}
+                                onChange={matched => {
                                     if (matched) setSelectedCustomer(matched);
                                 }}
-                                style={styles.selectInput}
-                                value={selectedCustomer ? selectedCustomer.id : ''}
-                            >
-                                <option value="">Choose Name...</option>
-                                {entities.map(e => (
-                                    <option key={e.id} value={e.id}>
-                                        {e.nameTa ? `${e.name} - ${e.nameTa}` : e.name}
-                                    </option>
-                                ))}
-                            </select>
+                                placeholder={langSetting === 'ta' ? 'பெயரைத் தேடுக...' : 'Choose Name...'}
+                                lang={langSetting}
+                            />
                         </div>
                     )}
 
@@ -1153,21 +1266,13 @@ const VoiceEntryModal = ({
                     
                     <div style={styles.formGroup}>
                         <label style={styles.label}>Select Entity (Customer/Vendor)</label>
-                        <select 
+                        <SearchSelect
+                            items={entities}
                             value={selectedCustomer ? selectedCustomer.id : ''}
-                            onChange={e => {
-                                const ent = entities.find(item => item.id === e.target.value);
-                                setSelectedCustomer(ent);
-                            }}
-                            style={styles.selectInput}
-                        >
-                            <option value="">Select Name...</option>
-                            {entities.map(ent => (
-                                <option key={ent.id} value={ent.id}>
-                                    {ent.nameTa ? `${ent.name} - ${ent.nameTa}` : ent.name}
-                                </option>
-                            ))}
-                        </select>
+                            onChange={ent => setSelectedCustomer(ent)}
+                            placeholder={langSetting === 'ta' ? 'பெயரைத் தேடுக...' : 'Select Name...'}
+                            lang={langSetting}
+                        />
                     </div>
 
                     <div style={styles.formGridTwo}>
@@ -1230,21 +1335,13 @@ const VoiceEntryModal = ({
 
                     <div style={styles.formGroup}>
                         <label style={styles.label}>Select Staff / Salesman</label>
-                        <select 
+                        <SearchSelect
+                            items={staffList}
                             value={selectedCustomer ? selectedCustomer.id : ''}
-                            onChange={e => {
-                                const staff = staffList.find(s => s.id === e.target.value);
-                                setSelectedCustomer(staff);
-                            }}
-                            style={styles.selectInput}
-                        >
-                            <option value="">Select Staff...</option>
-                            {staffList.map(s => (
-                                <option key={s.id} value={s.id}>
-                                    {s.nameTa ? `${s.name} - ${s.nameTa}` : s.name}
-                                </option>
-                            ))}
-                        </select>
+                            onChange={staff => setSelectedCustomer(staff)}
+                            placeholder={langSetting === 'ta' ? 'பணியாளர் பெயரைத் தேடுக...' : 'Select Staff...'}
+                            lang={langSetting}
+                        />
                     </div>
 
                     <div style={styles.formGridTwo}>
