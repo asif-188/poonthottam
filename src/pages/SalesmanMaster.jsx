@@ -221,6 +221,33 @@ const SalesmanMaster = () => {
         }
     }, [locationState]);
 
+    useEffect(() => {
+        const migrateStaffIds = async () => {
+            const needsMigration = salesmen.some(s => s.displayId && s.displayId.length > 4);
+            if (needsMigration && salesmen.length > 0) {
+                const sorted = [...salesmen].sort((a, b) => {
+                    const idA = parseInt(a.displayId) || 0;
+                    const idB = parseInt(b.displayId) || 0;
+                    return idA - idB;
+                });
+                for (let i = 0; i < sorted.length; i++) {
+                    const s = sorted[i];
+                    const nextId = String(101 + i);
+                    if (s.displayId !== nextId) {
+                        try {
+                            await saveSalesman({ ...s, displayId: nextId });
+                        } catch (err) {
+                            console.error(`Failed to migrate ID for ${s.name}:`, err);
+                        }
+                    }
+                }
+            }
+        };
+        if (salesmen.length > 0) {
+            migrateStaffIds();
+        }
+    }, [salesmen]);
+
     const [isTranslating, setIsTranslating] = useState(false);
     const transTimeout = useRef(null);
     const [touched, setTouched] = useState({ name: false, nameTa: false });
@@ -261,7 +288,9 @@ const SalesmanMaster = () => {
         if (salesman) {
             setCurrentSalesman(salesman);
         } else {
-            setCurrentSalesman({ id: '', displayId: '', name: '', nameTa: '', contact: '', location: '', status: 'Active', openingCash: '' });
+            const validIds = salesmen.map(s => parseInt(s.displayId) || 0).filter(id => id >= 101 && id < 100000);
+            const nextId = validIds.length > 0 ? Math.max(...validIds) + 1 : 101;
+            setCurrentSalesman({ id: '', displayId: String(nextId), name: '', nameTa: '', contact: '', location: '', status: 'Active', openingCash: '' });
         }
         setIsModalOpen(true);
     };

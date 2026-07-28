@@ -12,10 +12,14 @@ const SearchSelect = ({ items, value, onChange, onKeyDown, inputRef, placeholder
     const [open, setOpen] = useState(false);
     const [cursor, setCursor] = useState(0);
     const listRef = useRef(null);
+    const { lang } = useContext(LangContext);
 
     const formatName = (item) => {
         if (!item) return '';
-        return item.nameTa ? `${item.name}-${item.nameTa}` : item.name;
+        if (lang === 'ta') {
+            return item.nameTa || item.taName || item.name;
+        }
+        return item.name;
     };
 
     const selectedItem = items.find(i => i.id === value || i.name === value);
@@ -147,6 +151,17 @@ const TH_S = {
     borderBottom: '1.5px solid #e2e8f0', background: '#f8fafc'
 };
 
+const transactionTypes = [
+    { id: 'credit', name: 'Credit (Sales Cash Receive)', nameTa: 'வரவு (விற்பனை பணம் பெறல்)' },
+    { id: 'debit', name: 'Debit (Purchase Cash Paid)', nameTa: 'செலவு (கொள்முதல் பணம் கொடுத்தல்)' },
+    { id: 'internal', name: 'Internal Transfer', nameTa: 'உள் பரிமாற்றம்' }
+];
+
+const internalSubtypes = [
+    { id: 'expenses', name: 'Staff Expenses', nameTa: 'பணியாளர் செலவுகள்' },
+    { id: 'transfers', name: 'Staff Transfers', nameTa: 'பணியாளர் பரிமாற்றம்' }
+];
+
 const Payments = () => {
     const { t, lang } = useContext(LangContext);
     const { tenantData } = useTenant();
@@ -266,6 +281,10 @@ const Payments = () => {
         if (transactionType && (transactionType !== 'internal' || internalSubtype)) {
             setTimeout(() => {
                 refEntity.current?.focus();
+            }, 150);
+        } else if (transactionType === 'internal' && !internalSubtype) {
+            setTimeout(() => {
+                refSubtype.current?.focus();
             }, 150);
         }
     }, [transactionType, internalSubtype]);
@@ -595,43 +614,49 @@ const Payments = () => {
                     {/* Step 1: Select Staff */}
                     <div>
                         <label style={LABEL_S}>{lang === 'ta' ? 'பணியாளர் தேர்வு' : 'Select Staff'}</label>
-                        <select
-                            ref={refSalesman}
+                        <SearchSelect
+                            items={activeSalesmen}
                             value={salesmanId}
-                            onChange={e => {
-                                setSalesmanId(e.target.value);
+                            onChange={val => {
+                                setSalesmanId(val);
                                 setTransactionType('');
                                 setInternalSubtype('');
                                 resetForm();
                             }}
-                            style={INPUT_S}
-                        >
-                            <option value="">{lang === 'ta' ? '-- பணியாளரைத் தேர்வுசெய் --' : '-- Choose Staff --'}</option>
-                            {activeSalesmen.map(s => (
-                                <option key={s.id} value={s.id}>{s.nameTa || s.name}</option>
-                            ))}
-                        </select>
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                    setTimeout(() => refType.current?.focus(), 50);
+                                }
+                            }}
+                            inputRef={refSalesman}
+                            placeholder={lang === 'ta' ? '-- பணியாளரைத் தேர்வுசெய் --' : '-- Choose Staff --'}
+                        />
                     </div>
 
                     {/* Step 2: Select Type */}
                     {salesmanId && (
                         <div>
                             <label style={LABEL_S}>{lang === 'ta' ? 'பரிவர்த்தனை வகை' : 'Transaction Type'}</label>
-                            <select
-                                ref={refType}
+                            <SearchSelect
+                                items={transactionTypes}
                                 value={transactionType}
-                                onChange={e => {
-                                    setTransactionType(e.target.value);
+                                onChange={val => {
+                                    setTransactionType(val);
                                     setInternalSubtype('');
                                     resetForm();
                                 }}
-                                style={INPUT_S}
-                            >
-                                <option value="">{lang === 'ta' ? '-- வகையைத் தேர்வுசெய் --' : '-- Select Type --'}</option>
-                                <option value="credit">{lang === 'ta' ? 'வரவு (விற்பனை பணம் பெறல்)' : 'Credit (Sales Cash Receive)'}</option>
-                                <option value="debit">{lang === 'ta' ? 'செலவு (கொள்முதல் பணம் கொடுத்தல்)' : 'Debit (Purchase Cash Paid)'}</option>
-                                <option value="internal">{lang === 'ta' ? 'உள் பரிமாற்றம்' : 'Internal Transfer'}</option>
-                            </select>
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                        if (transactionType === 'internal') {
+                                            setTimeout(() => refSubtype.current?.focus(), 50);
+                                        } else {
+                                            setTimeout(() => refEntity.current?.focus(), 50);
+                                        }
+                                    }
+                                }}
+                                inputRef={refType}
+                                placeholder={lang === 'ta' ? '-- வகையைத் தேர்வுசெய் --' : '-- Select Type --'}
+                            />
                         </div>
                     )}
 
@@ -639,19 +664,21 @@ const Payments = () => {
                     {salesmanId && transactionType === 'internal' && (
                         <div>
                             <label style={LABEL_S}>{lang === 'ta' ? 'உள் துணை வகை' : 'Internal Sub-Type'}</label>
-                            <select
-                                ref={refSubtype}
+                            <SearchSelect
+                                items={internalSubtypes}
                                 value={internalSubtype}
-                                onChange={e => {
-                                    setInternalSubtype(e.target.value);
+                                onChange={val => {
+                                    setInternalSubtype(val);
                                     resetForm();
                                 }}
-                                style={INPUT_S}
-                            >
-                                <option value="">{lang === 'ta' ? '-- துணை வகையைத் தேர்வுசெய் --' : '-- Select Sub-Type --'}</option>
-                                <option value="expenses">{lang === 'ta' ? 'பணியாளர் செலவுகள்' : 'Staff Expenses'}</option>
-                                <option value="transfers">{lang === 'ta' ? 'பணியாளர் பரிமாற்றம்' : 'Staff Transfers'}</option>
-                            </select>
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                        setTimeout(() => refEntity.current?.focus(), 50);
+                                    }
+                                }}
+                                inputRef={refSubtype}
+                                placeholder={lang === 'ta' ? '-- துணை வகையைத் தேர்வுசெய் --' : '-- Select Sub-Type --'}
+                            />
                         </div>
                     )}
                 </div>
@@ -810,7 +837,7 @@ const Payments = () => {
                                         >
                                             <option value="">{lang === 'ta' ? '-- பெறும் பணியாளரைத் தேர்வுசெய் --' : '-- Choose Receiver --'}</option>
                                             {activeSalesmen.filter(s => s.id !== salesmanId).map(s => (
-                                                <option key={s.id} value={s.id}>{s.nameTa || s.name}</option>
+                                                <option key={s.id} value={s.id}>{lang === 'ta' ? (s.nameTa || s.name) : s.name}</option>
                                             ))}
                                         </select>
                                     </div>

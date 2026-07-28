@@ -593,9 +593,25 @@ export const saveSalesman = async (salesman) => {
   if (id) {
     await updateData(COLLECTIONS.SALESMEN, id, data);
   } else {
+    let displayId = data.displayId;
+    if (!displayId) {
+      try {
+        const querySnapshot = await getDocs(collection(db, COLLECTIONS.SALESMEN));
+        const sList = [];
+        querySnapshot.forEach(doc => {
+          const d = doc.data();
+          if (d.displayId) sList.push(d);
+        });
+        const validIds = sList.map(s => parseInt(s.displayId) || 0).filter(id => id >= 101 && id < 100000);
+        displayId = validIds.length > 0 ? Math.max(...validIds) + 1 : 101;
+      } catch (e) {
+        console.error("Error generating displayId for salesman:", e);
+        displayId = Date.now().toString().slice(-6);
+      }
+    }
     await addData(COLLECTIONS.SALESMEN, {
       ...data,
-      displayId: data.displayId || Date.now().toString().slice(-6),
+      displayId: String(displayId),
       status: data.status || 'Active'
     });
   }

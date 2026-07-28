@@ -847,8 +847,7 @@ const Layout = () => {
     { label: lang === 'ta' ? 'பணம் செலுத்துதல்' : 'Payments', icon: '💳', path: '/app/payments' },
     { label: lang === 'ta' ? 'பூ அறிக்கை' : 'Flower Report', icon: '🌸', path: '/app/flower-wise-report' },
     { label: lang === 'ta' ? 'விரைவு பதிவு' : 'Quick Entry', icon: '⚡', path: '/app/quick-entry' },
-    { label: lang === 'ta' ? 'மற்றவை' : 'Others', icon: '📁', path: '/app/others-menu' },
-    { label: lang === 'ta' ? 'அமைப்புகள்' : 'Settings', icon: '⚙️', path: '/app/business-info' }
+    { label: lang === 'ta' ? 'மற்றவை' : 'Others', icon: '📁', path: '/app/others-menu' }
   ];
 
   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';

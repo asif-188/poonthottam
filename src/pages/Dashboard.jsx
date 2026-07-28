@@ -1,13 +1,10 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LangContext } from '../components/Layout';
-import { Settings } from 'lucide-react';
-import BusinessSettings from './BusinessSettings';
 
 const Dashboard = () => {
     const navigate = useNavigate();
     const { lang } = useContext(LangContext);
-    const [showBizModal, setShowBizModal] = useState(false);
 
     const cards = [
         {
@@ -72,50 +69,11 @@ const Dashboard = () => {
             borderClass: 'border-slate-100 hover:border-slate-400 hover:shadow-slate-100',
             textClass: 'text-slate-800',
             textSubClass: 'text-slate-600'
-        },
-        {
-            labelTa: 'அமைப்புகள்',
-            labelEn: 'Settings',
-            icon: '⚙️',
-            path: '/app/business-info',
-            borderClass: 'border-cyan-100 hover:border-cyan-400 hover:shadow-cyan-100',
-            textClass: 'text-cyan-800',
-            textSubClass: 'text-cyan-600'
         }
     ];
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[75vh] w-full px-4 py-8 animate-in fade-in zoom-in duration-500 relative">
-            
-            {/* Small business settings/info icon in top right corner */}
-            <button
-                onClick={() => setShowBizModal(true)}
-                style={{
-                    position: 'absolute',
-                    top: '20px',
-                    right: '20px',
-                    background: 'rgba(255, 255, 255, 0.8)',
-                    backdropFilter: 'blur(8px)',
-                    border: '1.5px solid #e2e8f0',
-                    borderRadius: '50%',
-                    width: '44px',
-                    height: '44px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    color: '#64748b',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                    transition: 'all 0.2s',
-                    zIndex: 10
-                }}
-                onMouseEnter={e => Object.assign(e.currentTarget.style, { background: '#f1f5f9', color: '#10b981', borderColor: '#a7f3d0' })}
-                onMouseLeave={e => Object.assign(e.currentTarget.style, { background: 'rgba(255, 255, 255, 0.8)', color: '#64748b', borderColor: '#e2e8f0' })}
-                title="Business Settings"
-            >
-                <Settings size={20} />
-            </button>
-
             {/* Main Selection Containers */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full max-w-7xl">
                 {cards.map((card, index) => (
@@ -128,23 +86,19 @@ const Dashboard = () => {
                             {card.icon}
                         </span>
                         <div className="text-center w-full px-1">
-                            {/* Tamil Name */}
-                            <span className={`text-base sm:text-lg font-black ${card.textClass} tracking-tight block mb-0.5 font-display break-words leading-tight`}>
-                                {card.labelTa}
-                            </span>
-                            {/* English Name */}
-                            <span className={`text-xs sm:text-sm font-semibold ${card.textSubClass} tracking-wide block font-sans break-words leading-tight`}>
-                                {card.labelEn}
-                            </span>
+                            {lang === 'ta' ? (
+                                <span className={`text-lg sm:text-2xl font-black ${card.textClass} tracking-tight block font-display break-words leading-tight`}>
+                                    {card.labelTa}
+                                </span>
+                            ) : (
+                                <span className={`text-lg sm:text-2xl font-black ${card.textClass} tracking-tight block font-sans break-words leading-tight`}>
+                                    {card.labelEn}
+                                </span>
+                            )}
                         </div>
                     </button>
                 ))}
             </div>
-
-            {/* Business Info Modal */}
-            {showBizModal && (
-                <BusinessSettings isModal={true} onClose={() => setShowBizModal(false)} />
-            )}
         </div>
     );
 };

@@ -44,7 +44,10 @@ const SearchSelect = ({ items, value, onChange, onKeyDown, inputRef, placeholder
 
   const formatName = (item) => {
     if (!item) return '';
-    return item.taName ? `${item.name}-${item.taName}` : item.name;
+    if (lang === 'ta') {
+      return item.taName || item.nameTa || item.name;
+    }
+    return item.name;
   };
 
   const selectedItem = items.find(i => i.id === value || i.name === value);
