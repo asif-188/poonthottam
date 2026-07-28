@@ -580,7 +580,7 @@ const parseMultiLineSpeech = (transcript, config) => {
 const EMPTY_ARRAY = [];
 
 /* ── Keyboard-navigable Searchable Dropdown ── */
-const SearchSelect = ({ items, value, onChange, onKeyDown, inputRef, placeholder, lang }) => {
+const SearchSelect = ({ items, value, onChange, onKeyDown, inputRef, placeholder, lang, style }) => {
     const [query, setQuery]         = useState('');
     const [open, setOpen]           = useState(false);
     const [cursor, setCursor]       = useState(0);
@@ -663,7 +663,7 @@ const SearchSelect = ({ items, value, onChange, onKeyDown, inputRef, placeholder
                 onChange={e => { setQuery(e.target.value); setCursor(0); }}
                 onKeyDown={handleKey}
                 autoComplete="off"
-                style={{ ...styles.selectInput, paddingRight: '40px' }}
+                style={{ ...(style || styles.selectInput), paddingRight: '40px' }}
             />
             <div style={{
                 position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)',
@@ -1221,18 +1221,28 @@ const VoiceEntryModal = ({
                             <div style={{...styles.sectionCard, padding: '16px'}}>
                                 <h4 style={styles.cardHeaderSmall}>Manual Line Insertion</h4>
                                 <div style={styles.manualEntryGrid}>
-                                    <select 
+                                    <SearchSelect
+                                        items={flowers}
                                         value={manualItem.flowerType}
-                                        onChange={e => setManualItem({...manualItem, flowerType: e.target.value})}
+                                        onChange={sel => {
+                                            if (sel) {
+                                                setManualItem({
+                                                    ...manualItem,
+                                                    flowerType: sel.name,
+                                                    flowerTypeTa: sel.taName || sel.nameTa || ''
+                                                });
+                                            } else {
+                                                setManualItem({
+                                                    ...manualItem,
+                                                    flowerType: '',
+                                                    flowerTypeTa: ''
+                                                });
+                                            }
+                                        }}
+                                        placeholder={langSetting === 'ta' ? 'பூவைத் தேடுக...' : 'Select Flower...'}
+                                        lang={langSetting}
                                         style={styles.manualInput}
-                                    >
-                                        <option value="">Select Flower...</option>
-                                        {flowers.map(f => (
-                                            <option key={f.name} value={f.name}>
-                                                {f.taName ? `${f.name} (${f.taName})` : f.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    />
                                     <input 
                                         type="number" 
                                         placeholder="Qty (Kg)"
