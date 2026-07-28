@@ -538,9 +538,9 @@ const DailyFlowerPrices = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 min-h-[80vh] p-1 lg:p-4">
-      {/* LEFT COLUMN: Data Entry & Configuration (60% width) */}
-      <div className="w-full lg:w-3/5 bg-white rounded-[28px] border border-slate-100 shadow-xl p-6 flex flex-col justify-between">
+    <div className="flex flex-col xl:flex-row gap-6 min-h-[80vh] p-1 lg:p-4">
+      {/* LEFT COLUMN: Data Entry & Configuration (58% width) */}
+      <div className="w-full xl:w-[58%] bg-white rounded-[28px] border border-slate-100 shadow-xl p-6 flex flex-col justify-between">
         <div className="flex flex-col flex-1 min-h-0">
           {/* Header Panel */}
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5 mb-6">
@@ -751,8 +751,8 @@ const DailyFlowerPrices = () => {
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Real-Time Premium Poster Preview & Actions (40% width) */}
-      <div className="w-full lg:w-2/5 flex flex-col items-center gap-6">
+      {/* RIGHT COLUMN: Real-Time Premium Poster Preview & Actions (42% width) */}
+      <div className="w-full xl:w-[42%] flex flex-col items-center gap-6">
         {/* Export and Poster Control Options */}
         <div className="w-full bg-white rounded-[28px] border border-slate-100 shadow-xl p-5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">

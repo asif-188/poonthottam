@@ -606,7 +606,7 @@ const Payments = () => {
                             }}
                             style={INPUT_S}
                         >
-                            <option value="">-- Choose Staff --</option>
+                            <option value="">{lang === 'ta' ? '-- பணியாளரைத் தேர்வுசெய் --' : '-- Choose Staff --'}</option>
                             {activeSalesmen.map(s => (
                                 <option key={s.id} value={s.id}>{s.nameTa || s.name}</option>
                             ))}
@@ -616,7 +616,7 @@ const Payments = () => {
                     {/* Step 2: Select Type */}
                     {salesmanId && (
                         <div>
-                            <label style={LABEL_S}>Transaction Type</label>
+                            <label style={LABEL_S}>{lang === 'ta' ? 'பரிவர்த்தனை வகை' : 'Transaction Type'}</label>
                             <select
                                 ref={refType}
                                 value={transactionType}
@@ -627,10 +627,10 @@ const Payments = () => {
                                 }}
                                 style={INPUT_S}
                             >
-                                <option value="">-- Select Type --</option>
-                                <option value="credit">Credit (Sales Cash Receive)</option>
-                                <option value="debit">Debit (Purchase Cash Paid)</option>
-                                <option value="internal">Internal Transfer</option>
+                                <option value="">{lang === 'ta' ? '-- வகையைத் தேர்வுசெய் --' : '-- Select Type --'}</option>
+                                <option value="credit">{lang === 'ta' ? 'வரவு (விற்பனை பணம் பெறல்)' : 'Credit (Sales Cash Receive)'}</option>
+                                <option value="debit">{lang === 'ta' ? 'செலவு (கொள்முதல் பணம் கொடுத்தல்)' : 'Debit (Purchase Cash Paid)'}</option>
+                                <option value="internal">{lang === 'ta' ? 'உள் பரிமாற்றம்' : 'Internal Transfer'}</option>
                             </select>
                         </div>
                     )}
@@ -638,7 +638,7 @@ const Payments = () => {
                     {/* Step 3: Select Subtype */}
                     {salesmanId && transactionType === 'internal' && (
                         <div>
-                            <label style={LABEL_S}>Internal Sub-Type</label>
+                            <label style={LABEL_S}>{lang === 'ta' ? 'உள் துணை வகை' : 'Internal Sub-Type'}</label>
                             <select
                                 ref={refSubtype}
                                 value={internalSubtype}
@@ -648,9 +648,9 @@ const Payments = () => {
                                 }}
                                 style={INPUT_S}
                             >
-                                <option value="">-- Select Sub-Type --</option>
-                                <option value="expenses">Staff Expenses</option>
-                                <option value="transfers">Staff Transfers</option>
+                                <option value="">{lang === 'ta' ? '-- துணை வகையைத் தேர்வுசெய் --' : '-- Select Sub-Type --'}</option>
+                                <option value="expenses">{lang === 'ta' ? 'பணியாளர் செலவுகள்' : 'Staff Expenses'}</option>
+                                <option value="transfers">{lang === 'ta' ? 'பணியாளர் பரிமாற்றம்' : 'Staff Transfers'}</option>
                             </select>
                         </div>
                     )}
@@ -676,19 +676,19 @@ const Payments = () => {
                                         />
                                     </div>
                                     <div>
-                                        <label style={LABEL_S}>Payment Method</label>
+                                        <label style={LABEL_S}>{lang === 'ta' ? 'செலுத்தும் முறை' : 'Payment Method'}</label>
                                         <select
                                             value={formData.method}
                                             onChange={e => setFormData({ ...formData, method: e.target.value })}
                                             style={INPUT_S}
                                         >
-                                            <option value="Cash">Cash</option>
-                                            <option value="UPI">GPAY (UPI)</option>
-                                            <option value="Ready Cash">Ready Cash</option>
+                                            <option value="Cash">{lang === 'ta' ? 'பணம்' : 'Cash'}</option>
+                                            <option value="UPI">{lang === 'ta' ? 'GPAY (UPI)' : 'GPAY (UPI)'}</option>
+                                            <option value="Ready Cash">{lang === 'ta' ? 'ரொக்கம்' : 'Ready Cash'}</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label style={LABEL_S}>CASH LESS</label>
+                                        <label style={LABEL_S}>{t('cashLess') || 'CASH LESS'}</label>
                                         <input
                                             ref={refCashLess}
                                             type="number"
@@ -700,7 +700,7 @@ const Payments = () => {
                                         />
                                     </div>
                                     <div>
-                                        <label style={LABEL_S}>{t('givenAmount') || 'Given Amount'}</label>
+                                        <label style={LABEL_S}>{t('givenAmount') || (lang === 'ta' ? 'செலுத்தும் தொகை' : 'Given Amount')}</label>
                                         <input
                                             ref={refAmount}
                                             type="number"
@@ -718,29 +718,29 @@ const Payments = () => {
                             {transactionType === 'debit' && (
                                 <>
                                     <div>
-                                        <label style={LABEL_S}>Vendor</label>
+                                        <label style={LABEL_S}>{lang === 'ta' ? 'விற்பனையாளர்' : 'Vendor'}</label>
                                         <SearchSelect
                                             items={vendors}
                                             value={formData.entityId}
                                             onChange={val => setFormData({ ...formData, entityId: val })}
                                             inputRef={refEntity}
                                             onKeyDown={e => onKey(e, refAmount)}
-                                            placeholder="Select Vendor"
+                                            placeholder={lang === 'ta' ? 'விற்பனையாளரைத் தேர்வுசெய்' : 'Select Vendor'}
                                         />
                                     </div>
                                     <div>
-                                        <label style={LABEL_S}>Payment Method</label>
+                                        <label style={LABEL_S}>{lang === 'ta' ? 'செலுத்தும் முறை' : 'Payment Method'}</label>
                                         <select
                                             value={formData.method}
                                             onChange={e => setFormData({ ...formData, method: e.target.value })}
                                             style={INPUT_S}
                                         >
-                                            <option value="Cash">Cash</option>
-                                            <option value="Ready Cash">Ready Cash</option>
+                                            <option value="Cash">{lang === 'ta' ? 'பணம்' : 'Cash'}</option>
+                                            <option value="Ready Cash">{lang === 'ta' ? 'ரொக்கம்' : 'Ready Cash'}</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label style={LABEL_S}>Amount Paid</label>
+                                        <label style={LABEL_S}>{lang === 'ta' ? 'செலுத்திய தொகை' : 'Amount Paid'}</label>
                                         <input
                                             ref={refAmount}
                                             type="number"
@@ -758,32 +758,32 @@ const Payments = () => {
                             {transactionType === 'internal' && internalSubtype === 'expenses' && (
                                 <>
                                     <div>
-                                        <label style={LABEL_S}>Category</label>
+                                        <label style={LABEL_S}>{lang === 'ta' ? 'வகை' : 'Category'}</label>
                                         <select
                                             ref={refEntity}
                                             value={formData.category}
                                             onChange={e => setFormData({ ...formData, category: e.target.value })}
                                             style={INPUT_S}
                                         >
-                                            <option value="Petrol">Petrol</option>
-                                            <option value="Food">Food</option>
-                                            <option value="Maintenance">Maintenance</option>
-                                            <option value="Other">Other</option>
+                                            <option value="Petrol">{lang === 'ta' ? 'பெட்ரோல்' : 'Petrol'}</option>
+                                            <option value="Food">{lang === 'ta' ? 'உணவு' : 'Food'}</option>
+                                            <option value="Maintenance">{lang === 'ta' ? 'பராமரிப்பு' : 'Maintenance'}</option>
+                                            <option value="Other">{lang === 'ta' ? 'இதர' : 'Other'}</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label style={LABEL_S}>Payment Source</label>
+                                        <label style={LABEL_S}>{lang === 'ta' ? 'பண ஆதாரம்' : 'Payment Source'}</label>
                                         <select
                                             value={formData.source}
                                             onChange={e => setFormData({ ...formData, source: e.target.value })}
                                             style={INPUT_S}
                                         >
-                                            <option value="Cash">Cash</option>
-                                            <option value="Ready Cash">Ready Cash</option>
+                                            <option value="Cash">{lang === 'ta' ? 'பணம்' : 'Cash'}</option>
+                                            <option value="Ready Cash">{lang === 'ta' ? 'ரொக்கம்' : 'Ready Cash'}</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label style={LABEL_S}>Expense Amount</label>
+                                        <label style={LABEL_S}>{lang === 'ta' ? 'செலவுத் தொகை' : 'Expense Amount'}</label>
                                         <input
                                             ref={refAmount}
                                             type="number"
@@ -801,21 +801,21 @@ const Payments = () => {
                             {transactionType === 'internal' && internalSubtype === 'transfers' && (
                                 <>
                                     <div>
-                                        <label style={LABEL_S}>To Staff</label>
+                                        <label style={LABEL_S}>{lang === 'ta' ? 'பெறும் பணியாளர்' : 'To Staff'}</label>
                                         <select
                                             ref={refEntity}
                                             value={formData.toSalesmanId}
                                             onChange={e => setFormData({ ...formData, toSalesmanId: e.target.value })}
                                             style={INPUT_S}
                                         >
-                                            <option value="">-- Choose Receiver --</option>
+                                            <option value="">{lang === 'ta' ? '-- பெறும் பணியாளரைத் தேர்வுசெய் --' : '-- Choose Receiver --'}</option>
                                             {activeSalesmen.filter(s => s.id !== salesmanId).map(s => (
                                                 <option key={s.id} value={s.id}>{s.nameTa || s.name}</option>
                                             ))}
                                         </select>
                                     </div>
                                     <div>
-                                        <label style={LABEL_S}>Transfer Amount</label>
+                                        <label style={LABEL_S}>{lang === 'ta' ? 'பரிமாற்றத் தொகை' : 'Transfer Amount'}</label>
                                         <input
                                             ref={refAmount}
                                             type="number"
@@ -835,7 +835,7 @@ const Payments = () => {
                                 <input
                                     ref={refNotes}
                                     type="text"
-                                    placeholder="Short note..."
+                                    placeholder={lang === 'ta' ? 'குறிப்பு...' : 'Short note...'}
                                     value={formData.note}
                                     onChange={e => setFormData({ ...formData, note: e.target.value })}
                                     onKeyDown={e => {
@@ -864,7 +864,7 @@ const Payments = () => {
                                     transition: 'all 0.2s', opacity: (!formData.amount || isSaving) ? 0.6 : 1
                                 }}
                             >
-                                {isSaving ? 'Saving...' : <><Plus size={16} /> SAVE</>}
+                                {isSaving ? (lang === 'ta' ? 'சேமிக்கப்படுகிறது...' : 'Saving...') : <><Plus size={16} /> {lang === 'ta' ? 'சேமி' : 'SAVE'}</>}
                             </button>
                         </div>
                     </div>
@@ -882,7 +882,7 @@ const Payments = () => {
                             </h3>
                         </div>
                         <div style={{ background: '#16a34a', color: '#fff', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 800 }}>
-                            {todayEntries.length} {todayEntries.length === 1 ? 'ENTRY' : 'ENTRIES'}
+                            {todayEntries.length} {lang === 'ta' ? 'பதிவு(கள்)' : (todayEntries.length === 1 ? 'ENTRY' : 'ENTRIES')}
                         </div>
                     </div>
 
@@ -890,20 +890,20 @@ const Payments = () => {
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ background: '#fff', borderBottom: '1.5px solid #f1f5f9' }}>
-                                    <th style={TH_S}><Clock size={12} style={{ marginRight: '6px', display: 'inline' }} />Time</th>
-                                    <th style={TH_S}>Type</th>
-                                    <th style={TH_S}>Particulars</th>
-                                    <th style={{ ...TH_S, textAlign: 'right' }}>Amount</th>
-                                    <th style={TH_S}>Method</th>
-                                    <th style={TH_S}>Notes</th>
-                                    <th style={{ ...TH_S, textAlign: 'center' }}>Action</th>
+                                    <th style={TH_S}><Clock size={12} style={{ marginRight: '6px', display: 'inline' }} />{lang === 'ta' ? 'நேரம்' : 'Time'}</th>
+                                    <th style={TH_S}>{lang === 'ta' ? 'வகை' : 'Type'}</th>
+                                    <th style={TH_S}>{lang === 'ta' ? 'விவரங்கள்' : 'Particulars'}</th>
+                                    <th style={{ ...TH_S, textAlign: 'right' }}>{lang === 'ta' ? 'தொகை' : 'Amount'}</th>
+                                    <th style={TH_S}>{lang === 'ta' ? 'செலுத்தும் முறை' : 'Method'}</th>
+                                    <th style={TH_S}>{lang === 'ta' ? 'குறிப்பு' : 'Notes'}</th>
+                                    <th style={{ ...TH_S, textAlign: 'center' }}>{lang === 'ta' ? 'செயல்' : 'Action'}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {todayEntries.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} style={{ padding: '40px 16px', textAlign: 'center', color: '#9ca3af', fontStyle: 'italic', fontSize: '13.5px' }}>
-                                            No entries recorded for this staff member on this date.
+                                            {lang === 'ta' ? 'இந்தத் தேதியில் இந்தப் பணியாளருக்குப் பதிவுகள் எதுவும் இல்லை.' : 'No entries recorded for this staff member on this date.'}
                                         </td>
                                     </tr>
                                 ) : (
@@ -913,27 +913,36 @@ const Payments = () => {
                                         let amountColor = '#1e293b';
 
                                         if (item.rowType === 'credit') {
-                                            displayType = 'Credit (Sales Rec)';
+                                            displayType = lang === 'ta' ? 'வரவு (விற்பனை பணம் பெறல்)' : 'Credit (Sales Rec)';
                                             const buyer = buyers.find(b => b.id === item.entityId);
-                                            displayParticulars = buyer ? `${buyer.name} (#${buyer.displayId || ''})` : '—';
+                                            displayParticulars = buyer ? (buyer.nameTa || buyer.name) + ` (#${buyer.displayId || ''})` : '—';
                                             amountColor = '#16a34a'; // Green for cash received
                                         }
                                         else if (item.rowType === 'debit') {
-                                            displayType = 'Debit (Purchase Paid)';
+                                            displayType = lang === 'ta' ? 'செலவு (கொள்முதல் பணம் கொடுத்தல்)' : 'Debit (Purchase Paid)';
                                             const vendor = vendors.find(v => v.id === item.entityId);
-                                            displayParticulars = vendor ? `${vendor.name} (#${vendor.displayId || ''})` : '—';
+                                            displayParticulars = vendor ? (vendor.nameTa || vendor.name) + ` (#${vendor.displayId || ''})` : '—';
                                             amountColor = '#f43f5e'; // Rose for cash paid
                                         }
                                         else if (item.rowType === 'expense') {
-                                            displayType = `Expense (${item.category})`;
-                                            displayParticulars = item.category || '—';
+                                            let cat = item.category;
+                                            if (lang === 'ta') {
+                                                if (cat === 'Petrol') cat = 'பெட்ரோல்';
+                                                else if (cat === 'Food') cat = 'உணவு';
+                                                else if (cat === 'Maintenance') cat = 'பராமரிப்பு';
+                                                else if (cat === 'Other') cat = 'இதர';
+                                            }
+                                            displayType = lang === 'ta' ? `செலவு (${cat})` : `Expense (${item.category})`;
+                                            displayParticulars = cat || '—';
                                             amountColor = '#ef4444'; // Red for expense
                                         }
                                         else if (item.rowType === 'transfer') {
-                                            displayType = 'Credit Transfer';
-                                            const from = salesmen.find(s => s.id === item.fromSalesmanId)?.name || item.fromSalesmanName;
-                                            const to = salesmen.find(s => s.id === item.toSalesmanId)?.name || item.toSalesmanName;
-                                            displayParticulars = `${from} ➜ ${to}`;
+                                            displayType = lang === 'ta' ? 'பணியாளர் பரிமாற்றம்' : 'Credit Transfer';
+                                            const from = salesmen.find(s => s.id === item.fromSalesmanId);
+                                            const to = salesmen.find(s => s.id === item.toSalesmanId);
+                                            const fromName = from ? (from.nameTa || from.name) : item.fromSalesmanName;
+                                            const toName = to ? (to.nameTa || to.name) : item.toSalesmanName;
+                                            displayParticulars = `${fromName} ➜ ${toName}`;
                                             amountColor = '#3b82f6'; // Blue for transfer
                                         }
 
@@ -955,7 +964,15 @@ const Payments = () => {
                                                     )}
                                                 </td>
                                                 <td style={{ ...TD_S, color: '#475569', fontSize: '13px', fontWeight: 600 }}>
-                                                    {item.method || item.source || 'Cash'}
+                                                    {(() => {
+                                                        const val = item.method || item.source || 'Cash';
+                                                        if (lang === 'ta') {
+                                                            if (val === 'Cash') return 'பணம்';
+                                                            if (val === 'Ready Cash') return 'ரொக்கம்';
+                                                            if (val === 'UPI') return 'GPAY (UPI)';
+                                                        }
+                                                        return val;
+                                                    })()}
                                                 </td>
                                                 <td style={{ ...TD_S, color: '#64748b', fontSize: '13px' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

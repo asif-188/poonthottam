@@ -1507,7 +1507,7 @@ const Layout = () => {
             )}
           </header>
 
-          <main style={{ flex: 1, padding: isMobile ? '12px' : '28px', position: 'relative', zIndex: 10, overflowX: 'hidden' }}>
+          <main style={{ flex: 1, padding: isMobile ? '12px' : '28px', position: 'relative', overflowX: 'hidden' }}>
             <div style={{ maxWidth: '1700px', margin: '0 auto', width: '100%' }}>
               <Outlet />
             </div>
