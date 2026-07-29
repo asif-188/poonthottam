@@ -211,18 +211,21 @@ const PbSalesEntry = () => {
 
   const handleAddItem = async () => {
     if (!buyerId || !currentItem.flowerType || !currentItem.quantity || !currentItem.price || isSaving) return;
-    setIsSaving(true);
     const qty = parseFloat(currentItem.quantity);
     const rate = parseFloat(currentItem.price);
     const total = qty * rate;
+    const buyer = buyers.find(b => b.id === buyerId);
+
+    // Synchronously focus and clear input to keep user context for keyboard
+    setCurrentItem({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
+    refFlower.current?.focus();
+
+    setIsSaving(true);
     try {
-      const buyer = buyers.find(b => b.id === buyerId);
       let invoiceNo;
       try { invoiceNo = await getNextPbInvoiceNo(); } catch { invoiceNo = `PB-${Date.now()}`; }
       await savePbSale({ buyerId, date, buyerName: buyer?.name || 'Unknown', items: [{ ...currentItem, total }], grandTotal: total, invoiceNo, timestamp: serverTimestamp() });
       await updateDoc(doc(db, 'pb_buyers', buyerId), { balance: increment(total) });
-      setCurrentItem({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
-      setTimeout(() => refFlower.current?.focus(), 50);
     } catch (err) { alert('Error saving item: ' + err.message); }
     finally { setIsSaving(false); }
   };
@@ -238,10 +241,10 @@ const PbSalesEntry = () => {
   const handleEditItem = async (sale) => {
     setBuyerId(sale.buyerId);
     setCurrentItem(sale.items[0]);
+    refFlower.current?.focus();
     try {
       await deleteDoc(doc(db, 'pb_sales', sale.id));
       await updateDoc(doc(db, 'pb_buyers', sale.buyerId), { balance: increment(-(sale.grandTotal || 0)) });
-      setTimeout(() => refFlower.current?.focus(), 100);
     } catch (err) { console.error('Edit init failed:', err); }
   };
 

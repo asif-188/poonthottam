@@ -321,28 +321,30 @@ const SalesEntry = () => {
 
     const handleAddItem = async () => {
         if (!buyerId || !currentItem.flowerType || !currentItem.quantity || !currentItem.price || isSaving) return;
-        setIsSaving(true);
         const qty  = parseFloat(currentItem.quantity);
         const rate = parseFloat(currentItem.price);
         const total = qty * rate;
         
+        const buyer = buyers.find(b => b.id === buyerId);
+        const saleData = {
+            buyerId,
+            date,
+            buyerName: buyer?.name || 'Unknown',
+            items: [{ ...currentItem, total }],
+            grandTotal: total,
+            timestamp: serverTimestamp()
+        };
+
+        // Synchronously focus and clear input to keep user context for keyboard
+        setCurrentItem({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
+        setSelectedBuyerIdForShare('');
+        setMainTableSelectedIndex(-1);
+        refFlower.current?.focus();
+
+        setIsSaving(true);
         try {
-            const buyer = buyers.find(b => b.id === buyerId);
-            const saleData = {
-                buyerId,
-                date,
-                buyerName: buyer?.name || 'Unknown',
-                items: [{ ...currentItem, total }],
-                grandTotal: total,
-                timestamp: serverTimestamp()
-            };
             await saveSale(saleData);
             await updateDoc(doc(db, 'buyers', buyerId), { balance: increment(total) });
-            
-            setCurrentItem({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
-            setSelectedBuyerIdForShare('');
-            setMainTableSelectedIndex(-1);
-            setTimeout(() => refFlower.current?.focus(), 50);
         } catch (err) {
             alert('Error saving item: ' + err.message);
         } finally {
@@ -359,11 +361,10 @@ const SalesEntry = () => {
             setCurrentItem(sale.items[0]);
             setSelectedBuyerIdForShare('');
             setMainTableSelectedIndex(-1);
+            refFlower.current?.focus();
             try {
                 await deleteDoc(doc(db, 'sales', sale.id));
                 await updateDoc(doc(db, 'buyers', sale.buyerId), { balance: increment(-(sale.grandTotal || 0)) });
-                // Move focus to flower dropdown or qty
-                setTimeout(() => refFlower.current?.focus(), 100);
             } catch (err) {
                 console.error('Edit initialization failed:', err);
             }
