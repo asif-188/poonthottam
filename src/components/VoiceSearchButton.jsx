@@ -1,14 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Mic, MicOff } from 'lucide-react';
 
 const VoiceSearchButton = ({ onSpeechResult, langSetting = 'en' }) => {
     const [isListening, setIsListening] = useState(false);
+    const recognitionRef = useRef(null);
 
     const handleClick = (e) => {
         e.preventDefault();
         e.stopPropagation();
 
         if (isListening) {
+            if (recognitionRef.current) {
+                recognitionRef.current.abort();
+            }
             setIsListening(false);
             return;
         }
@@ -29,7 +33,17 @@ const VoiceSearchButton = ({ onSpeechResult, langSetting = 'en' }) => {
         };
 
         rec.onresult = (event) => {
-            let resultText = event.results[0][0].transcript;
+            const alternative = event.results[0][0];
+            const confidence = alternative.confidence;
+            const resultText = alternative.transcript;
+
+            if (confidence < 0.45) {
+                console.log(`Search speech ignored due to low confidence (${confidence}): ${resultText}`);
+                if (window.toast) {
+                    window.toast.warning(langSetting === 'ta' ? 'குரல் தெளிவாக இல்லை. மீண்டும் முயற்சிக்கவும்.' : 'Speech was not clear. Please try again.');
+                }
+                return;
+            }
             
             // Clean up queries (ignore leading filler words in English/Tamil)
             const cleanQuery = resultText
@@ -42,14 +56,24 @@ const VoiceSearchButton = ({ onSpeechResult, langSetting = 'en' }) => {
 
         rec.onerror = (err) => {
             console.error('Search speech error:', err.error);
+            setIsListening(false);
         };
 
         rec.onend = () => {
             setIsListening(false);
         };
 
+        recognitionRef.current = rec;
         rec.start();
     };
+
+    useEffect(() => {
+        return () => {
+            if (recognitionRef.current) {
+                recognitionRef.current.abort();
+            }
+        };
+    }, []);
 
     return (
         <button

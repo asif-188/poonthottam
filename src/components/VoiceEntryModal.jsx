@@ -765,7 +765,7 @@ const VoiceEntryModal = ({
         }
 
         const rec = new SpeechRecognition();
-        rec.continuous = true;
+        rec.continuous = false;
         rec.interimResults = false;
         rec.lang = speechLang;
         
@@ -775,19 +775,35 @@ const VoiceEntryModal = ({
         };
         
         rec.onresult = (e) => {
-            const resultIndex = e.resultIndex;
-            const resultText = e.results[resultIndex][0].transcript;
+            const alternative = e.results[0][0];
+            const confidence = alternative.confidence;
+            const resultText = alternative.transcript;
+
+            // Speech confidence filtering: ignore if confidence is too low
+            if (confidence < 0.45) {
+                console.log(`Speech ignored due to low confidence (${confidence}): ${resultText}`);
+                setIsListening(false);
+                if (window.toast) {
+                    window.toast.warning(langSetting === 'ta' ? 'குரல் தெளிவாக இல்லை. மீண்டும் முயற்சிக்கவும்.' : 'Speech was not clear. Please try again.');
+                }
+                return;
+            }
+
             setTranscript(resultText);
+            setIsListening(false); // Stop listening after a successful result
             handleVoiceCommand(resultText);
         };
         
         rec.onerror = (e) => {
             console.error('Speech recognition error:', e.error);
+            setIsListening(false);
+            setIsRecognizing(false);
             if (e.error !== 'no-speech') {
                 if (e.error === 'not-allowed') {
                     setErrorMsg('Microphone access denied. Please allow microphone permissions.');
-                    setIsListening(false);
-                    setIsRecognizing(false);
+                    if (window.toast) {
+                        window.toast.error(langSetting === 'ta' ? 'மைக்ரோஃபோன் அனுமதி மறுக்கப்பட்டது!' : 'Microphone permission denied!');
+                    }
                 } else {
                     setErrorMsg('Voice Error: ' + e.error);
                 }
@@ -796,13 +812,7 @@ const VoiceEntryModal = ({
         
         rec.onend = () => {
             setIsRecognizing(false);
-            if (isListening) {
-                try {
-                    rec.start();
-                } catch (err) {
-                    console.log('Failed to restart recognition on end:', err);
-                }
-            }
+            setIsListening(false); // Ensure listening stops cleanly
         };
 
         recognitionRef.current = rec;
@@ -844,98 +854,119 @@ const VoiceEntryModal = ({
             return;
         }
 
+        let matchedSuccessfully = false;
+
         // Invoice Multi-Line Intent
         if (parsed.intent === 'SELECT_CUSTOMER_AND_ADD_ITEMS') {
-            setSelectedCustomer(parsed.customer);
-            const newItems = parsed.items.map(item => ({
-                id: Math.random(),
-                flowerType: item.flower ? item.flower.name : '',
-                flowerTypeTa: item.flower ? (item.flower.taName || item.flower.nameTa || '') : '',
-                quantity: parseFloat(item.quantity).toFixed(2),
-                price: item.price
-            }));
-            setItemsList(prev => [...prev, ...newItems]);
-            setTranscript(`Customer Locked: ${parsed.customer.name} | Added ${newItems.length} items`);
+            const hasInvalidFlower = parsed.items.some(item => !item.flower);
+            if (parsed.customer && !hasInvalidFlower && parsed.items.length > 0) {
+                setSelectedCustomer(parsed.customer);
+                const newItems = parsed.items.map(item => ({
+                    id: Math.random(),
+                    flowerType: item.flower.name,
+                    flowerTypeTa: item.flower.taName || item.flower.nameTa || '',
+                    quantity: parseFloat(item.quantity).toFixed(2),
+                    price: item.price
+                }));
+                setItemsList(prev => [...prev, ...newItems]);
+                setTranscript(`Customer Locked: ${parsed.customer.name} | Added ${newItems.length} items`);
+                matchedSuccessfully = true;
+            }
         } else if (parsed.intent === 'ADD_ITEMS') {
-            const newItems = parsed.items.map(item => ({
-                id: Math.random(),
-                flowerType: item.flower ? item.flower.name : '',
-                flowerTypeTa: item.flower ? (item.flower.taName || item.flower.nameTa || '') : '',
-                quantity: parseFloat(item.quantity).toFixed(2),
-                price: item.price
-            }));
-            setItemsList(prev => [...prev, ...newItems]);
-            setTranscript(`Added ${newItems.length} items to invoice`);
+            const hasInvalidFlower = parsed.items.some(item => !item.flower);
+            if (!hasInvalidFlower && parsed.items.length > 0) {
+                const newItems = parsed.items.map(item => ({
+                    id: Math.random(),
+                    flowerType: item.flower.name,
+                    flowerTypeTa: item.flower.taName || item.flower.nameTa || '',
+                    quantity: parseFloat(item.quantity).toFixed(2),
+                    price: item.price
+                }));
+                setItemsList(prev => [...prev, ...newItems]);
+                setTranscript(`Added ${newItems.length} items to invoice`);
+                matchedSuccessfully = true;
+            }
         } else if (parsed.intent === 'SELECT_CUSTOMER') {
-            setSelectedCustomer(parsed.customer);
-            setTranscript(`Locked Customer: ${parsed.customer.name}`);
+            if (parsed.customer) {
+                setSelectedCustomer(parsed.customer);
+                setTranscript(`Locked Customer: ${parsed.customer.name}`);
+                matchedSuccessfully = true;
+            }
         } else if (parsed.intent === 'DELETE') {
-            setItemsList(prev => prev.filter(item => item.id !== parsed.target.id));
-            setTranscript(`Removed ${parsed.target.flowerType}`);
+            if (parsed.target) {
+                setItemsList(prev => prev.filter(item => item.id !== parsed.target.id));
+                setTranscript(`Removed ${parsed.target.flowerType}`);
+                matchedSuccessfully = true;
+            }
         } else if (parsed.intent === 'EDIT') {
-            setItemsList(prev => prev.map(item => {
-                if (item.id === parsed.target.id) {
-                    return { ...item, [parsed.field]: parsed.value };
-                }
-                return item;
-            }));
-            setTranscript(`Updated ${parsed.target.flowerType} ${parsed.field} to ${parsed.value}`);
+            if (parsed.target) {
+                setItemsList(prev => prev.map(item => {
+                    if (item.id === parsed.target.id) {
+                        return { ...item, [parsed.field]: parsed.value };
+                    }
+                    return item;
+                }));
+                setTranscript(`Updated ${parsed.target.flowerType} ${parsed.field} to ${parsed.value}`);
+                matchedSuccessfully = true;
+            }
         }
         
         // Payments / Cash Receive & Pay Intent
         else if (parsed.intent === 'PAYMENT_FORM') {
-            if (parsed.entity) {
+            if (parsed.entity && (parsed.amount !== null || parsed.cashLess !== null)) {
                 setSelectedCustomer(parsed.entity);
+                if (parsed.amount !== null) {
+                    setPaymentAmount(parsed.amount);
+                }
+                if (parsed.cashLess !== null) {
+                    setCashlessAmount(parsed.cashLess);
+                    setPaymentMethod('UPI');
+                }
+                if (parsed.remarks) {
+                    setPaymentNote(parsed.remarks);
+                }
+                setTranscript(`Parsed Payment details: ${parsed.entity.name} | Cash: ₹${parsed.amount || 0} | UPI: ₹${parsed.cashLess || 0}`);
+                matchedSuccessfully = true;
             }
-            if (parsed.amount !== null) {
-                setPaymentAmount(parsed.amount);
-            }
-            if (parsed.cashLess !== null) {
-                setCashlessAmount(parsed.cashLess);
-                setPaymentMethod('UPI');
-            }
-            if (parsed.remarks) {
-                setPaymentNote(parsed.remarks);
-            }
-            setTranscript(`Parsed Payment details: ${parsed.entity ? parsed.entity.name : 'No Entity'} | Cash: ₹${parsed.amount || 0} | UPI: ₹${parsed.cashLess || 0}`);
         }
 
         // Expense Intent
         else if (parsed.intent === 'EXPENSE_FORM') {
-            if (parsed.staff) {
+            if (parsed.staff && parsed.amount !== null) {
                 setSelectedCustomer(parsed.staff);
-            }
-            if (parsed.amount !== null) {
                 setPaymentAmount(parsed.amount);
+                if (parsed.category) {
+                    setExpenseCategory(parsed.category);
+                }
+                if (parsed.remarks) {
+                    setPaymentNote(parsed.remarks);
+                }
+                setTranscript(`Parsed Expense details: ${parsed.staff.name} | Amount: ₹${parsed.amount || 0} | Category: ${parsed.category}`);
+                matchedSuccessfully = true;
             }
-            if (parsed.category) {
-                setExpenseCategory(parsed.category);
-            }
-            if (parsed.remarks) {
-                setPaymentNote(parsed.remarks);
-            }
-            setTranscript(`Parsed Expense details: ${parsed.staff ? parsed.staff.name : 'No Staff'} | Amount: ₹${parsed.amount || 0} | Category: ${parsed.category}`);
         }
 
         // Transfer Intent
         else if (parsed.intent === 'TRANSFER_FORM') {
-            if (parsed.fromStaff) {
+            if (parsed.fromStaff && parsed.toStaff && parsed.amount !== null) {
                 setSelectedCustomer(parsed.fromStaff);
-            }
-            if (parsed.toStaff) {
                 setToStaff(parsed.toStaff);
-            }
-            if (parsed.amount !== null) {
                 setPaymentAmount(parsed.amount);
+                if (parsed.remarks) {
+                    setPaymentNote(parsed.remarks);
+                }
+                setTranscript(`Parsed Transfer: From ${parsed.fromStaff.name} to ${parsed.toStaff.name} | ₹${parsed.amount || 0}`);
+                matchedSuccessfully = true;
             }
-            if (parsed.remarks) {
-                setPaymentNote(parsed.remarks);
-            }
-            setTranscript(`Parsed Transfer: From ${parsed.fromStaff ? parsed.fromStaff.name : '---'} to ${parsed.toStaff ? parsed.toStaff.name : '---'} | ₹${parsed.amount || 0}`);
         }
 
-        else {
-            setTranscript(`Heard: "${commandText}" (Command details not fully matched)`);
+        if (!matchedSuccessfully) {
+            setTranscript(`Heard: "${commandText}" (No matching record found)`);
+            if (window.toast) {
+                window.toast.warning(langSetting === 'ta' ? 'பொருந்தும் பதிவு எதுவும் இல்லை. மீண்டும் முயற்சிக்கவும் அல்லது கைமுறையாக உள்ளிடவும்.' : 'No matching record found. Please try again or enter manually.');
+            } else {
+                setErrorMsg('No matching record found. Please try again or enter manually.');
+            }
         }
     };
 

@@ -653,8 +653,24 @@ const Layout = () => {
     };
 
     rec.onresult = async (e) => {
+      const alternative = e.results[0][0];
+      const confidence = alternative.confidence;
+      const resultText = alternative.transcript;
+
+      if (confidence < 0.45) {
+        console.log(`Global search speech ignored due to low confidence (${confidence}): ${resultText}`);
+        setSearchState('error');
+        if (window.toast) {
+          window.toast.warning(lang === 'ta' ? 'குரல் தெளிவாக இல்லை. மீண்டும் முயற்சிக்கவும்.' : 'Speech was not clear. Please try again.');
+        }
+        if (searchStateTimeoutRef.current) clearTimeout(searchStateTimeoutRef.current);
+        searchStateTimeoutRef.current = setTimeout(() => {
+          setSearchState(null);
+        }, 2000);
+        return;
+      }
+
       setSearchState('processing');
-      const resultText = e.results[0][0].transcript;
       setSearchTextInput(resultText);
       
       const cleanQuery = resultText

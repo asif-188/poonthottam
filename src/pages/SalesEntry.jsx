@@ -214,12 +214,11 @@ const SalesEntry = () => {
         setCurrentItem({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
         setEditingSale(null);
     };
-    const [isWhatsAppActive, setIsWhatsAppActive] = useState(false);
     const [selectedBuyerIdForShare, setSelectedBuyerIdForShare] = useState('');
+    const isWhatsAppActive = !!(selectedBuyerIdForShare || buyerId);
 
     const selectRowAndBuyer = (sale) => {
         setSelectedBuyerIdForShare(sale.buyerId);
-        setIsWhatsAppActive(true);
     };
 
     // Refs
@@ -341,7 +340,6 @@ const SalesEntry = () => {
             await updateDoc(doc(db, 'buyers', buyerId), { balance: increment(total) });
             
             setCurrentItem({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
-            setIsWhatsAppActive(false);
             setSelectedBuyerIdForShare('');
             setMainTableSelectedIndex(-1);
             setTimeout(() => refFlower.current?.focus(), 50);
@@ -359,7 +357,6 @@ const SalesEntry = () => {
         } else {
             setBuyerId(sale.buyerId);
             setCurrentItem(sale.items[0]);
-            setIsWhatsAppActive(false);
             setSelectedBuyerIdForShare('');
             setMainTableSelectedIndex(-1);
             try {
@@ -375,7 +372,6 @@ const SalesEntry = () => {
 
     const handleDeleteItem = async (sale) => {
         if (!window.confirm(t('delete') + '?')) return;
-        setIsWhatsAppActive(false);
         setSelectedBuyerIdForShare('');
         setMainTableSelectedIndex(-1);
         try {
@@ -570,7 +566,6 @@ const SalesEntry = () => {
                             value={buyerId} 
                             onChange={b => {
                                 setBuyerId(b.id);
-                                setIsWhatsAppActive(false);
                                 setSelectedBuyerIdForShare('');
                                 setMainTableSelectedIndex(-1);
                             }} 
