@@ -373,16 +373,32 @@ export const generateUniversalLedger = ({
             const time = getTxnTimeStr(cp);
             const millis = getTxnMillis(cp);
             
-            txnList.push({
-                id: `${cp.id}-cashpur`,
-                date,
-                time,
-                millis,
-                type: 'DEBIT',
-                particulars: `${isTamil ? 'ரொக்கக் கொள்முதல்' : 'Cash Purchase'}: ${cp.vendorName || 'Vendor'}`,
-                amount: Number(cp.grandTotal || 0),
-                rawTxn: cp
-            });
+            if (cp.items && cp.items.length > 0) {
+                cp.items.forEach((item, index) => {
+                    const flower = isTamil ? (item.flowerTypeTa || item.flowerType) : (item.flowerType || item.flowerTypeTa || '');
+                    txnList.push({
+                        id: `${cp.id}-cashpur-${index}`,
+                        date,
+                        time,
+                        millis,
+                        type: 'DEBIT',
+                        particulars: `${flower} (${item.quantity}*${item.price || item.rate})`,
+                        amount: Number(item.total || 0),
+                        rawTxn: cp
+                    });
+                });
+            } else {
+                txnList.push({
+                    id: `${cp.id}-cashpur`,
+                    date,
+                    time,
+                    millis,
+                    type: 'DEBIT',
+                    particulars: `${isTamil ? 'ரொக்கக் கொள்முதல்' : 'Cash Purchase'}: ${cp.vendorName || 'Vendor'}`,
+                    amount: Number(cp.grandTotal || 0),
+                    rawTxn: cp
+                });
+            }
         });
 
         // Cash Sales (Spot Sales) received into salesman cash box
@@ -391,16 +407,32 @@ export const generateUniversalLedger = ({
             const time = getTxnTimeStr(cs);
             const millis = getTxnMillis(cs);
             
-            txnList.push({
-                id: `${cs.id}-cashsale`,
-                date,
-                time,
-                millis,
-                type: 'CREDIT',
-                particulars: `${isTamil ? 'ரொக்க விற்பனை' : 'Cash Sale'}: ${cs.customerName || 'Customer'}`,
-                amount: Number(cs.grandTotal || 0),
-                rawTxn: cs
-            });
+            if (cs.items && cs.items.length > 0) {
+                cs.items.forEach((item, index) => {
+                    const flower = isTamil ? (item.flowerTypeTa || item.flowerType) : (item.flowerType || item.flowerTypeTa || '');
+                    txnList.push({
+                        id: `${cs.id}-cashsale-${index}`,
+                        date,
+                        time,
+                        millis,
+                        type: 'CREDIT',
+                        particulars: `${flower} (${item.quantity}*${item.price || item.rate})`,
+                        amount: Number(item.total || 0),
+                        rawTxn: cs
+                    });
+                });
+            } else {
+                txnList.push({
+                    id: `${cs.id}-cashsale`,
+                    date,
+                    time,
+                    millis,
+                    type: 'CREDIT',
+                    particulars: `${isTamil ? 'ரொக்க விற்பனை' : 'Cash Sale'}: ${cs.customerName || 'Customer'}`,
+                    amount: Number(cs.grandTotal || 0),
+                    rawTxn: cs
+                });
+            }
         });
     }
 

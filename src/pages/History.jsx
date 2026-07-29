@@ -304,6 +304,32 @@ const DetailsModal = ({ log, onClose, lang }) => {
 
     const formatValue = (key, val) => {
         if (val === null || val === undefined) return '—';
+        if (Array.isArray(val)) {
+            if (val.length === 0) return '—';
+            if (typeof val[0] === 'object' && val[0] !== null) {
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {val.map((item, index) => {
+                            const name = lang === 'ta' ? (item.flowerTypeTa || item.flowerType) : (item.flowerType || item.flowerTypeTa);
+                            const qty = item.quantity;
+                            const rate = item.price || item.rate;
+                            const total = item.total;
+                            
+                            const formattedQty = qty ? `${qty} kg` : '';
+                            const formattedRate = rate ? ` @ ₹${parseFloat(rate).toLocaleString('en-IN')}` : '';
+                            const formattedTotal = total ? ` = ₹${parseFloat(total).toLocaleString('en-IN')}` : '';
+                            
+                            return (
+                                <div key={index} style={{ fontSize: '12.5px', color: '#1e293b' }}>
+                                    <strong style={{ color: '#0f172a' }}>{name}</strong>: {formattedQty}{formattedRate}{formattedTotal}
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            }
+            return val.join(', ');
+        }
         if (typeof val === 'object') {
             if (val.seconds) {
                 return new Date(val.seconds * 1000).toLocaleString();
@@ -313,7 +339,7 @@ const DetailsModal = ({ log, onClose, lang }) => {
         if (typeof val === 'boolean') {
             return val ? 'Yes' : 'No';
         }
-        if (key.toLowerCase().includes('amount') || key.toLowerCase().includes('total') || key.toLowerCase().includes('balance') || key === 'rate' || key === 'cashLess') {
+        if (key === 'price' || key === 'rate' || key === 'cashLess' || key.toLowerCase().includes('amount') || key.toLowerCase().includes('total') || key.toLowerCase().includes('balance')) {
             if (!isNaN(val)) {
                 return `₹${parseFloat(val).toLocaleString('en-IN')}`;
             }
@@ -322,7 +348,52 @@ const DetailsModal = ({ log, onClose, lang }) => {
     };
 
     const excludedKeys = ['tenantId', 'createdAt', 'updatedAt', 'timestamp', 'id'];
-    const displayFields = Object.entries(data).filter(([k]) => !excludedKeys.includes(k));
+    const shouldExcludeKey = (key) => {
+        if (excludedKeys.includes(key)) return true;
+        const lowerKey = key.toLowerCase();
+        if (lowerKey.endsWith('id') && lowerKey !== 'displayid') return true;
+        return false;
+    };
+
+    const oldData = log.oldData;
+    const isUpdate = log.action === 'UPDATE';
+
+    const getDisplayFields = () => {
+        if (isUpdate && oldData) {
+            const changes = [];
+            const allKeys = Array.from(new Set([...Object.keys(oldData), ...Object.keys(data)]));
+            
+            allKeys.forEach(k => {
+                if (shouldExcludeKey(k)) return;
+                
+                const oldVal = oldData[k];
+                const newVal = data[k];
+                
+                const strOld = oldVal === undefined ? '' : JSON.stringify(oldVal);
+                const strNew = newVal === undefined ? '' : JSON.stringify(newVal);
+                
+                if (strOld !== strNew) {
+                    changes.push({
+                        key: k,
+                        oldVal,
+                        newVal,
+                        hasChange: true
+                    });
+                }
+            });
+            return changes;
+        }
+
+        return Object.entries(data)
+            .filter(([k]) => !shouldExcludeKey(k))
+            .map(([k, v]) => ({
+                key: k,
+                newVal: v,
+                hasChange: false
+            }));
+    };
+
+    const fieldsToDisplay = getDisplayFields();
 
     return (
         <div style={{
@@ -383,38 +454,40 @@ const DetailsModal = ({ log, onClose, lang }) => {
 
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
                         <tbody>
-                            {displayFields.length === 0 ? (
+                            {fieldsToDisplay.length === 0 ? (
                                 <tr>
                                     <td colSpan={2} style={{ padding: '16px', textAlign: 'center', color: '#64748b', fontStyle: 'italic' }}>
-                                        No data fields logged for this action.
+                                        {lang === 'ta' ? 'மாற்றங்கள் எதுவும் கண்டறியப்படவில்லை.' : 'No changes detected.'}
                                     </td>
                                 </tr>
                             ) : (
-                                displayFields.map(([k, v]) => (
-                                    <tr key={k} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                        <td style={{ padding: '10px 0', fontWeight: 800, color: '#475569', width: '45%' }}>
-                                            {formatKey(k)}
+                                fieldsToDisplay.map((field) => (
+                                    <tr key={field.key} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                        <td style={{ padding: '10px 0', fontWeight: 800, color: '#475569', width: '40%' }}>
+                                            {formatKey(field.key)}
                                         </td>
-                                        <td style={{ padding: '10px 0', fontWeight: 650, color: '#0f172a', width: '55%', wordBreak: 'break-all' }}>
-                                            {formatValue(k, v)}
+                                        <td style={{ padding: '10px 0', width: '60%', wordBreak: 'break-all' }}>
+                                            {field.hasChange ? (
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+                                                    <span style={{ color: '#ef4444', textDecoration: 'line-through', fontSize: '12.5px', background: '#fef2f2', padding: '2px 6px', borderRadius: '4px' }}>
+                                                        {formatValue(field.key, field.oldVal)}
+                                                    </span>
+                                                    <span style={{ color: '#64748b', fontWeight: 800 }}>➔</span>
+                                                    <span style={{ color: '#16a34a', fontWeight: 800, background: '#f0fdf4', padding: '2px 6px', borderRadius: '4px' }}>
+                                                        {formatValue(field.key, field.newVal)}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <span style={{ fontWeight: 650, color: '#0f172a' }}>
+                                                    {formatValue(field.key, field.newVal)}
+                                                </span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))
                             )}
                         </tbody>
                     </table>
-
-                    <details style={{ marginTop: '8px' }}>
-                        <summary style={{ fontSize: '12px', fontWeight: 800, color: '#10b981', cursor: 'pointer', outline: 'none' }}>
-                            {lang === 'ta' ? 'மூலத் தரவு (JSON)' : 'Raw Logged Object (JSON)'}
-                        </summary>
-                        <pre style={{
-                            background: '#0f172a', color: '#38bdf8', padding: '14px', borderRadius: '10px',
-                            fontSize: '11px', overflowX: 'auto', marginTop: '10px', fontFamily: 'monospace'
-                        }}>
-                            {JSON.stringify(data, null, 2)}
-                        </pre>
-                    </details>
                 </div>
 
                 {/* Footer */}

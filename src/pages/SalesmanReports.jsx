@@ -231,12 +231,25 @@ const SalesmanReports = () => {
             // 5. Cash Sales
             const rangeCashSales = cashSales.filter(cs => cs.salesmanId === salesman.id && cs.date >= fromDate && cs.date <= toDate);
             rangeCashSales.forEach(cs => {
-                creditList.push({
-                    particulars: (lang === 'ta' ? 'ரொக்க விற்பனை' : 'Cash Sales') + ` (${cs.customerName || '---'})`,
-                    quantity: null,
-                    rate: null,
-                    total: Number(cs.grandTotal) || 0
-                });
+                if (cs.items && cs.items.length > 0) {
+                    cs.items.forEach(item => {
+                        const fl = flowers.find(f => f.name === item.flowerType);
+                        const flowerName = fl ? (lang === 'ta' ? (fl.taName || item.flowerType) : item.flowerType) : item.flowerType;
+                        creditList.push({
+                            particulars: `${flowerName} (${item.quantity}*${item.price || item.rate})`,
+                            quantity: Number(item.quantity) || 0,
+                            rate: Number(item.price) || 0,
+                            total: Number(item.total) || 0
+                        });
+                    });
+                } else {
+                    creditList.push({
+                        particulars: (lang === 'ta' ? 'ரொக்க விற்பனை' : 'Cash Sales') + ` (${cs.customerName || '---'})`,
+                        quantity: null,
+                        rate: null,
+                        total: Number(cs.grandTotal) || 0
+                    });
+                }
             });
 
             const totalCredit = creditList.reduce((sum, item) => sum + (item.total || 0), 0);
@@ -302,16 +315,25 @@ const SalesmanReports = () => {
             // 5. Cash Purchases
             const rangeCashPurchases = cashPurchases.filter(cp => cp.salesmanId === salesman.id && cp.date >= fromDate && cp.date <= toDate);
             rangeCashPurchases.forEach(cp => {
-                cp.items.forEach(item => {
-                    const fl = flowers.find(f => f.name === item.flowerType);
-                    const flowerName = fl ? (lang === 'ta' ? (fl.taName || item.flowerType) : item.flowerType) : item.flowerType;
-                    debitList.push({
-                        particulars: `${flowerName} (${lang === 'ta' ? 'ரொக்கக் கொள்முதல்' : 'Cash Purchase'}: ${cp.vendorName || '---'})`,
-                        quantity: Number(item.quantity) || 0,
-                        rate: Number(item.price) || 0,
-                        total: Number(item.total) || 0
+                if (cp.items && cp.items.length > 0) {
+                    cp.items.forEach(item => {
+                        const fl = flowers.find(f => f.name === item.flowerType);
+                        const flowerName = fl ? (lang === 'ta' ? (fl.taName || item.flowerType) : item.flowerType) : item.flowerType;
+                        debitList.push({
+                            particulars: `${flowerName} (${item.quantity}*${item.price || item.rate})`,
+                            quantity: Number(item.quantity) || 0,
+                            rate: Number(item.price) || 0,
+                            total: Number(item.total) || 0
+                        });
                     });
-                });
+                } else {
+                    debitList.push({
+                        particulars: `${lang === 'ta' ? 'ரொக்கக் கொள்முதல்' : 'Cash Purchase'}: ${cp.vendorName || '---'}`,
+                        quantity: null,
+                        rate: null,
+                        total: Number(cp.grandTotal) || 0
+                    });
+                }
             });
 
             const totalDebit = debitList.reduce((sum, item) => sum + (item.total || 0), 0);

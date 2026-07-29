@@ -105,7 +105,8 @@ export const updateDoc = async (docRef, data) => {
         tenantId,
         timestamp: serverTimestamp(),
         details,
-        data: data
+        data: data,
+        oldData: oldData
       });
     }
   } catch (e) {
@@ -115,9 +116,19 @@ export const updateDoc = async (docRef, data) => {
 
 export const setDoc = async (docRef, data, options) => {
   const tenantId = getTenant();
+  let oldData = null;
+  const colName = docRef.parent.id;
+  try {
+    if (colName !== 'history' && colName !== 'recycle_bin') {
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        oldData = snap.data();
+      }
+    }
+  } catch (e) {}
+
   await firestoreSetDoc(docRef, data, options);
   try {
-    const colName = docRef.parent.id;
     if (colName !== 'history' && colName !== 'recycle_bin') {
       const details = getDetailsForDoc(colName, data, 'UPDATE');
       await firestoreAddDoc(collection(db, 'history'), {
@@ -127,7 +138,8 @@ export const setDoc = async (docRef, data, options) => {
         tenantId,
         timestamp: serverTimestamp(),
         details,
-        data: data
+        data: data,
+        oldData: oldData
       });
     }
   } catch (e) {
