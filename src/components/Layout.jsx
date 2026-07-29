@@ -614,10 +614,12 @@ const Layout = () => {
     }
   };
 
-  const toggleGlobalSearchVoice = () => {
+  const toggleGlobalSearchVoice = async () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      window.toast.error('Speech recognition is not supported in this browser.');
+      if (window.toast) {
+        window.toast.error('Speech recognition is not supported in this browser.');
+      }
       return;
     }
 
@@ -626,6 +628,19 @@ const Layout = () => {
         searchRecRef.current.abort();
       }
       setSearchState(null);
+      return;
+    }
+
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop());
+      }
+    } catch (err) {
+      console.error('Global search voice permission failed:', err);
+      if (window.toast) {
+        window.toast.error(lang === 'ta' ? 'மைக்ரோஃபோன் அனுமதி தேவை!' : 'Microphone permission required!');
+      }
       return;
     }
 

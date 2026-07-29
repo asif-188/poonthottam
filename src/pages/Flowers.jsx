@@ -145,12 +145,27 @@ const Flowers = () => {
         };
     }, [isModalOpen, listeningField, lang]);
 
-    const toggleListening = (field) => {
+    const toggleListening = async (field) => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
             alert(lang === 'ta' ? '❌ உங்கள் உலாவியில் குரல் அங்கீகாரம் ஆதரிக்கப்படவில்லை' : '❌ Speech recognition is not supported in this browser.');
             return;
         }
+
+        const isActivating = listeningField !== field;
+        if (isActivating) {
+            try {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(track => track.stop());
+                }
+            } catch (err) {
+                console.error('Microphone access failed:', err);
+                alert(lang === 'ta' ? '❌ மைக்ரோஃபோன் அனுமதி தேவை!' : '❌ Microphone permission required!');
+                return;
+            }
+        }
+
         setListeningField(prev => prev === field ? null : field);
     };
 

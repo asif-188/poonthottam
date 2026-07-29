@@ -713,6 +713,7 @@ const VoiceEntryModal = ({
     const [speechLang, setSpeechLang] = useState(langSetting === 'ta' ? 'ta-IN' : 'en-IN');
     const [isListening, setIsListening] = useState(false);
     const [isRecognizing, setIsRecognizing] = useState(false);
+    const [voiceStatus, setVoiceStatus] = useState('idle'); // 'idle', 'listening', 'processing', 'recognized', 'permission_denied', 'no_speech'
     const [transcript, setTranscript] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
 
@@ -751,6 +752,7 @@ const VoiceEntryModal = ({
             setTranscript('');
             setErrorMsg('');
             setIsListening(false);
+            setVoiceStatus('idle');
         }
     }, [isOpen, initialCustomer, initialItems]);
 
@@ -771,6 +773,7 @@ const VoiceEntryModal = ({
         
         rec.onstart = () => {
             setIsRecognizing(true);
+            setVoiceStatus('listening');
             setErrorMsg('');
         };
         
@@ -783,36 +786,51 @@ const VoiceEntryModal = ({
             if (confidence < 0.45) {
                 console.log(`Speech ignored due to low confidence (${confidence}): ${resultText}`);
                 setIsListening(false);
+                setVoiceStatus('no_speech');
                 if (window.toast) {
                     window.toast.warning(langSetting === 'ta' ? 'குரல் தெளிவாக இல்லை. மீண்டும் முயற்சிக்கவும்.' : 'Speech was not clear. Please try again.');
                 }
                 return;
             }
 
+            setVoiceStatus('processing');
             setTranscript(resultText);
             setIsListening(false); // Stop listening after a successful result
-            handleVoiceCommand(resultText);
+            
+            setTimeout(() => {
+                setVoiceStatus('recognized');
+                handleVoiceCommand(resultText);
+            }, 600);
         };
         
         rec.onerror = (e) => {
             console.error('Speech recognition error:', e.error);
             setIsListening(false);
             setIsRecognizing(false);
-            if (e.error !== 'no-speech') {
-                if (e.error === 'not-allowed') {
-                    setErrorMsg('Microphone access denied. Please allow microphone permissions.');
-                    if (window.toast) {
-                        window.toast.error(langSetting === 'ta' ? 'மைக்ரோஃபோன் அனுமதி மறுக்கப்பட்டது!' : 'Microphone permission denied!');
-                    }
-                } else {
-                    setErrorMsg('Voice Error: ' + e.error);
+            if (e.error === 'no-speech') {
+                setVoiceStatus('no_speech');
+                if (window.toast) {
+                    window.toast.warning(langSetting === 'ta' ? 'குரல் எதுவும் கண்டறியப்படவில்லை!' : 'Voice not detected!');
                 }
+            } else if (e.error === 'not-allowed') {
+                setVoiceStatus('permission_denied');
+                setErrorMsg('Microphone access denied. Please allow microphone permissions.');
+                if (window.toast) {
+                    window.toast.error(langSetting === 'ta' ? 'மைக்ரோஃபோன் அனுமதி மறுக்கப்பட்டது!' : 'Microphone permission denied!');
+                }
+            } else {
+                setVoiceStatus('no_speech');
+                setErrorMsg('Voice Error: ' + e.error);
             }
         };
         
         rec.onend = () => {
             setIsRecognizing(false);
             setIsListening(false); // Ensure listening stops cleanly
+            setVoiceStatus(prev => {
+                if (prev === 'listening') return 'idle';
+                return prev;
+            });
         };
 
         recognitionRef.current = rec;
@@ -822,6 +840,8 @@ const VoiceEntryModal = ({
                 rec.start();
             } catch (err) {
                 console.log('Recognition start failed:', err);
+                setIsListening(false);
+                setIsRecognizing(false);
             }
         }
         
@@ -970,8 +990,41 @@ const VoiceEntryModal = ({
         }
     };
 
-    const toggleListening = () => {
-        setIsListening(prev => !prev);
+    const requestMicPermission = async () => {
+        try {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop());
+                return true;
+            }
+            return true;
+        } catch (err) {
+            console.error('Microphone permission request failed:', err);
+            return false;
+        }
+    };
+
+    const toggleListening = async () => {
+        if (isListening) {
+            if (recognitionRef.current) {
+                recognitionRef.current.abort();
+            }
+            setIsListening(false);
+            setVoiceStatus('idle');
+            return;
+        }
+
+        setVoiceStatus('idle');
+        const hasPermission = await requestMicPermission();
+        if (!hasPermission) {
+            setVoiceStatus('permission_denied');
+            if (window.toast) {
+                window.toast.error(langSetting === 'ta' ? 'மைக்ரோஃபோன் அனுமதி தேவை!' : 'Microphone permission required!');
+            }
+            return;
+        }
+
+        setIsListening(true);
     };
 
     const handleConfirmSave = async () => {
@@ -1536,6 +1589,48 @@ const VoiceEntryModal = ({
         return null;
     };
 
+    const renderVoiceStatus = () => {
+        switch (voiceStatus) {
+            case 'listening':
+                return (
+                    <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+                        <span style={styles.pulseDot}></span> 🎤 {langSetting === 'ta' ? 'கேட்கிறது...' : 'Listening...'}
+                    </span>
+                );
+            case 'processing':
+                return (
+                    <span style={{ color: '#d97706', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+                        ⏳ {langSetting === 'ta' ? 'செயலாக்குகிறது...' : 'Processing...'}
+                    </span>
+                );
+            case 'recognized':
+                return (
+                    <span style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+                        ✅ {langSetting === 'ta' ? 'கண்டறியப்பட்டது' : 'Recognized'}: "{transcript}"
+                    </span>
+                );
+            case 'permission_denied':
+                return (
+                    <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+                        ❌ {langSetting === 'ta' ? 'மைக்ரோஃபோன் அனுமதி தேவை!' : 'Microphone Permission Required'}
+                    </span>
+                );
+            case 'no_speech':
+                return (
+                    <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+                        ❌ {langSetting === 'ta' ? 'குரல் கண்டறியப்படவில்லை' : 'Voice Not Detected'}
+                    </span>
+                );
+            case 'idle':
+            default:
+                return (
+                    <span style={{ color: '#64748b' }}>
+                        {transcript ? `"${transcript}"` : (langSetting === 'ta' ? 'குரல் உள்ளீட்டிற்கு காத்திருக்கிறது...' : 'Awaiting voice input...')}
+                    </span>
+                );
+        }
+    };
+
     return createPortal(
         <div style={styles.overlay}>
             <div style={styles.container}>
@@ -1574,13 +1669,7 @@ const VoiceEntryModal = ({
                 <div style={styles.transcriptBanner}>
                     <span style={styles.transcriptLabel}>Live Speech Command Preview</span>
                     <span style={styles.transcriptText}>
-                        {isRecognizing ? (
-                            <span style={{color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px'}}>
-                                <span style={styles.pulseDot}></span> Listening for command...
-                            </span>
-                        ) : (
-                            transcript ? `"${transcript}"` : 'Awaiting voice input...'
-                        )}
+                        {renderVoiceStatus()}
                     </span>
                 </div>
 

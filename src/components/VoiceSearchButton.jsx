@@ -5,7 +5,7 @@ const VoiceSearchButton = ({ onSpeechResult, langSetting = 'en' }) => {
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = useRef(null);
 
-    const handleClick = (e) => {
+    const handleClick = async (e) => {
         e.preventDefault();
         e.stopPropagation();
 
@@ -20,6 +20,21 @@ const VoiceSearchButton = ({ onSpeechResult, langSetting = 'en' }) => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
             alert('Web Speech API is not supported in this browser. Please use Chrome or Edge.');
+            return;
+        }
+
+        try {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop());
+            }
+        } catch (err) {
+            console.error('Search voice permission failed:', err);
+            if (window.toast) {
+                window.toast.error(langSetting === 'ta' ? 'மைக்ரோஃபோன் அனுமதி தேவை!' : 'Microphone permission required!');
+            } else {
+                alert(langSetting === 'ta' ? '❌ மைக்ரோஃபோன் அனுமதி தேவை!' : '❌ Microphone permission required!');
+            }
             return;
         }
 
