@@ -1684,7 +1684,7 @@ const OutsideShop = () => {
                     </div>
                     <div>
                         <label style={LABEL_S}>{t('qty')}</label>
-                        <input ref={refQty} type="number" value={currentItem.quantity} onChange={e => setCurrentItem(p => ({...p, quantity: e.target.value}))} onKeyDown={e => {
+                        <input ref={refQty} type="number" inputMode="decimal" value={currentItem.quantity} onChange={e => setCurrentItem(p => ({...p, quantity: e.target.value}))} onKeyDown={e => {
                             if (e.key === 'Enter') {
                                 if (e.shiftKey) {
                                     const hasTodaytotel = flowers.some(f => f.name.toLowerCase() === 'todaytotel');
@@ -1698,7 +1698,7 @@ const OutsideShop = () => {
                     </div>
                     <div>
                         <label style={LABEL_S}>{t('rate')}</label>
-                        <input ref={refRate} type="number" value={currentItem.price} onChange={e => setCurrentItem(p => ({...p, price: e.target.value}))} onKeyDown={e => {
+                        <input ref={refRate} type="number" inputMode="decimal" value={currentItem.price} onChange={e => setCurrentItem(p => ({...p, price: e.target.value}))} onKeyDown={e => {
                             if (e.key === 'Enter') {
                                 if (e.shiftKey) {
                                     refQty.current?.focus();
@@ -2008,8 +2008,24 @@ const OutsideShop = () => {
                             <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#1e293b', margin: 0 }}>{t('vendorName')}</h2>
                         </div>
                         
-                        {/* Search Input */}
-                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', minWidth: '240px', maxWidth: '300px' }}>
+                        <button 
+                            onClick={() => { 
+                                const nextId = vendors.length > 0 ? Math.max(...vendors.map(v => parseInt(v.displayId) || 0)) + 1 : 101;
+                                setEditingVendor(null); 
+                                setVendorForm({name:'', nameTa:'', contact:'', location:'', displayId: nextId, balance: 0}); 
+                                setTouched({ name: false, nameTa: false }); 
+                                setShowVendorModal(true); 
+                            }}
+                            style={{ padding: '10px 20px', background: '#d97706', color: '#fff', borderRadius: '10px', border: 'none', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                        >
+                            <Plus size={18} /> {t('addVendor')}
+                        </button>
+                    </div>
+
+                    {/* Vendor Search Bar */}
+                    <div style={{ padding: '16px 24px 0 24px', maxWidth: '380px' }}>
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <Search size={14} style={{ position: 'absolute', left: '12px', color: '#9ca3af', pointerEvents: 'none' }} />
                             <input 
                                 type="text" 
                                 value={vendorSearch} 
@@ -2017,7 +2033,11 @@ const OutsideShop = () => {
                                 placeholder={lang === 'ta' ? 'பெயர், ஐடி, இடம் மூலம் தேடுக...' : 'Search by name, ID, place...'} 
                                 style={{
                                     ...INPUT_S,
-                                    paddingRight: '32px'
+                                    paddingLeft: '34px',
+                                    paddingRight: '32px',
+                                    borderRadius: '100px',
+                                    border: '1.5px solid #e2e8f0',
+                                    boxSizing: 'border-box'
                                 }}
                             />
                             {vendorSearch && (
@@ -2042,20 +2062,8 @@ const OutsideShop = () => {
                                 </button>
                             )}
                         </div>
-
-                        <button 
-                            onClick={() => { 
-                                const nextId = vendors.length > 0 ? Math.max(...vendors.map(v => parseInt(v.displayId) || 0)) + 1 : 101;
-                                setEditingVendor(null); 
-                                setVendorForm({name:'', nameTa:'', contact:'', location:'', displayId: nextId, balance: 0}); 
-                                setTouched({ name: false, nameTa: false }); 
-                                setShowVendorModal(true); 
-                            }}
-                            style={{ padding: '10px 20px', background: '#d97706', color: '#fff', borderRadius: '10px', border: 'none', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-                        >
-                            <Plus size={18} /> {t('addVendor')}
-                        </button>
                     </div>
+
                     <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
@@ -2168,7 +2176,7 @@ const OutsideShop = () => {
                                 </span>
                             )}
                         </div>
-                        <input ref={refPayAmount} type="number" value={paymentForm.amount} onChange={e => setPaymentForm(p=>({...p, amount: e.target.value}))} onKeyDown={e => {
+                        <input ref={refPayAmount} type="number" inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm(p=>({...p, amount: e.target.value}))} onKeyDown={e => {
                             if (e.key === 'Enter') {
                                 if (e.shiftKey) {
                                     refPayVendor.current?.focus();
@@ -2732,6 +2740,7 @@ const OutsideShop = () => {
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
                                                             <input 
                                                                 type="number"
+                                                                inputMode="decimal"
                                                                 value={bulkPayingAmounts[v.id] || ''}
                                                                 onChange={(e) => {
                                                                     let val = parseFloat(e.target.value) || 0;
@@ -3090,7 +3099,7 @@ const OutsideShop = () => {
                             </div>
                             <div>
                                 <label style={LABEL_S}>{'Old Balance'}</label>
-                                <input type="number" value={vendorForm.balance} onChange={e => setVendorForm(p => ({...p, balance: e.target.value}))} style={INPUT_S} placeholder="0" />
+                                <input type="number" inputMode="decimal" value={vendorForm.balance} onChange={e => setVendorForm(p => ({...p, balance: e.target.value}))} style={INPUT_S} placeholder="0" />
                             </div>
                             <button type="submit" style={{ padding: '12px', background: '#d97706', color: '#fff', borderRadius: '12px', border: 'none', fontWeight: 800, marginTop: '10px', cursor: 'pointer' }}>
                                 {t('save')}
@@ -3128,10 +3137,10 @@ const OutsideShop = () => {
                                                 <input value={res.flowerType} onChange={e => handleUpdateScanResult(idx, 'flowerType', e.target.value)} style={{ ...INPUT_S, height: '36px', background: 'transparent', border: '1px solid #e1e8f0' }} />
                                             </td>
                                             <td style={{ padding: '12px' }}>
-                                                <input type="number" value={res.quantity} onChange={e => handleUpdateScanResult(idx, 'quantity', e.target.value)} style={{ ...INPUT_S, height: '36px', textAlign: 'center', background: 'transparent', border: '1px solid #e1e8f0' }} />
+                                                <input type="number" inputMode="decimal" value={res.quantity} onChange={e => handleUpdateScanResult(idx, 'quantity', e.target.value)} style={{ ...INPUT_S, height: '36px', textAlign: 'center', background: 'transparent', border: '1px solid #e1e8f0' }} />
                                             </td>
                                             <td style={{ padding: '12px' }}>
-                                                <input type="number" value={res.price} onChange={e => handleUpdateScanResult(idx, 'price', e.target.value)} style={{ ...INPUT_S, height: '36px', textAlign: 'center', background: 'transparent', border: '1px solid #e1e8f0' }} />
+                                                <input type="number" inputMode="decimal" value={res.price} onChange={e => handleUpdateScanResult(idx, 'price', e.target.value)} style={{ ...INPUT_S, height: '36px', textAlign: 'center', background: 'transparent', border: '1px solid #e1e8f0' }} />
                                             </td>
                                             <td style={{ padding: '12px', textAlign: 'right', fontWeight: 800, color: '#d97706' }}>{fmt(res.total)}</td>
                                             <td style={{ padding: '12px', textAlign: 'center' }}>
@@ -3188,6 +3197,7 @@ const OutsideShop = () => {
                                                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                                     <input 
                                                         type="number"
+                                                        inputMode="decimal"
                                                         value={customSettleAmount}
                                                         onChange={(e) => handleCustomTotalChange(e.target.value)}
                                                         style={{ 
@@ -3292,6 +3302,7 @@ const OutsideShop = () => {
                                                         <td style={{ padding: '8px', textAlign: 'right' }}>
                                                             <input 
                                                                 type="number"
+                                                                inputMode="decimal"
                                                                 disabled={!isChecked}
                                                                 value={payingAmounts[p.id] || ''}
                                                                 onChange={(e) => handleIndividualAmountChange(p.id, parseFloat(e.target.value) || 0)}

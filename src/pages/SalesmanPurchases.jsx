@@ -384,6 +384,7 @@ const SalesmanPurchases = () => {
                         <input 
                             ref={refQty}
                             type="number" 
+                            inputMode="decimal"
                             placeholder="0.00" 
                             value={draftItem.quantity} 
                             onChange={e => setDraftItem({ ...draftItem, quantity: e.target.value })} 
@@ -396,6 +397,7 @@ const SalesmanPurchases = () => {
                         <input 
                             ref={refRate}
                             type="number" 
+                            inputMode="decimal"
                             placeholder="0.00" 
                             value={draftItem.price} 
                             onChange={e => setDraftItem({ ...draftItem, price: e.target.value })} 

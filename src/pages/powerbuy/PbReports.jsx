@@ -667,11 +667,11 @@ const PbReports = () => {
       </div>
 
       {/* Search Row */}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '18px' }}>
-        <Search size={14} style={{ position: 'absolute', left: '12px', color: '#9ca3af', pointerEvents: 'none' }} />
+      <div style={{ position: 'relative', marginBottom: '18px', maxWidth: '380px' }}>
+        <Search size={14} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} />
         <input type="text" placeholder="Search by name or ID..."
           value={search} onChange={e => setSearch(e.target.value)}
-          style={{ width: '100%', padding: '10px 12px 10px 34px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '13px', color: '#374151', background: '#fff', outline: 'none', fontFamily: 'var(--font-sans)' }}
+          style={{ width: '100%', padding: '10px 16px 10px 40px', borderRadius: '100px', border: '1.5px solid #e2e8f0', fontSize: '13px', color: '#374151', background: '#fff', outline: 'none', fontFamily: 'var(--font-sans)', boxSizing: 'border-box' }}
           onFocus={e => e.target.style.borderColor = PB.primary}
           onBlur={e => e.target.style.borderColor = '#e2e8f0'}
         />

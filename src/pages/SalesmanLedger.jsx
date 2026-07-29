@@ -108,6 +108,8 @@ const SalesmanLedger = () => {
     const [expenses, setExpenses] = useState([]);
     const [transfers, setTransfers] = useState([]);
     const [payments, setPayments] = useState([]);
+    const [cashPurchases, setCashPurchases] = useState([]);
+    const [cashSales, setCashSales] = useState([]);
 
     const today = new Date().toLocaleDateString('en-CA');
     const [selectedSalesmanId, setSelectedSalesmanId] = useState('');
@@ -123,6 +125,8 @@ const SalesmanLedger = () => {
         const unsubExpenses = subscribeToCollection('salesman_expenses', setExpenses);
         const unsubTransfers = subscribeToCollection('salesman_transfers', setTransfers);
         const unsubPayments = subscribeToCollection('payments', setPayments);
+        const unsubCashPurchases = subscribeToCollection('cash_purchases', setCashPurchases);
+        const unsubCashSales = subscribeToCollection('cash_sales', setCashSales);
 
         return () => {
             unsubSalesmen();
@@ -131,6 +135,8 @@ const SalesmanLedger = () => {
             unsubExpenses();
             unsubTransfers();
             unsubPayments();
+            unsubCashPurchases();
+            unsubCashSales();
         };
     }, []);
 
@@ -144,6 +150,8 @@ const SalesmanLedger = () => {
         const sTransfersIn = transfers.filter(t => t.toSalesmanId === selectedSalesmanId);
         const sTransfersOut = transfers.filter(t => t.fromSalesmanId === selectedSalesmanId);
         const sPayments = payments.filter(p => p.type === 'vendor' && p.salesmanId === selectedSalesmanId);
+        const sCashPurchases = cashPurchases.filter(cp => cp.salesmanId === selectedSalesmanId);
+        const sCashSales = cashSales.filter(cs => cs.salesmanId === selectedSalesmanId);
  
         // Get all unique dates sorted chronologically
         const allDates = Array.from(new Set([
@@ -152,7 +160,9 @@ const SalesmanLedger = () => {
             ...sExpenses.map(e => e.date).filter(Boolean),
             ...sTransfersIn.map(t => t.date).filter(Boolean),
             ...sTransfersOut.map(t => t.date).filter(Boolean),
-            ...sPayments.map(p => p.date).filter(Boolean)
+            ...sPayments.map(p => p.date).filter(Boolean),
+            ...sCashPurchases.map(cp => cp.date).filter(Boolean),
+            ...sCashSales.map(cs => cs.date).filter(Boolean)
         ])).sort();
 
         const rows = [];
@@ -166,6 +176,8 @@ const SalesmanLedger = () => {
             const dayTransfersIn = sTransfersIn.filter(t => t.date === date);
             const dayTransfersOut = sTransfersOut.filter(t => t.date === date);
             const dayPayments = sPayments.filter(p => p.date === date);
+            const dayCashPurchases = sCashPurchases.filter(cp => cp.date === date);
+            const dayCashSales = sCashSales.filter(cs => cs.date === date);
  
             const issuedToday = dayCash.reduce((sum, r) => sum + (r.openingCash || 0), 0);
             const purchasesToday = dayPurchases.reduce((sum, p) => sum + (p.grandTotal || 0), 0);
@@ -173,9 +185,11 @@ const SalesmanLedger = () => {
             const transInToday = dayTransfersIn.reduce((sum, t) => sum + (t.amount || 0), 0);
             const transOutToday = dayTransfersOut.reduce((sum, t) => sum + (t.amount || 0), 0);
             const paymentsToday = dayPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            const cashPurchasesToday = dayCashPurchases.reduce((sum, cp) => sum + (cp.grandTotal || 0), 0);
+            const cashSalesToday = dayCashSales.reduce((sum, cs) => sum + (cs.grandTotal || 0), 0);
  
-            const inflow = issuedToday + transInToday;
-            const outflow = purchasesToday + expensesToday + transOutToday + paymentsToday;
+            const inflow = issuedToday + transInToday + cashSalesToday;
+            const outflow = purchasesToday + expensesToday + transOutToday + paymentsToday + cashPurchasesToday;
 
             const openingCash = carryForward + inflow;
             const balanceCash = openingCash - outflow;
@@ -209,7 +223,7 @@ const SalesmanLedger = () => {
                 return true;
             }
         });
-    }, [cashRecords, purchaseRecords, expenses, transfers, selectedSalesmanId, fromDate, toDate, selectedMonth, filterType]);
+    }, [cashRecords, purchaseRecords, expenses, transfers, selectedSalesmanId, fromDate, toDate, selectedMonth, filterType, cashPurchases, cashSales]);
 
     const activeSalesman = useMemo(() => {
         return salesmen.find(s => s.id === selectedSalesmanId);
@@ -246,10 +260,12 @@ const SalesmanLedger = () => {
             transfers,
             payments,
             cashRecords,
+            cashPurchases,
+            cashSales,
             salesmen,
             lang: lang || 'en'
         });
-    }, [selectedSalesmanId, activeSalesman, activeFrom, activeTo, purchaseRecords, expenses, transfers, payments, cashRecords, salesmen, lang]);
+    }, [selectedSalesmanId, activeSalesman, activeFrom, activeTo, purchaseRecords, expenses, transfers, payments, cashRecords, cashPurchases, cashSales, salesmen, lang]);
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('en-IN', {

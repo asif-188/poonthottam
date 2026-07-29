@@ -376,10 +376,10 @@ const PbSalesEntry = () => {
             <SearchSelect items={flowers} value={currentItem.flowerType} onChange={f => setCurrentItem(p => ({ ...p, flowerType: f.name, flowerTypeTa: f.taName || '' }))} inputRef={refFlower} onKeyDown={e => onKey(e, refQty, null, refCustomer)} placeholder={t('flowerVariety')} lang={lang} />
           </div>
           <div><label style={LABEL_S}>{t('qty')}</label>
-            <input ref={refQty} type="number" placeholder="0.00" value={currentItem.quantity} onChange={e => setCurrentItem(p => ({ ...p, quantity: e.target.value }))} onKeyDown={e => onKey(e, refRate, currentItem.quantity, refFlower)} style={INPUT_S} />
+            <input ref={refQty} type="number" inputMode="decimal" placeholder="0.00" value={currentItem.quantity} onChange={e => setCurrentItem(p => ({ ...p, quantity: e.target.value }))} onKeyDown={e => onKey(e, refRate, currentItem.quantity, refFlower)} style={INPUT_S} />
           </div>
           <div><label style={LABEL_S}>{t('rate')}</label>
-            <input ref={refRate} type="number" placeholder="0.00" value={currentItem.price} onChange={e => setCurrentItem(p => ({ ...p, price: e.target.value }))} onKeyDown={e => {
+            <input ref={refRate} type="number" inputMode="decimal" placeholder="0.00" value={currentItem.price} onChange={e => setCurrentItem(p => ({ ...p, price: e.target.value }))} onKeyDown={e => {
               if (e.key === 'Enter') {
                 e.preventDefault();
                 if (e.shiftKey) {

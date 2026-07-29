@@ -586,7 +586,7 @@ const DailyFlowerPrices = () => {
           {/* Form Actions bar */}
           <div className="flex flex-wrap gap-3 items-center justify-between mb-6">
             {/* Search Box */}
-            <div className="flex-1 min-w-[200px]">
+            <div className="w-full max-w-md">
               <input
                 type="text"
                 placeholder={lang === 'ta' ? 'தேடுக...' : 'Search flowers...'}

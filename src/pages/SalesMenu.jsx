@@ -22,6 +22,13 @@ const MENU_ITEMS = [
         route: '/app/sales-entry',
     },
     {
+        emoji: '💵',
+        label: 'Cash Sales',
+        labelTa: 'ரொக்க விற்பனை',
+        color: { border: '#10b981', text: '#10b981', bg: '#ecfdf5', glow: 'rgba(16,185,129,0.15)' },
+        route: '/app/cash-sales',
+    },
+    {
         emoji: '📈',
         label: 'Reports',
         labelTa: 'அறிக்கைகள்',

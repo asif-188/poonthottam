@@ -28,6 +28,13 @@ const MENU_ITEMS = [
         state: { tab: 'purchase' }
     },
     {
+        emoji: '🛒',
+        label: 'Cash Purchase',
+        labelTa: 'ரொக்கக் கொள்முதல்',
+        color: { border: '#10b981', text: '#10b981', bg: '#ecfdf5', glow: 'rgba(16,185,129,0.15)' },
+        route: '/app/cash-purchase',
+    },
+    {
         emoji: '📊',
         label: 'Vendor Report',
         labelTa: 'விற்பனையாளர் அறிக்கை',

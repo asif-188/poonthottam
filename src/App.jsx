@@ -28,6 +28,8 @@ import QuickEntry from './pages/QuickEntry';
 import OthersMenu from './pages/OthersMenu';
 import History from './pages/History';
 import RecycleBin from './pages/RecycleBin';
+import CashPurchase from './pages/CashPurchase';
+import CashSales from './pages/CashSales';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useTenant();
@@ -80,6 +82,8 @@ const AppRoutes = () => {
           <Route path="salesman-master" element={<SalesmanMaster />} />
           <Route path="salesman-credit-expenses" element={<SalesmanCreditExpenses />} />
           <Route path="salesman-reports" element={<SalesmanReports />} />
+          <Route path="cash-purchase" element={<CashPurchase />} />
+          <Route path="cash-sales" element={<CashSales />} />
           <Route path="payments" element={<Payments />} />
           <Route path="daily-flower-prices" element={<DailyFlowerPrices />} />
           <Route path="reports" element={<Reports />} />

@@ -231,6 +231,7 @@ const Intake = () => {
                                 <div className="flex shadow-xl rounded-[20px] overflow-hidden bg-white">
                                     <input
                                         type="number"
+                                        inputMode="decimal"
                                         value={currentItem.quantity}
                                         onChange={e => setCurrentItem({ ...currentItem, quantity: e.target.value })}
                                         className="w-full p-5 border-none bg-transparent outline-none font-black text-2xl text-emerald-600"
@@ -247,6 +248,7 @@ const Intake = () => {
                                 <div className="bg-white rounded-[20px] p-5 shadow-xl flex items-center">
                                     <input
                                         type="number"
+                                        inputMode="decimal"
                                         value={currentItem.price}
                                         onChange={e => setCurrentItem({ ...currentItem, price: e.target.value })}
                                         className="w-full bg-transparent border-none outline-none font-black text-2xl text-gray-800"
@@ -330,6 +332,7 @@ const Intake = () => {
                                 <div className="bg-emerald-700/50 rounded-2xl border-2 border-white/20 p-2 flex items-center">
                                     <input
                                         type="number"
+                                        inputMode="decimal"
                                         value={summary.amountPaid}
                                         onChange={e => setSummary({ ...summary, amountPaid: e.target.value })}
                                         className="w-full bg-transparent border-none outline-none font-black text-2xl placeholder-emerald-400/50"

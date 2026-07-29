@@ -103,6 +103,8 @@ const SalesmanReports = () => {
     const [transfers, setTransfers] = useState([]);
     const [vendors, setVendors] = useState([]);
     const [buyers, setBuyers] = useState([]);
+    const [cashPurchases, setCashPurchases] = useState([]);
+    const [cashSales, setCashSales] = useState([]);
 
     const today = new Date().toLocaleDateString('en-CA');
     const [selectedSalesmanId, setSelectedSalesmanId] = useState('');
@@ -123,6 +125,8 @@ const SalesmanReports = () => {
         const unsubTransfers = subscribeToCollection('salesman_transfers', setTransfers);
         const unsubVendors = subscribeToCollection('vendors', setVendors);
         const unsubBuyers = subscribeToCollection('buyers', setBuyers);
+        const unsubCashPurchases = subscribeToCollection('cash_purchases', setCashPurchases);
+        const unsubCashSales = subscribeToCollection('cash_sales', setCashSales);
 
         return () => {
             unsubSalesmen();
@@ -134,6 +138,8 @@ const SalesmanReports = () => {
             unsubTransfers();
             unsubVendors();
             unsubBuyers();
+            unsubCashPurchases();
+            unsubCashSales();
         };
     }, []);
 
@@ -222,6 +228,17 @@ const SalesmanReports = () => {
                 });
             });
 
+            // 5. Cash Sales
+            const rangeCashSales = cashSales.filter(cs => cs.salesmanId === salesman.id && cs.date >= fromDate && cs.date <= toDate);
+            rangeCashSales.forEach(cs => {
+                creditList.push({
+                    particulars: (lang === 'ta' ? 'ரொக்க விற்பனை' : 'Cash Sales') + ` (${cs.customerName || '---'})`,
+                    quantity: null,
+                    rate: null,
+                    total: Number(cs.grandTotal) || 0
+                });
+            });
+
             const totalCredit = creditList.reduce((sum, item) => sum + (item.total || 0), 0);
 
             const debitList = [];
@@ -282,6 +299,21 @@ const SalesmanReports = () => {
                 });
             });
 
+            // 5. Cash Purchases
+            const rangeCashPurchases = cashPurchases.filter(cp => cp.salesmanId === salesman.id && cp.date >= fromDate && cp.date <= toDate);
+            rangeCashPurchases.forEach(cp => {
+                cp.items.forEach(item => {
+                    const fl = flowers.find(f => f.name === item.flowerType);
+                    const flowerName = fl ? (lang === 'ta' ? (fl.taName || item.flowerType) : item.flowerType) : item.flowerType;
+                    debitList.push({
+                        particulars: `${flowerName} (${lang === 'ta' ? 'ரொக்கக் கொள்முதல்' : 'Cash Purchase'}: ${cp.vendorName || '---'})`,
+                        quantity: Number(item.quantity) || 0,
+                        rate: Number(item.price) || 0,
+                        total: Number(item.total) || 0
+                    });
+                });
+            });
+
             const totalDebit = debitList.reduce((sum, item) => sum + (item.total || 0), 0);
             const totalDebitKg = debitList.reduce((sum, item) => sum + (item.quantity || 0), 0);
 
@@ -298,7 +330,7 @@ const SalesmanReports = () => {
                 netBalanceAmount
             };
         });
-    }, [salesmen, cashRecords, purchaseRecords, payments, expenses, transfers, flowers, vendors, buyers, fromDate, toDate, lang, selectedSalesmanId]);
+    }, [salesmen, cashRecords, purchaseRecords, payments, expenses, transfers, flowers, vendors, buyers, fromDate, toDate, lang, selectedSalesmanId, cashPurchases, cashSales]);
 
     const handlePrintSingleSalesman = (group) => {
         try {

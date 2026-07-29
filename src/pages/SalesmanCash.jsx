@@ -355,6 +355,7 @@ const SalesmanCash = () => {
                                     <label style={S.label}>Opening Cash Amount (₹)</label>
                                     <input 
                                         type="number"
+                                        inputMode="decimal"
                                         style={S.input}
                                         value={formData.openingCash}
                                         onChange={(e) => setFormData({ ...formData, openingCash: e.target.value })}

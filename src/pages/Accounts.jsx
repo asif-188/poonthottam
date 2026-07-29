@@ -92,7 +92,7 @@ const Accounts = () => {
                 </div>
 
                 <div className="p-10 flex flex-col md:flex-row justify-between items-center gap-8 border-b border-gray-50">
-                    <div className="relative flex-1 w-full max-w-2xl">
+                    <div className="relative flex-1 w-full max-w-md">
                         <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={24} />
                         <input 
                             type="text" 

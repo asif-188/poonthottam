@@ -26,6 +26,8 @@ const DailyReport = () => {
     const [buyers, setBuyers]     = useState([]);
     const [payments, setPayments] = useState([]);
     const [outsidePurchases, setOutsidePurchases] = useState([]);
+    const [cashPurchases, setCashPurchases] = useState([]);
+    const [cashSales, setCashSales] = useState([]);
     const [search, setSearch]     = useState('');
     const [isEntryMode, setIsEntryMode] = useState(false);
     const [tempAmounts, setTempAmounts] = useState({});
@@ -36,6 +38,8 @@ const DailyReport = () => {
         const u2 = subscribeToCollection('buyers',   setBuyers);
         const u3 = subscribeToCollection('payments', setPayments);
         const u4 = subscribeToCollection('outside_purchases', setOutsidePurchases, true);
+        const u5 = subscribeToCollection('cash_purchases', setCashPurchases, true);
+        const u6 = subscribeToCollection('cash_sales', setCashSales, true);
 
         const handleGlobalSearch = (e) => {
             setSearch(e.detail);
@@ -43,7 +47,7 @@ const DailyReport = () => {
         window.addEventListener('global-voice-search', handleGlobalSearch);
 
         return () => {
-            u1(); u2(); u3(); u4();
+            u1(); u2(); u3(); u4(); u5(); u6();
             window.removeEventListener('global-voice-search', handleGlobalSearch);
         };
     }, []);
@@ -83,11 +87,11 @@ const DailyReport = () => {
     );
 
     const totals = useMemo(() => {
-        const s = reportData.reduce((acc, r) => acc + r.sales, 0);
-        const p = reportData.reduce((acc, r) => acc + r.received, 0);
-        const l = reportData.reduce((acc, r) => acc + r.less, 0);
-        const b = reportData.reduce((acc, r) => acc + r.balance, 0);
-        const o = b - s + (p + l);
+        const buyerSalesTotal = reportData.reduce((acc, r) => acc + r.sales, 0);
+        const buyerPaidTotal = reportData.reduce((acc, r) => acc + r.received, 0);
+        const buyerLessTotal = reportData.reduce((acc, r) => acc + r.less, 0);
+        const buyerEndBalance = reportData.reduce((acc, r) => acc + r.balance, 0);
+        const buyerOpenBalance = buyerEndBalance - buyerSalesTotal + (buyerPaidTotal + buyerLessTotal);
         
         const pur = outsidePurchases
             .filter(pur => pur.date >= fromDate && pur.date <= toDate)
@@ -97,8 +101,28 @@ const DailyReport = () => {
             .filter(p => p.type === 'vendor' && p.date >= fromDate && p.date <= toDate)
             .reduce((acc, p) => acc + (p.amount || 0), 0);
 
-        return { sales: s, paid: p, less: l, end: b, open: o, purchases: pur, vendorPaid };
-    }, [reportData, outsidePurchases, payments, fromDate, toDate]);
+        const rangeCashPurchases = cashPurchases
+            .filter(cp => cp.date >= fromDate && cp.date <= toDate)
+            .reduce((sum, cp) => sum + (cp.grandTotal || 0), 0);
+
+        const rangeCashSales = cashSales
+            .filter(cs => cs.date >= fromDate && cs.date <= toDate)
+            .reduce((sum, cs) => sum + (cs.grandTotal || 0), 0);
+
+        return {
+            sales: buyerSalesTotal,
+            cashSales: rangeCashSales,
+            totalSales: buyerSalesTotal + rangeCashSales,
+            paid: buyerPaidTotal,
+            less: buyerLessTotal,
+            end: buyerEndBalance,
+            open: buyerOpenBalance,
+            purchases: pur,
+            cashPurchases: rangeCashPurchases,
+            totalPurchases: pur + rangeCashPurchases,
+            vendorPaid
+        };
+    }, [reportData, outsidePurchases, payments, fromDate, toDate, cashPurchases, cashSales]);
 
     const handleSaveCollections = async () => {
         const entries = Object.entries(tempAmounts).filter(([_, data]) => 
@@ -196,14 +220,18 @@ const DailyReport = () => {
                 </table>
 
                 <div class="summary-box">
-                    <div class="summary-row"><span>${t('openingBalance')} :</span> <span>${totals.open.toFixed(2)}</span></div>
+                    <div class="summary-row"><span>${t('openingBalance')} (Buyers) :</span> <span>${totals.open.toFixed(2)}</span></div>
                     <div class="summary-row" style="color: #16a34a"><span>${t('cashRec')} :</span> <span>${totals.paid.toFixed(2)}</span></div>
                     <div class="summary-row" style="color: #b91c1c"><span>${t('cashLess')} :</span> <span>${totals.less.toFixed(2)}</span></div>
-                    <div class="summary-row" style="color: #b91c1c"><span>${t('todayTotal')} :</span> <span>${totals.sales.toFixed(2)}</span></div>
-                    <div class="summary-row" style="color: #b91c1c; font-size: 18px;"><span>${t('outsidePurchase')} :</span> <span>${totals.purchases.toFixed(2)}</span></div>
+                    <div class="summary-row" style="color: #b91c1c"><span>Buyer Sales Today :</span> <span>${totals.sales.toFixed(2)}</span></div>
+                    <div class="summary-row" style="color: #16a34a"><span>Cash Sales Today :</span> <span>${totals.cashSales.toFixed(2)}</span></div>
+                    <div class="summary-row" style="color: #16a34a; font-weight: 900;"><span>Total Sales Today :</span> <span>${totals.totalSales.toFixed(2)}</span></div>
+                    <div class="summary-row" style="color: #b91c1c; font-size: 18px;"><span>Outside Purchase :</span> <span>${totals.purchases.toFixed(2)}</span></div>
+                    <div class="summary-row" style="color: #b91c1c; font-size: 18px;"><span>Cash Purchase :</span> <span>${totals.cashPurchases.toFixed(2)}</span></div>
+                    <div class="summary-row" style="color: #b91c1c; font-size: 18px; font-weight: 900;"><span>Total Purchase :</span> <span>${totals.totalPurchases.toFixed(2)}</span></div>
 
                     <div class="summary-row grand" style="background: #f0f0f0; padding: 10px; color: #000">
-                        <span>${t('grandTotal')} :</span> <span>${totals.end.toFixed(2)}</span>
+                        <span>Buyer End Balance :</span> <span>${totals.end.toFixed(2)}</span>
                     </div>
 
                 </div>
@@ -287,14 +315,6 @@ const DailyReport = () => {
                 <div style={{ display: 'flex', gap: '12px' }}>
                     {!isEntryMode ? (
                         <>
-                            <div style={{ position: 'relative' }}>
-                                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                                <input 
-                                    type="text" value={search} onChange={e => setSearch(e.target.value)}
-                                    placeholder={t('search')}
-                                    style={{ padding: '10px 16px 10px 36px', borderRadius: '10px', border: '1px solid #e2e8f0', outline: 'none', width: '200px', fontSize: '14px' }}
-                                />
-                            </div>
                             <button onClick={() => setIsEntryMode(true)} style={{ padding: '10px 20px', background: '#4f46e5', color: '#fff', borderRadius: '10px', border: 'none', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <Edit3 size={18} /> Batch Entry
                             </button>
@@ -315,32 +335,51 @@ const DailyReport = () => {
                 </div>
             </div>
 
+            {!isEntryMode && (
+                <div style={{ position: 'relative', marginBottom: '20px', maxWidth: '380px' }}>
+                    <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+                    <input 
+                        type="text" value={search} onChange={e => setSearch(e.target.value)}
+                        placeholder={t('search')}
+                        style={{ padding: '10px 16px 10px 40px', borderRadius: '100px', border: '1.5px solid #e2e8f0', outline: 'none', width: '100%', fontSize: '14px', boxSizing: 'border-box' }}
+                    />
+                </div>
+            )}
+
             <div style={S.summaryCard}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px' }}>
                     <div>
-                        <div style={{ color: '#94a3b8', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '8px' }}>{t('openingBalance')}</div>
-                        <div style={{ fontSize: '24px', fontWeight: 800 }}>{fmt(totals.open)}</div>
+                        <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>{t('openingBalance')}</div>
+                        <div style={{ fontSize: '20px', fontWeight: 800 }}>{fmt(totals.open)}</div>
                     </div>
                     <div>
-                        <div style={{ color: '#94a3b8', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '8px' }}>{t('cashRec')}</div>
-                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#10b981' }}>- {fmt(totals.paid)}</div>
+                        <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>{t('cashRec')}</div>
+                        <div style={{ fontSize: '20px', fontWeight: 800, color: '#10b981' }}>- {fmt(totals.paid)}</div>
                     </div>
                     <div>
-                        <div style={{ color: '#94a3b8', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '8px' }}>{t('cashLess')}</div>
-                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#ef4444' }}>- {fmt(totals.less)}</div>
+                        <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>{t('cashLess')}</div>
+                        <div style={{ fontSize: '20px', fontWeight: 800, color: '#ef4444' }}>- {fmt(totals.less)}</div>
                     </div>
                     <div>
-                        <div style={{ color: '#94a3b8', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '8px' }}>{t('todayTotal')}</div>
-                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#ef4444' }}>+ {fmt(totals.sales)}</div>
+                        <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Buyer Sales</div>
+                        <div style={{ fontSize: '20px', fontWeight: 800, color: '#ef4444' }}>+ {fmt(totals.sales)}</div>
                     </div>
                     <div>
-                        <div style={{ color: '#f87171', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '8px' }}>{t('purchase')}</div>
-                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#ef4444' }}>{fmt(totals.purchases)}</div>
+                        <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Cash Sales</div>
+                        <div style={{ fontSize: '20px', fontWeight: 800, color: '#10b981' }}>+ {fmt(totals.cashSales)}</div>
+                    </div>
+                    <div>
+                        <div style={{ color: '#f87171', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Outside Purchase</div>
+                        <div style={{ fontSize: '20px', fontWeight: 800, color: '#ef4444' }}>{fmt(totals.purchases)}</div>
+                    </div>
+                    <div>
+                        <div style={{ color: '#f87171', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Cash Purchase</div>
+                        <div style={{ fontSize: '20px', fontWeight: 800, color: '#ef4444' }}>{fmt(totals.cashPurchases)}</div>
                     </div>
 
-                    <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '12px', padding: '12px 20px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                        <div style={{ color: '#94a3b8', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '8px' }}>Buyer Balance</div>
-                        <div style={{ fontSize: '28px', fontWeight: 900, color: '#fff' }}>{fmt(totals.end)}</div>
+                    <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '12px', padding: '10px 16px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Buyer Balance</div>
+                        <div style={{ fontSize: '22px', fontWeight: 900, color: '#fff' }}>{fmt(totals.end)}</div>
                     </div>
                 </div>
             </div>

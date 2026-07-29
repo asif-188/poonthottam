@@ -793,6 +793,7 @@ const Layout = () => {
     if (p.includes('/sales-entry') ||
       p.includes('/buyer') ||
       p.includes('/reports') ||
+      p.includes('/cash-sales') ||
       p.includes('/daily-flower-prices')) {
       return '/app/sales-menu';
     }
@@ -802,6 +803,7 @@ const Layout = () => {
     if (p.includes('/outside-shop') ||
       p.includes('/flowers') ||
       p.includes('/daily-report') ||
+      p.includes('/cash-purchase') ||
       p.includes('/daily-statement')) {
       return '/app/vendor-menu';
     }
@@ -816,6 +818,8 @@ const Layout = () => {
   const getTitle = () => {
     const p = location.pathname;
     if (p.includes('/sales-entry')) return `🧾 ${lang === 'ta' ? 'விற்பனை பக்கம்' : 'Sales Page'}`;
+    if (p.includes('/cash-purchase')) return `🛒 ${lang === 'ta' ? 'ரொக்கக் கொள்முதல்' : 'Cash Purchase'}`;
+    if (p.includes('/cash-sales')) return `💰 ${lang === 'ta' ? 'ரொக்க விற்பனை' : 'Cash Sales'}`;
     if (p.includes('/daily-flower-prices')) return `🌸 ${lang === 'ta' ? 'தினசரி பூக்கள் விலை பட்டியல்' : 'Daily Flower Price List'}`;
     if (p.includes('/buyer')) return `👥 ${lang === 'ta' ? 'வாடிக்கையாளர் பட்டியல்' : 'Customer Registry'}`;
     if (p.includes('/outside-shop')) return `🏪 ${lang === 'ta' ? 'விற்பனையாளர்' : 'Vendor'}`;

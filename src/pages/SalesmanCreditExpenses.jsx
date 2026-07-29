@@ -301,7 +301,7 @@ const SalesmanCreditExpenses = () => {
 
                             <div>
                                 <label style={LABEL_S}>{lang === 'ta' ? 'செலவு தொகை' : 'Expense Amount'}</label>
-                                <input type="number" placeholder="0.00" value={expAmount} onChange={e => setExpAmount(e.target.value)} required style={INPUT_S} />
+                                <input type="number" inputMode="decimal" placeholder="0.00" value={expAmount} onChange={e => setExpAmount(e.target.value)} required style={INPUT_S} />
                             </div>
 
                             <div>
@@ -447,7 +447,7 @@ const SalesmanCreditExpenses = () => {
                                 </div>
                                 <div>
                                     <label style={LABEL_S}>{lang === 'ta' ? 'தொகை' : 'Amount'}</label>
-                                    <input type="number" placeholder="0.00" value={transAmount} onChange={e => setTransAmount(e.target.value)} required style={INPUT_S} />
+                                    <input type="number" inputMode="decimal" placeholder="0.00" value={transAmount} onChange={e => setTransAmount(e.target.value)} required style={INPUT_S} />
                                 </div>
                             </div>
 

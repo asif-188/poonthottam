@@ -183,11 +183,6 @@ const PbDailyReport = () => {
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           {!isEntryMode ? (
             <>
-              <div style={{ position: 'relative' }}>
-                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..."
-                  style={{ padding: '10px 16px 10px 36px', borderRadius: '10px', border: '1px solid #e2e8f0', outline: 'none', width: '200px', fontSize: '14px' }} />
-              </div>
               <button onClick={() => setIsEntryMode(true)}
                 style={{ padding: '10px 20px', background: PB.primary, color: '#fff', borderRadius: '10px', border: 'none', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Edit3 size={18} /> Batch Entry
@@ -207,6 +202,17 @@ const PbDailyReport = () => {
           )}
         </div>
       </div>
+
+      {!isEntryMode && (
+        <div style={{ position: 'relative', marginBottom: '20px', maxWidth: '380px' }}>
+          <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+          <input 
+            type="text" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder={lang === 'ta' ? 'தேடுக...' : 'Search...'}
+            style={{ padding: '10px 16px 10px 40px', borderRadius: '100px', border: '1.5px solid #e2e8f0', outline: 'none', width: '100%', fontSize: '14px', boxSizing: 'border-box' }}
+          />
+        </div>
+      )}
 
       {/* Summary */}
       <div style={S.summaryCard}>
@@ -248,14 +254,14 @@ const PbDailyReport = () => {
                 <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: '#1e293b' }}>{fmt(row.balance)}</td>
                 <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, minWidth: '100px' }}>
                   {isEntryMode ? (
-                    <input type="number" placeholder="0" value={tempAmounts[row.id]?.received || ''}
+                    <input type="number" inputMode="decimal" placeholder="0" value={tempAmounts[row.id]?.received || ''}
                       onChange={e => setTempAmounts(prev => ({ ...prev, [row.id]: { ...prev[row.id], received: e.target.value } }))}
                       style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: `2px solid ${PB.primary}`, textAlign: 'right', fontWeight: 800, color: PB.primary, fontSize: '14px', outline: 'none' }} />
                   ) : <div style={{ color: '#10b981' }}>{row.received > 0 ? fmt(row.received) : '—'}</div>}
                 </td>
                 <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, minWidth: '100px' }}>
                   {isEntryMode ? (
-                    <input type="number" placeholder="0" value={tempAmounts[row.id]?.less || ''}
+                    <input type="number" inputMode="decimal" placeholder="0" value={tempAmounts[row.id]?.less || ''}
                       onChange={e => setTempAmounts(prev => ({ ...prev, [row.id]: { ...prev[row.id], less: e.target.value } }))}
                       style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '2px solid #f97316', textAlign: 'right', fontWeight: 800, color: '#f97316', fontSize: '14px', outline: 'none' }} />
                   ) : <div style={{ color: '#ef4444' }}>{row.less > 0 ? fmt(row.less) : '—'}</div>}

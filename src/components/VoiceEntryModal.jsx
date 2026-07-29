@@ -160,34 +160,34 @@ const preprocessWeights = (text) => {
     let t = text.toLowerCase();
 
     const exactPhrases = {
-        'one and half kilo': '1.500 kg',
-        'one and a half kilo': '1.500 kg',
-        '1 and half kilo': '1.500 kg',
-        '1 and a half kilo': '1.500 kg',
-        '1.5 kilo': '1.500 kg',
-        '1.5 கிலோ': '1.500 kg',
-        '1.5 kg': '1.500 kg',
-        'ஒன்னரை கிலோ': '1.500 kg',
-        'ஒன்றரை கிலோ': '1.500 kg',
-        '1ரை கிலோ': '1.500 kg',
+        'one and half kilo': '1.50 kg',
+        'one and a half kilo': '1.50 kg',
+        '1 and half kilo': '1.50 kg',
+        '1 and a half kilo': '1.50 kg',
+        '1.5 kilo': '1.50 kg',
+        '1.5 கிலோ': '1.50 kg',
+        '1.5 kg': '1.50 kg',
+        'ஒன்னரை கிலோ': '1.50 kg',
+        'ஒன்றரை கிலோ': '1.50 kg',
+        '1ரை கிலோ': '1.50 kg',
         
-        'three quarter kilo': '0.750 kg',
-        'முக்கால் கிலோ': '0.750 kg',
+        'three quarter kilo': '0.75 kg',
+        'முக்கால் கிலோ': '0.75 kg',
         
-        'half kilo': '0.500 kg',
-        'அரை கிலோ': '0.500 kg',
-        '0.5 kilo': '0.500 kg',
-        '0.5 கிலோ': '0.500 kg',
-        '0.5 kg': '0.500 kg',
+        'half kilo': '0.50 kg',
+        'அரை கிலோ': '0.50 kg',
+        '0.5 kilo': '0.50 kg',
+        '0.5 கிலோ': '0.50 kg',
+        '0.5 kg': '0.50 kg',
         
-        'quarter kilo': '0.250 kg',
-        'கால் கிலோ': '0.250 kg',
-        '0.25 kilo': '0.250 kg',
-        '0.25 கிலோ': '0.250 kg',
-        '0.25 kg': '0.250 kg',
+        'quarter kilo': '0.25 kg',
+        'கால் கிலோ': '0.25 kg',
+        '0.25 kilo': '0.25 kg',
+        '0.25 கிலோ': '0.25 kg',
+        '0.25 kg': '0.25 kg',
         
-        'one kilo': '1.000 kg',
-        'ஒரு கிலோ': '1.000 kg'
+        'one kilo': '1.00 kg',
+        'ஒரு கிலோ': '1.00 kg'
     };
 
     for (const [phrase, replacement] of Object.entries(exactPhrases)) {
@@ -200,14 +200,14 @@ const preprocessWeights = (text) => {
         const kg = parseFloat(p1);
         const g = parseFloat(p2);
         const total = kg + (g / 1000);
-        return ` ${total.toFixed(3)} kg `;
+        return ` ${total.toFixed(2)} kg `;
     });
 
     // Match single kilo numbers "X kilo" or "X kg" or "X கிலோ"
     const kiloRegex = /(\d+(?:\.\d+)?)\s*(?:kilo|kilos|kg|கிலோ)/gi;
     t = t.replace(kiloRegex, (match, p1) => {
         const kg = parseFloat(p1);
-        return ` ${kg.toFixed(3)} kg `;
+        return ` ${kg.toFixed(2)} kg `;
     });
 
     // Match single gram numbers "X grams" or "X கிராம்"
@@ -215,7 +215,7 @@ const preprocessWeights = (text) => {
     t = t.replace(gramsRegex, (match, p1) => {
         const g = parseFloat(p1);
         const kg = g / 1000;
-        return ` ${kg.toFixed(3)} kg `;
+        return ` ${kg.toFixed(2)} kg `;
     });
 
     return t;
@@ -633,8 +633,8 @@ const SearchSelect = ({ items, value, onChange, onKeyDown, inputRef, placeholder
             e.preventDefault();
             if (open && filtered[cursor]) {
                 choose(filtered[cursor]);
-                if (onKeyDown) onKeyDown(e);
             }
+            if (onKeyDown) onKeyDown(e);
         }
         else if (e.key === 'Escape') setOpen(false);
         else if (e.key === 'Tab') {
@@ -728,6 +728,9 @@ const VoiceEntryModal = ({
 
     const [manualItem, setManualItem] = useState({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
     const recognitionRef = useRef(null);
+    const refFlower = useRef(null);
+    const refQty = useRef(null);
+    const refRate = useRef(null);
 
     // Sync speechLang if langSetting changes
     useEffect(() => {
@@ -848,7 +851,7 @@ const VoiceEntryModal = ({
                 id: Math.random(),
                 flowerType: item.flower ? item.flower.name : '',
                 flowerTypeTa: item.flower ? (item.flower.taName || item.flower.nameTa || '') : '',
-                quantity: parseFloat(item.quantity).toFixed(3),
+                quantity: parseFloat(item.quantity).toFixed(2),
                 price: item.price
             }));
             setItemsList(prev => [...prev, ...newItems]);
@@ -858,7 +861,7 @@ const VoiceEntryModal = ({
                 id: Math.random(),
                 flowerType: item.flower ? item.flower.name : '',
                 flowerTypeTa: item.flower ? (item.flower.taName || item.flower.nameTa || '') : '',
-                quantity: parseFloat(item.quantity).toFixed(3),
+                quantity: parseFloat(item.quantity).toFixed(2),
                 price: item.price
             }));
             setItemsList(prev => [...prev, ...newItems]);
@@ -1062,12 +1065,15 @@ const VoiceEntryModal = ({
             id: Math.random(),
             flowerType: manualItem.flowerType,
             flowerTypeTa: selected?.taName || selected?.nameTa || '',
-            quantity: parseFloat(manualItem.quantity).toFixed(3),
+            quantity: parseFloat(manualItem.quantity).toFixed(2),
             price: manualItem.price
         };
         setItemsList(prev => [...prev, newItem]);
         setManualItem({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
         setErrorMsg('');
+        setTimeout(() => {
+            refFlower.current?.focus();
+        }, 50);
     };
 
     const updateItemInline = (itemId, field, val) => {
@@ -1165,6 +1171,7 @@ const VoiceEntryModal = ({
                                                     <td style={{...styles.td, textAlign: 'center'}}>
                                                         <input 
                                                             type="number"
+                                                            inputMode="decimal"
                                                             value={item.quantity}
                                                             onChange={e => updateItemInline(item.id, 'quantity', e.target.value)}
                                                             style={styles.inlineInput}
@@ -1173,6 +1180,7 @@ const VoiceEntryModal = ({
                                                     <td style={{...styles.td, textAlign: 'center'}}>
                                                         <input 
                                                             type="number"
+                                                            inputMode="decimal"
                                                             value={item.price}
                                                             onChange={e => updateItemInline(item.id, 'price', e.target.value)}
                                                             style={styles.inlineInput}
@@ -1207,7 +1215,7 @@ const VoiceEntryModal = ({
                                     <div style={styles.totalsSummaryContainer}>
                                         <div style={styles.totalBox}>
                                             <span style={styles.totalLabel}>Total Qty</span>
-                                            <span style={styles.totalVal}>{totalQty.toFixed(3)} Kg</span>
+                                            <span style={styles.totalVal}>{totalQty.toFixed(2)} Kg</span>
                                         </div>
                                         <div style={styles.totalBox}>
                                             <span style={styles.totalLabel}>Grand Total</span>
@@ -1222,6 +1230,7 @@ const VoiceEntryModal = ({
                                 <h4 style={styles.cardHeaderSmall}>Manual Line Insertion</h4>
                                 <div style={styles.manualEntryGrid}>
                                     <SearchSelect
+                                        inputRef={refFlower}
                                         items={flowers}
                                         value={manualItem.flowerType}
                                         onChange={sel => {
@@ -1239,23 +1248,45 @@ const VoiceEntryModal = ({
                                                 });
                                             }
                                         }}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                refQty.current?.focus();
+                                            }
+                                        }}
                                         placeholder={langSetting === 'ta' ? 'பூவைத் தேடுக...' : 'Select Flower...'}
                                         lang={langSetting}
                                         style={styles.manualInput}
                                     />
                                     <input 
+                                        ref={refQty}
                                         type="number" 
+                                        inputMode="decimal"
                                         placeholder="Qty (Kg)"
                                         value={manualItem.quantity}
                                         onChange={e => setManualItem({...manualItem, quantity: e.target.value})}
                                         style={styles.manualInput}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                refRate.current?.focus();
+                                            }
+                                        }}
                                     />
                                     <input 
+                                        ref={refRate}
                                         type="number" 
+                                        inputMode="decimal"
                                         placeholder="Rate"
                                         value={manualItem.price}
                                         onChange={e => setManualItem({...manualItem, price: e.target.value})}
                                         style={styles.manualInput}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                addManualItem();
+                                            }
+                                        }}
                                     />
                                     <button onClick={addManualItem} style={styles.manualAddBtn}>
                                         <Plus size={16} /> Add Line
@@ -1290,6 +1321,7 @@ const VoiceEntryModal = ({
                             <label style={styles.label}>Cash Amount (₹)</label>
                             <input 
                                 type="number" 
+                                inputMode="decimal"
                                 value={paymentAmount} 
                                 onChange={e => setPaymentAmount(e.target.value)} 
                                 style={styles.manualInput}
@@ -1300,6 +1332,7 @@ const VoiceEntryModal = ({
                             <label style={styles.label}>UPI / Cashless Amount (₹)</label>
                             <input 
                                 type="number" 
+                                inputMode="decimal"
                                 value={cashlessAmount} 
                                 onChange={e => setCashlessAmount(e.target.value)} 
                                 style={styles.manualInput}
@@ -1359,6 +1392,7 @@ const VoiceEntryModal = ({
                             <label style={styles.label}>Amount (₹)</label>
                             <input 
                                 type="number" 
+                                inputMode="decimal"
                                 value={paymentAmount} 
                                 onChange={e => setPaymentAmount(e.target.value)} 
                                 style={styles.manualInput}
@@ -1446,6 +1480,7 @@ const VoiceEntryModal = ({
                             <label style={styles.label}>Transfer Amount (₹)</label>
                             <input 
                                 type="number" 
+                                inputMode="decimal"
                                 value={paymentAmount} 
                                 onChange={e => setPaymentAmount(e.target.value)} 
                                 style={styles.manualInput}
@@ -1601,54 +1636,54 @@ const styles = {
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 999999, padding: '20px', overflow: 'hidden'
+        zIndex: 999999, padding: '10px', overflow: 'hidden'
     },
     container: {
         background: '#ffffff',
-        borderRadius: '24px',
-        width: '100%', maxWidth: '680px',
+        borderRadius: '20px',
+        width: '100%', maxWidth: '780px',
         boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.3)',
         border: '1px solid rgba(0, 0, 0, 0.08)',
-        padding: '20px', boxSizing: 'border-box',
+        padding: '16px', boxSizing: 'border-box',
         display: 'flex', flexDirection: 'column',
-        maxHeight: '90vh', overflow: 'hidden'
+        maxHeight: '96vh', overflow: 'hidden'
     },
     header: {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        borderBottom: '1px solid #f1f5f9', paddingBottom: '14px'
+        borderBottom: '1px solid #f1f5f9', paddingBottom: '10px'
     },
     titleGroup: {
-        display: 'flex', alignItems: 'center', gap: '12px'
+        display: 'flex', alignItems: 'center', gap: '10px'
     },
     title: {
-        fontSize: '22px', fontWeight: 900, color: '#0f172a',
+        fontSize: '20px', fontWeight: 900, color: '#0f172a',
         fontFamily: 'var(--font-display)', margin: 0, letterSpacing: '-0.02em'
     },
     subtitle: {
-        fontSize: '11px', fontWeight: 800, color: '#10b981', textTransform: 'uppercase',
+        fontSize: '10.5px', fontWeight: 800, color: '#10b981', textTransform: 'uppercase',
         letterSpacing: '0.08em', margin: '2px 0 0 0'
     },
     closeBtn: {
         background: '#f1f5f9', border: 'none', borderRadius: '50%',
-        width: '32px', height: '32px', display: 'flex', alignItems: 'center',
+        width: '30px', height: '30px', display: 'flex', alignItems: 'center',
         justifyContent: 'center', cursor: 'pointer', color: '#64748b',
         transition: 'all 0.15s'
     },
     infoBanner: {
         display: 'flex', alignItems: 'center', gap: '10px',
-        padding: '12px 18px', borderRadius: '16px'
+        padding: '8px 14px', borderRadius: '12px'
     },
     transcriptBanner: {
         background: '#f8fafc', border: '1.5px dashed #e2e8f0',
-        borderRadius: '16px', padding: '14px 18px',
-        display: 'flex', flexDirection: 'column', gap: '6px'
+        borderRadius: '12px', padding: '10px 14px',
+        display: 'flex', flexDirection: 'column', gap: '4px'
     },
     transcriptLabel: {
-        fontSize: '9.5px', fontWeight: 850, color: '#64748b', textTransform: 'uppercase',
+        fontSize: '9px', fontWeight: 850, color: '#64748b', textTransform: 'uppercase',
         letterSpacing: '0.05em'
     },
     transcriptText: {
-        fontSize: '14px', fontWeight: 700, color: '#334155', fontStyle: 'italic',
+        fontSize: '13px', fontWeight: 700, color: '#334155', fontStyle: 'italic',
         lineHeight: '1.3'
     },
     pulseDot: {
@@ -1657,11 +1692,11 @@ const styles = {
         animation: 'ping 1.2s infinite'
     },
     controlsRow: {
-        display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap'
+        display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap'
     },
     micToggleBtn: {
-        padding: '12px 24px', borderRadius: '16px', border: 'none',
-        color: '#fff', fontWeight: 800, fontSize: '14px',
+        padding: '10px 18px', borderRadius: '12px', border: 'none',
+        color: '#fff', fontWeight: 800, fontSize: '13px',
         cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
         transition: 'transform 0.15s active'
     },
@@ -1669,8 +1704,8 @@ const styles = {
         display: 'flex', gap: '6px', marginLeft: 'auto'
     },
     langSelectorBtn: {
-        padding: '6px 14px', borderRadius: '100px', border: '1.5px solid #e2e8f0',
-        background: '#fff', fontSize: '12px', fontWeight: 700, color: '#64748b',
+        padding: '6px 12px', borderRadius: '100px', border: '1.5px solid #e2e8f0',
+        background: '#fff', fontSize: '11.5px', fontWeight: 700, color: '#64748b',
         cursor: 'pointer', transition: 'all 0.2s'
     },
     langSelectorBtnActive: {
@@ -1678,15 +1713,15 @@ const styles = {
     },
     errorAlert: {
         background: '#fef2f2', border: '1px solid #fecdd3', borderRadius: '12px',
-        padding: '10px 14px', color: '#ef4444', fontSize: '13px', fontWeight: 700,
+        padding: '8px 12px', color: '#ef4444', fontSize: '12.5px', fontWeight: 700,
         display: 'flex', alignItems: 'center', gap: '8px'
     },
     sectionCard: {
-        background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '24px',
-        padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px'
+        background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '14px',
+        padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '6px'
     },
     cardHeader: {
-        fontSize: '14px', fontWeight: 900, color: '#0f172a', textTransform: 'uppercase',
+        fontSize: '13px', fontWeight: 900, color: '#0f172a', textTransform: 'uppercase',
         letterSpacing: '0.05em', margin: 0
     },
     cardHeaderSmall: {
@@ -1694,17 +1729,17 @@ const styles = {
         letterSpacing: '0.05em', margin: 0
     },
     label: {
-        fontSize: '10px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase',
+        fontSize: '9.5px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase',
         letterSpacing: '0.05em', marginBottom: '2px'
     },
     selectInput: {
-        padding: '12px 14px', borderRadius: '14px', border: '1.5px solid #e2e8f0',
-        fontSize: '14px', fontWeight: 650, color: '#1e293b', outline: 'none',
+        padding: '10px 12px', borderRadius: '12px', border: '1.5px solid #e2e8f0',
+        fontSize: '13px', fontWeight: 650, color: '#1e293b', outline: 'none',
         background: '#fff', cursor: 'pointer', width: '100%', boxSizing: 'border-box'
     },
     tableWrapper: {
-        maxHeight: '260px', overflowY: 'auto', border: '1px solid #f1f5f9',
-        borderRadius: '16px'
+        maxHeight: '360px', overflowY: 'auto', border: '1px solid #f1f5f9',
+        borderRadius: '12px'
     },
     table: {
         width: '100%', borderCollapse: 'collapse', textAlign: 'left'
@@ -1713,37 +1748,38 @@ const styles = {
         background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0'
     },
     th: {
-        padding: '12px 14px', fontSize: '10px', fontWeight: 800, color: '#64748b',
+        padding: '4px 8px', fontSize: '9px', fontWeight: 800, color: '#64748b',
         textTransform: 'uppercase', letterSpacing: '0.05em'
     },
     tableRow: {
         borderBottom: '1px solid #f1f5f9'
     },
     td: {
-        padding: '10px 14px', fontSize: '13.5px', verticalAlign: 'middle',
+        padding: '2px 8px', fontSize: '12px', verticalAlign: 'middle',
         color: '#334155'
     },
     inlineSelect: {
-        border: '1.5px solid #e2e8f0', padding: '6px 8px', borderRadius: '8px',
-        fontSize: '13px', fontWeight: 600, outline: 'none', cursor: 'pointer'
+        border: '1.5px solid #e2e8f0', padding: '0 6px', borderRadius: '6px',
+        fontSize: '11.5px', fontWeight: 600, outline: 'none', cursor: 'pointer',
+        height: '25px', boxSizing: 'border-box'
     },
     inlineInput: {
-        border: '1.5px solid #e2e8f0', padding: '6px 8px', borderRadius: '8px',
-        fontSize: '13px', fontWeight: 700, width: '70px', textAlign: 'center',
-        outline: 'none'
+        border: '1.5px solid #e2e8f0', padding: '0 6px', borderRadius: '6px',
+        fontSize: '11.5px', fontWeight: 700, width: '60px', textAlign: 'center',
+        outline: 'none', height: '25px', boxSizing: 'border-box'
     },
     inlineDeleteBtn: {
-        background: '#fef2f2', border: 'none', borderRadius: '8px',
-        width: '28px', height: '28px', display: 'flex', alignItems: 'center',
+        background: '#fef2f2', border: 'none', borderRadius: '6px',
+        width: '22px', height: '22px', display: 'flex', alignItems: 'center',
         justifyContent: 'center', cursor: 'pointer', color: '#ef4444'
     },
     emptyTableText: {
-        padding: '40px 20px', textAlign: 'center', color: '#94a3b8',
-        fontSize: '13px', fontStyle: 'italic'
+        padding: '30px 15px', textAlign: 'center', color: '#94a3b8',
+        fontSize: '12.5px', fontStyle: 'italic'
     },
     totalsSummaryContainer: {
         display: 'flex', justifyContent: 'flex-end', gap: '20px',
-        background: '#f8fafc', padding: '12px 18px', borderRadius: '16px',
+        background: '#f8fafc', padding: '8px 14px', borderRadius: '12px',
         border: '1px solid #e2e8f0'
     },
     totalBox: {
@@ -1753,19 +1789,19 @@ const styles = {
         fontSize: '9px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase'
     },
     totalVal: {
-        fontSize: '16px', fontWeight: 900, color: '#334155'
+        fontSize: '15px', fontWeight: 900, color: '#334155'
     },
     manualEntryGrid: {
         display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '10px',
         alignItems: 'center'
     },
     manualInput: {
-        padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0',
-        fontSize: '13px', fontWeight: 600, outline: 'none', width: '100%', boxSizing: 'border-box'
+        padding: '8px 10px', borderRadius: '8px', border: '1.5px solid #e2e8f0',
+        fontSize: '12.5px', fontWeight: 600, outline: 'none', width: '100%', boxSizing: 'border-box'
     },
     manualAddBtn: {
-        padding: '8px 16px', borderRadius: '10px', border: 'none',
-        background: '#6366f1', color: '#fff', fontSize: '13px', fontWeight: 750,
+        padding: '8px 14px', borderRadius: '8px', border: 'none',
+        background: '#6366f1', color: '#fff', fontSize: '12.5px', fontWeight: 750,
         cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
     },
     scrollBody: {
@@ -1773,27 +1809,27 @@ const styles = {
         overflowY: 'auto',
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px',
-        paddingRight: '6px',
-        margin: '12px 0'
+        gap: '8px',
+        paddingRight: '4px',
+        margin: '8px 0'
     },
     dialogFooter: {
-        display: 'flex', borderTop: '1px solid #f1f5f9', paddingTop: '16px',
+        display: 'flex', borderTop: '1px solid #f1f5f9', paddingTop: '10px',
         alignItems: 'center', gap: '16px', flexShrink: 0
     },
     resetBtn: {
-        padding: '10px 18px', borderRadius: '12px', border: '1.5px solid #cbd5e1',
-        background: '#fff', color: '#64748b', fontSize: '13px', fontWeight: 700,
+        padding: '8px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1',
+        background: '#fff', color: '#64748b', fontSize: '12.5px', fontWeight: 700,
         cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
     },
     cancelBtn: {
-        padding: '12px 22px', borderRadius: '14px', border: '1.5px solid #cbd5e1',
-        background: '#fff', color: '#64748b', fontSize: '14px', fontWeight: 750,
+        padding: '8px 16px', borderRadius: '10px', border: '1.5px solid #cbd5e1',
+        background: '#fff', color: '#64748b', fontSize: '13px', fontWeight: 750,
         cursor: 'pointer'
     },
     saveBtn: {
-        padding: '12px 28px', borderRadius: '14px', border: 'none',
-        background: '#10b981', color: '#fff', fontSize: '14px', fontWeight: 850,
+        padding: '8px 20px', borderRadius: '10px', border: 'none',
+        background: '#10b981', color: '#fff', fontSize: '13px', fontWeight: 850,
         cursor: 'pointer', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.2)'
     },
     formGroup: {

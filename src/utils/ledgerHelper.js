@@ -81,6 +81,8 @@ export const generateUniversalLedger = ({
     expenses = [],
     transfers = [],
     cashRecords = [], // salesman_cash
+    cashPurchases = [],
+    cashSales = [],
     products = [],
     lang = 'en'
 }) => {
@@ -362,6 +364,42 @@ export const generateUniversalLedger = ({
                 particulars: `${LABELS.purchase}: ${p.vendorName || 'Vendor'}`,
                 amount: Number(p.grandTotal || 0),
                 rawTxn: p
+            });
+        });
+
+        // Cash Purchases (Spot Purchases) made by salesman cash box
+        cashPurchases.filter(cp => cp.salesmanId === personId).forEach(cp => {
+            const date = getTxnDateStr(cp);
+            const time = getTxnTimeStr(cp);
+            const millis = getTxnMillis(cp);
+            
+            txnList.push({
+                id: `${cp.id}-cashpur`,
+                date,
+                time,
+                millis,
+                type: 'DEBIT',
+                particulars: `${isTamil ? 'ரொக்கக் கொள்முதல்' : 'Cash Purchase'}: ${cp.vendorName || 'Vendor'}`,
+                amount: Number(cp.grandTotal || 0),
+                rawTxn: cp
+            });
+        });
+
+        // Cash Sales (Spot Sales) received into salesman cash box
+        cashSales.filter(cs => cs.salesmanId === personId).forEach(cs => {
+            const date = getTxnDateStr(cs);
+            const time = getTxnTimeStr(cs);
+            const millis = getTxnMillis(cs);
+            
+            txnList.push({
+                id: `${cs.id}-cashsale`,
+                date,
+                time,
+                millis,
+                type: 'CREDIT',
+                particulars: `${isTamil ? 'ரொக்க விற்பனை' : 'Cash Sale'}: ${cs.customerName || 'Customer'}`,
+                amount: Number(cs.grandTotal || 0),
+                rawTxn: cs
             });
         });
     }

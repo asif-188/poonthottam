@@ -719,6 +719,7 @@ const Payments = () => {
                                         <input
                                             ref={refCashLess}
                                             type="number"
+                                            inputMode="decimal"
                                             placeholder="0"
                                             value={formData.cashLess}
                                             onChange={e => setFormData({ ...formData, cashLess: e.target.value })}
@@ -731,6 +732,7 @@ const Payments = () => {
                                         <input
                                             ref={refAmount}
                                             type="number"
+                                            inputMode="decimal"
                                             placeholder="0"
                                             value={formData.amount}
                                             onChange={e => setFormData({ ...formData, amount: e.target.value })}
@@ -771,6 +773,7 @@ const Payments = () => {
                                         <input
                                             ref={refAmount}
                                             type="number"
+                                            inputMode="decimal"
                                             placeholder="0"
                                             value={formData.amount}
                                             onChange={e => setFormData({ ...formData, amount: e.target.value })}
@@ -814,6 +817,7 @@ const Payments = () => {
                                         <input
                                             ref={refAmount}
                                             type="number"
+                                            inputMode="decimal"
                                             placeholder="0"
                                             value={formData.amount}
                                             onChange={e => setFormData({ ...formData, amount: e.target.value })}
@@ -846,6 +850,7 @@ const Payments = () => {
                                         <input
                                             ref={refAmount}
                                             type="number"
+                                            inputMode="decimal"
                                             placeholder="0"
                                             value={formData.amount}
                                             onChange={e => setFormData({ ...formData, amount: e.target.value })}

@@ -240,6 +240,8 @@ export const COLLECTIONS = {
   CREDIT_TRANSFERS: 'salesman_credit_transfers',
   DAILY_FLOWER_PRICES: 'daily_flower_prices',
   DAILY_LEDGERS: 'salesman_daily_ledgers',
+  CASH_PURCHASES: 'cash_purchases',
+  CASH_SALES: 'cash_sales',
 };
 
 // Helper to get current tenant
@@ -860,6 +862,34 @@ export const saveDailyFlowerPrices = async (date, priceData) => {
   }
   
   await setDoc(docRef, payload, { merge: true });
+};
+
+// --- CASH PURCHASES ---
+export const saveCashPurchase = async (record) => {
+  const { id, ...data } = record;
+  if (id) {
+    await updateData(COLLECTIONS.CASH_PURCHASES, id, data);
+  } else {
+    await addData(COLLECTIONS.CASH_PURCHASES, data);
+  }
+};
+
+export const deleteCashPurchase = async (id) => {
+  await deleteDoc(doc(db, COLLECTIONS.CASH_PURCHASES, id));
+};
+
+// --- CASH SALES ---
+export const saveCashSale = async (record) => {
+  const { id, ...data } = record;
+  if (id) {
+    await updateData(COLLECTIONS.CASH_SALES, id, data);
+  } else {
+    await addData(COLLECTIONS.CASH_SALES, data);
+  }
+};
+
+export const deleteCashSale = async (id) => {
+  await deleteDoc(doc(db, COLLECTIONS.CASH_SALES, id));
 };
 
 

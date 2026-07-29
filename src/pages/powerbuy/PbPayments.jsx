@@ -362,7 +362,7 @@ const PbPayments = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <label style={{ width: '130px', flexShrink: 0, fontSize: '13px', fontWeight: 600, color: '#475569' }}>Given Amount</label>
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <input ref={amountRef} type="number" placeholder="0" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} onKeyDown={e => handleKeyDown(e, cashLessRef, formData.amount, customerRef)} required min="1"
+                    <input ref={amountRef} type="number" inputMode="decimal" placeholder="0" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} onKeyDown={e => handleKeyDown(e, cashLessRef, formData.amount, customerRef)} required min="1"
                       style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: `1.5px solid ${PB.primary}`, fontSize: '18px', fontWeight: 900, color: PB.primary, outline: 'none' }} />
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, color: formData.method === 'UPI' ? PB.primary : '#64748b', whiteSpace: 'nowrap' }}>
                       <input type="checkbox" checked={formData.method === 'UPI'} onChange={e => setFormData({ ...formData, method: e.target.checked ? 'UPI' : 'Cash' })} style={{ accentColor: PB.primary, width: '18px', height: '18px' }} /> GPAY
@@ -372,7 +372,7 @@ const PbPayments = () => {
                 {/* Cash Less */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <label style={{ width: '130px', flexShrink: 0, fontSize: '13px', fontWeight: 600, color: '#475569' }}>Cash Less</label>
-                  <input ref={cashLessRef} type="number" placeholder="0" value={formData.cashLess} onChange={e => setFormData({ ...formData, cashLess: e.target.value })} onKeyDown={e => handleKeyDown(e, saveRef, null, amountRef)}
+                  <input ref={cashLessRef} type="number" inputMode="decimal" placeholder="0" value={formData.cashLess} onChange={e => setFormData({ ...formData, cashLess: e.target.value })} onKeyDown={e => handleKeyDown(e, saveRef, null, amountRef)}
                     style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #f43f5e', fontSize: '18px', fontWeight: 900, color: '#f43f5e', outline: 'none' }} />
                 </div>
                 {/* Closing Balance */}

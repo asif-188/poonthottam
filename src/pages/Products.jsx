@@ -84,7 +84,7 @@ const Products = () => {
 
             {/* Toolbar */}
             <div className="flex flex-col md:flex-row gap-6 mb-12 items-center">
-                <div className="relative flex-1 w-full max-w-xl">
+                <div className="relative flex-1 w-full max-w-md">
                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-orange-400" size={24} />
                     <input 
                         type="text" 
@@ -169,6 +169,7 @@ const Products = () => {
                                     <label className="block text-xs font-black text-gray-400 uppercase tracking-widest pl-2">Benchmark Rate</label>
                                     <input 
                                         type="number" 
+                                        inputMode="decimal"
                                         className="w-full px-8 py-5 rounded-[24px] bg-gray-50 border-3 border-transparent focus:border-orange-500 focus:bg-white transition-all outline-none text-3xl font-black text-gray-800 shadow-inner" 
                                         value={currentProduct.price}
                                         onChange={(e) => setCurrentProduct({ ...currentProduct, price: e.target.value })}

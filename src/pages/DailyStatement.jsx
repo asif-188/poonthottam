@@ -40,12 +40,13 @@ const DailyStatement = () => {
     const [outsidePurchases, setOutsidePurchases] = useState([]);
     const [vendors, setVendors]   = useState([]);
     
-    // Additional collections
     const [farmers, setFarmers]   = useState([]);
     const [salesmen, setSalesmen] = useState([]);
     const [intakes, setIntakes]   = useState([]);
     const [salesmanCash, setSalesmanCash] = useState([]);
     const [salesmanPurchases, setSalesmanPurchases] = useState([]);
+    const [cashPurchases, setCashPurchases] = useState([]);
+    const [cashSales, setCashSales] = useState([]);
 
     useEffect(() => {
         const u1 = subscribeToCollection('sales', setSales, true);
@@ -58,6 +59,8 @@ const DailyStatement = () => {
         const u8 = subscribeToCollection('intakes', setIntakes, true);
         const u9 = subscribeToCollection('salesman_cash', setSalesmanCash, true);
         const u10 = subscribeToCollection('salesman_purchases', setSalesmanPurchases, true);
+        const u11 = subscribeToCollection('cash_purchases', setCashPurchases, true);
+        const u12 = subscribeToCollection('cash_sales', setCashSales, true);
 
         return () => {
             u1();
@@ -70,6 +73,8 @@ const DailyStatement = () => {
             u8();
             u9();
             u10();
+            u11();
+            u12();
         };
     }, []);
 
@@ -107,9 +112,17 @@ const DailyStatement = () => {
             .filter(p => (p.date || parseDateStr(p.timestamp)) < fromDate)
             .reduce((sum, p) => sum + (p.grandTotal || 0), 0);
 
-        return (pastSales + pastBuyerPayments) - 
-               (pastVendorPayments + pastPurchases + pastFarmerPayments + pastIntakes + pastSalesmanCash + pastSalesmanPurchases);
-    }, [sales, payments, outsidePurchases, intakes, salesmanCash, salesmanPurchases, fromDate]);
+        const pastCashPurchases = cashPurchases
+            .filter(p => (p.date || parseDateStr(p.timestamp)) < fromDate)
+            .reduce((sum, p) => sum + (p.grandTotal || 0), 0);
+
+        const pastCashSales = cashSales
+            .filter(s => (s.date || parseDateStr(s.timestamp)) < fromDate)
+            .reduce((sum, s) => sum + (s.grandTotal || 0), 0);
+
+        return (pastSales + pastBuyerPayments + pastCashSales) - 
+               (pastVendorPayments + pastPurchases + pastFarmerPayments + pastIntakes + pastSalesmanCash + pastSalesmanPurchases + pastCashPurchases);
+    }, [sales, payments, outsidePurchases, intakes, salesmanCash, salesmanPurchases, cashPurchases, cashSales, fromDate]);
 
     // 2. Map and filter items for selected range
     const statementItems = useMemo(() => {
@@ -277,6 +290,46 @@ const DailyStatement = () => {
                 };
             });
 
+        const rangeCashPurchases = cashPurchases
+            .filter(p => {
+                const d = p.date || parseDateStr(p.timestamp);
+                return d >= fromDate && d <= toDate;
+            })
+            .map(p => {
+                const salesman = salesmen.find(s => s.id === p.salesmanId);
+                const staffName = salesman ? (lang === 'ta' ? (salesman.nameTa || salesman.name) : salesman.name) : (p.salesmanName || 'Staff');
+                return {
+                    id: p.id,
+                    date: p.date || parseDateStr(p.timestamp),
+                    desc: lang === 'ta' ? `ரொக்கக் கொள்முதல் (${staffName}): ${p.vendorName || '---'}` : `Cash Purchase (${staffName}): ${p.vendorName || '---'}`,
+                    ref: p.vendorName || '---',
+                    type: 'CASH_PURCHASE',
+                    debit: p.grandTotal || 0,
+                    credit: 0,
+                    timestamp: p.timestamp
+                };
+            });
+
+        const rangeCashSales = cashSales
+            .filter(s => {
+                const d = s.date || parseDateStr(s.timestamp);
+                return d >= fromDate && d <= toDate;
+            })
+            .map(s => {
+                const salesman = salesmen.find(s => s.id === s.salesmanId);
+                const staffName = salesman ? (lang === 'ta' ? (salesman.nameTa || salesman.name) : salesman.name) : (s.salesmanName || 'Staff');
+                return {
+                    id: s.id,
+                    date: s.date || parseDateStr(s.timestamp),
+                    desc: lang === 'ta' ? `ரொக்க விற்பனை (${staffName}): ${s.customerName || '---'}` : `Cash Sale (${staffName}): ${s.customerName || '---'}`,
+                    ref: s.customerName || '---',
+                    type: 'CASH_SALE',
+                    debit: 0,
+                    credit: s.grandTotal || 0,
+                    timestamp: s.timestamp
+                };
+            });
+
         // Combine and sort chronologically
         const combined = [
             ...rangeSales, 
@@ -284,7 +337,9 @@ const DailyStatement = () => {
             ...rangePurchases,
             ...rangeIntakes,
             ...rangeSalesmanCash,
-            ...rangeSalesmanPurchases
+            ...rangeSalesmanPurchases,
+            ...rangeCashPurchases,
+            ...rangeCashSales
         ];
         combined.sort((a, b) => {
             if (a.date !== b.date) return a.date.localeCompare(b.date);
@@ -300,7 +355,7 @@ const DailyStatement = () => {
                 balance
             };
         });
-    }, [sales, payments, outsidePurchases, intakes, salesmanCash, salesmanPurchases, buyers, vendors, farmers, salesmen, fromDate, toDate, lang, openingBalance]);
+    }, [sales, payments, outsidePurchases, intakes, salesmanCash, salesmanPurchases, cashPurchases, cashSales, buyers, vendors, farmers, salesmen, fromDate, toDate, lang, openingBalance]);
 
     // Totals for range
     const totals = useMemo(() => {

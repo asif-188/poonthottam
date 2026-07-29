@@ -646,6 +646,7 @@ const SalesmanMaster = () => {
                                 </label>
                                 <input 
                                     type="number" 
+                                    inputMode="decimal"
                                     style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', fontSize: '14px', fontWeight: 600, color: '#1e293b', outline: 'none', fontFamily: 'var(--font-sans)' }}
                                     value={currentSalesman.openingCash || ''}
                                     onChange={(e) => setCurrentSalesman({ ...currentSalesman, openingCash: e.target.value })}

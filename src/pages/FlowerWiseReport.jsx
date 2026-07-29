@@ -53,6 +53,8 @@ const FlowerWiseReport = () => {
     const [intakes, setIntakes] = useState([]);
     const [outsidePurchases, setOutsidePurchases] = useState([]);
     const [sales, setSales] = useState([]);
+    const [cashPurchases, setCashPurchases] = useState([]);
+    const [cashSales, setCashSales] = useState([]);
     
     const [farmers, setFarmers] = useState([]);
     const [vendors, setVendors] = useState([]);
@@ -66,6 +68,8 @@ const FlowerWiseReport = () => {
         const u5 = subscribeToCollection('farmers', setFarmers, true);
         const u6 = subscribeToCollection('vendors', setVendors, true);
         const u7 = subscribeToCollection('buyers', setBuyers, true);
+        const u8 = subscribeToCollection('cash_purchases', setCashPurchases, true);
+        const u9 = subscribeToCollection('cash_sales', setCashSales, true);
 
         return () => {
             u1();
@@ -75,6 +79,8 @@ const FlowerWiseReport = () => {
             u5();
             u6();
             u7();
+            u8();
+            u9();
         };
     }, []);
 
@@ -140,12 +146,30 @@ const FlowerWiseReport = () => {
             }
         });
 
+        // 3. Cash Purchases
+        cashPurchases.forEach(cp => {
+            const dateStr = (cp.date || '').substring(0, 10);
+            if (dateStr >= fromDate && dateStr <= toDate) {
+                (cp.items || []).forEach(item => {
+                    if (matchesFlower(item.flowerType)) {
+                        list.push({
+                            name: `${cp.vendorName || 'Random Vendor'} (${lang === 'ta' ? 'ரொக்கம்' : 'Cash'})`,
+                            source: lang === 'ta' ? 'ரொக்கக் கொள்முதல்' : 'Cash Purchase',
+                            quantity: parseFloat(item.quantity || 0),
+                            total: parseFloat(item.total || 0),
+                            rate: getItemRate(item)
+                        });
+                    }
+                });
+            }
+        });
+
         const mergedList = mergeListByNameAndRate(list);
         const totalKg = mergedList.reduce((sum, item) => sum + item.quantity, 0);
         const totalAmount = mergedList.reduce((sum, item) => sum + item.total, 0);
 
         return { list: mergedList, totalKg, totalAmount };
-    }, [intakes, outsidePurchases, farmers, vendors, fromDate, toDate, matchesFlower, lang]);
+    }, [intakes, outsidePurchases, cashPurchases, farmers, vendors, fromDate, toDate, matchesFlower, lang]);
 
     // Compute Sales list (Customers) for selected date range and flower
     const salesData = useMemo(() => {
@@ -170,12 +194,29 @@ const FlowerWiseReport = () => {
             }
         });
 
+        // Cash Sales
+        cashSales.forEach(cs => {
+            const dateStr = (cs.date || '').substring(0, 10);
+            if (dateStr >= fromDate && dateStr <= toDate) {
+                (cs.items || []).forEach(item => {
+                    if (matchesFlower(item.flowerType)) {
+                        list.push({
+                            name: `${cs.customerName || 'Random Customer'} (${lang === 'ta' ? 'ரொக்கம்' : 'Cash'})`,
+                            quantity: parseFloat(item.quantity || 0),
+                            total: parseFloat(item.total || 0),
+                            rate: getItemRate(item)
+                        });
+                    }
+                });
+            }
+        });
+
         const mergedList = mergeListByNameAndRate(list);
         const totalKg = mergedList.reduce((sum, item) => sum + item.quantity, 0);
         const totalAmount = mergedList.reduce((sum, item) => sum + item.total, 0);
 
         return { list: mergedList, totalKg, totalAmount };
-    }, [sales, buyers, fromDate, toDate, matchesFlower, lang]);
+    }, [sales, cashSales, buyers, fromDate, toDate, matchesFlower, lang]);
 
     // Compute grouped flower-wise data when selectedFlower is 'all'
     const groupedFlowerData = useMemo(() => {
@@ -232,6 +273,23 @@ const FlowerWiseReport = () => {
                 }
             });
 
+            cashPurchases.forEach(cp => {
+                const dateStr = (cp.date || '').substring(0, 10);
+                if (dateStr >= fromDate && dateStr <= toDate) {
+                    (cp.items || []).forEach(item => {
+                        if (matcher(item.flowerType)) {
+                            pList.push({
+                                name: `${cp.vendorName || 'Random Vendor'} (${lang === 'ta' ? 'ரொக்கம்' : 'Cash'})`,
+                                source: lang === 'ta' ? 'ரொக்கக் கொள்முதல்' : 'Cash Purchase',
+                                quantity: parseFloat(item.quantity || 0),
+                                total: parseFloat(item.total || 0),
+                                rate: getItemRate(item)
+                            });
+                        }
+                    });
+                }
+            });
+
             const mergedPList = mergeListByNameAndRate(pList);
             const pTotalKg = mergedPList.reduce((sum, item) => sum + item.quantity, 0);
             const pTotalAmount = mergedPList.reduce((sum, item) => sum + item.total, 0);
@@ -257,6 +315,22 @@ const FlowerWiseReport = () => {
                 }
             });
 
+            cashSales.forEach(cs => {
+                const dateStr = (cs.date || '').substring(0, 10);
+                if (dateStr >= fromDate && dateStr <= toDate) {
+                    (cs.items || []).forEach(item => {
+                        if (matcher(item.flowerType)) {
+                            sList.push({
+                                name: `${cs.customerName || 'Random Customer'} (${lang === 'ta' ? 'ரொக்கம்' : 'Cash'})`,
+                                quantity: parseFloat(item.quantity || 0),
+                                total: parseFloat(item.total || 0),
+                                rate: getItemRate(item)
+                            });
+                        }
+                    });
+                }
+            });
+
             const mergedSList = mergeListByNameAndRate(sList);
             const sTotalKg = mergedSList.reduce((sum, item) => sum + item.quantity, 0);
             const sTotalAmount = mergedSList.reduce((sum, item) => sum + item.total, 0);
@@ -273,7 +347,7 @@ const FlowerWiseReport = () => {
         });
 
         return groups;
-    }, [products, intakes, outsidePurchases, sales, farmers, vendors, buyers, fromDate, toDate, lang]);
+    }, [products, intakes, outsidePurchases, cashPurchases, sales, cashSales, farmers, vendors, buyers, fromDate, toDate, lang]);
 
     const handlePrint = () => {
         try {

@@ -981,7 +981,7 @@ const Reports = () => {
                 </button>
             </div>
 
-            {/* ── Stat Cards + Search Row ── */}
+            {/* ── Stat Cards Row ── */}
             <div style={{ display: 'flex', gap: '10px', marginBottom: '18px', flexWrap: 'wrap', alignItems: 'stretch' }}>
                 {STAT_CARDS.map(card => (
                     <div key={card.label} style={{ flex: '1 1 auto', minWidth: '130px', borderRadius: '10px', border: `1.5px solid ${card.accent}22`, background: card.bg, padding: '12px 16px' }}>
@@ -989,19 +989,19 @@ const Reports = () => {
                         <div style={{ fontSize: '15px', fontWeight: 800, color: card.textColor, wordBreak: 'break-word' }}>{fmt(card.value)}</div>
                     </div>
                 ))}
+            </div>
 
-                {/* Search */}
-                <div style={{ flex: '1 1 220px', minWidth: '220px', position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <Search size={14} style={{ position: 'absolute', left: '12px', color: '#9ca3af', pointerEvents: 'none' }} />
-                    <input type="text" placeholder="Search by name or ID..."
-                        value={search} onChange={e => setSearch(e.target.value)}
-                        style={{ width: '100%', padding: '10px 36px 10px 34px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '13px', color: '#374151', background: '#fff', outline: 'none', fontFamily: 'var(--font-sans)' }}
-                        onFocus={e => e.target.style.borderColor = '#16a34a'}
-                        onBlur={e => e.target.style.borderColor = '#e2e8f0'}
-                    />
-                    <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
-                        <VoiceSearchButton onSpeechResult={setSearch} langSetting={lang} />
-                    </div>
+            {/* Search */}
+            <div style={{ position: 'relative', marginBottom: '18px', maxWidth: '380px' }}>
+                <Search size={14} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} />
+                <input type="text" placeholder="Search by name or ID..."
+                    value={search} onChange={e => setSearch(e.target.value)}
+                    style={{ width: '100%', padding: '10px 36px 10px 40px', borderRadius: '100px', border: '1.5px solid #e2e8f0', fontSize: '13px', color: '#374151', background: '#fff', outline: 'none', fontFamily: 'var(--font-sans)', boxSizing: 'border-box' }}
+                    onFocus={e => e.target.style.borderColor = '#16a34a'}
+                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                />
+                <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+                    <VoiceSearchButton onSpeechResult={setSearch} langSetting={lang} />
                 </div>
             </div>
 

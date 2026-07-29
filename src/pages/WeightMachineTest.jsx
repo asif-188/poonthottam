@@ -311,6 +311,7 @@ const WeightMachineTest = () => {
                   <div className="flex shadow-md rounded-[20px] overflow-hidden bg-white focus-within:ring-4 focus-within:ring-amber-400/20 transition-all">
                     <input
                       type="number"
+                      inputMode="decimal"
                       step="0.001"
                       value={wm.weight}
                       onChange={e => wm.setWeight(parseFloat(e.target.value) || 0)}
@@ -330,6 +331,7 @@ const WeightMachineTest = () => {
                   <div className="bg-white rounded-[20px] p-5 shadow-md flex items-center focus-within:ring-4 focus-within:ring-amber-400/20 transition-all">
                     <input
                       type="number"
+                      inputMode="decimal"
                       value={rate}
                       onChange={e => setRate(e.target.value)}
                       className="w-full bg-transparent border-none outline-none font-black text-2xl text-gray-800"
