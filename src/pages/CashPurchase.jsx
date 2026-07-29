@@ -165,7 +165,7 @@ const CashPurchase = () => {
     // Form inputs
     const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
     const [staffId, setStaffId] = useState('');
-    const [vendorName, setVendorName] = useState('');
+    const [vendorName, setVendorName] = useState('Cash');
     const [mobileNumber, setMobileNumber] = useState('');
     const [location, setLocation] = useState('');
     const [paymentMode, setPaymentMode] = useState('Cash');
@@ -290,7 +290,6 @@ const CashPurchase = () => {
 
     const handleSubmitTransaction = async () => {
         if (!staffId) return alert(lang === 'ta' ? 'தயவுசெய்து பணியாளரைத் தேர்ந்தெடுக்கவும்' : 'Please select staff first.');
-        if (!vendorName.trim()) return alert(lang === 'ta' ? 'விற்பனையாளர் பெயரை உள்ளிடவும்' : 'Please enter vendor name.');
         if (billItems.length === 0) return alert(lang === 'ta' ? 'பொருட்களைச் சேர்க்கவும்' : 'Please add at least one item line.');
         if (isSaving) return;
 
@@ -300,11 +299,11 @@ const CashPurchase = () => {
                 date,
                 salesmanId: staffId,
                 salesmanName: activeStaff?.name || 'Unknown',
-                vendorName: vendorName.trim(),
-                mobileNumber: mobileNumber.trim() || '---',
-                location: location.trim() || '---',
-                paymentMode,
-                remarks: remarks.trim() || '---',
+                vendorName: 'Cash',
+                mobileNumber: '---',
+                location: '---',
+                paymentMode: 'Cash',
+                remarks: '---',
                 billImage: billImage || '',
                 items: billItems,
                 grandTotal: totalAmount,
@@ -316,11 +315,12 @@ const CashPurchase = () => {
             alert(lang === 'ta' ? '✅ ரொக்கக் கொள்முதல் வெற்றிகரமாக சேமிக்கப்பட்டது!' : '✅ Cash Purchase Saved Successfully!');
             
             // Clear Form
-            setVendorName('');
+            setVendorName('Cash');
             setMobileNumber('');
             setLocation('');
             setRemarks('');
             setBillImage('');
+            setPaymentMode('Cash');
             setBillItems([]);
         } catch (error) {
             console.error("Error saving cash purchase:", error);
@@ -493,7 +493,7 @@ const CashPurchase = () => {
                                 onChange={(selected) => setStaffId(selected.id)}
                                 lang={lang}
                                 inputRef={refStaff}
-                                onKeyDown={(e) => onKey(e, refVendorName)}
+                                onKeyDown={(e) => onKey(e, refFlower)}
                             />
                         </div>
                         <div>
@@ -525,94 +525,6 @@ const CashPurchase = () => {
                 {/* ── Transaction Details Form ── */}
                 <div style={{ pointerEvents: staffId ? 'auto' : 'none', opacity: staffId ? 1 : 0.5, transition: 'all 0.3s' }}>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-                        <div>
-                            <label style={LABEL_S}>{lang === 'ta' ? 'கடை / விற்பனையாளர் பெயர்' : 'Shop/Vendor Name'}</label>
-                            <input
-                                ref={refVendorName}
-                                type="text"
-                                placeholder={lang === 'ta' ? 'பெயர்...' : 'Vendor Name...'}
-                                value={vendorName}
-                                onChange={e => setVendorName(e.target.value)}
-                                onKeyDown={(e) => onKey(e, refMobile)}
-                                style={INPUT_S}
-                            />
-                        </div>
-                        <div>
-                            <label style={LABEL_S}>{lang === 'ta' ? 'கைபேசி எண் (விருப்பம்)' : 'Mobile Number (Optional)'}</label>
-                            <input
-                                ref={refMobile}
-                                type="text"
-                                placeholder="e.g. 9876543210"
-                                value={mobileNumber}
-                                onChange={e => setMobileNumber(e.target.value)}
-                                onKeyDown={(e) => onKey(e, refLocation)}
-                                style={INPUT_S}
-                            />
-                        </div>
-                        <div>
-                            <label style={LABEL_S}>{lang === 'ta' ? 'ஊர் (விருப்பம்)' : 'Location (Optional)'}</label>
-                            <input
-                                ref={refLocation}
-                                type="text"
-                                placeholder="e.g. Tindivanam"
-                                value={location}
-                                onChange={e => setLocation(e.target.value)}
-                                onKeyDown={(e) => onKey(e, refRemarks)}
-                                style={INPUT_S}
-                            />
-                        </div>
-                        <div>
-                            <label style={LABEL_S}>{lang === 'ta' ? 'பணம் செலுத்தும் முறை' : 'Payment Mode'}</label>
-                            <select
-                                ref={refPaymentMode}
-                                value={paymentMode}
-                                onChange={e => setPaymentMode(e.target.value)}
-                                style={INPUT_S}
-                            >
-                                <option value="Cash">Cash</option>
-                                <option value="UPI">UPI</option>
-                                <option value="Bank">Bank Transfer</option>
-                            </select>
-                        </div>
-                        <div style={{ gridColumn: 'span 2' }}>
-                            <label style={LABEL_S}>{lang === 'ta' ? 'குறிப்பு' : 'Remarks / Short Notes'}</label>
-                            <input
-                                ref={refRemarks}
-                                type="text"
-                                placeholder={lang === 'ta' ? 'குறிப்புகள்...' : 'Short remarks...'}
-                                value={remarks}
-                                onChange={e => setRemarks(e.target.value)}
-                                onKeyDown={(e) => onKey(e, refFlower)}
-                                style={INPUT_S}
-                            />
-                        </div>
-                        <div>
-                            <label style={LABEL_S}>{lang === 'ta' ? 'பில் / ரசீது பதிவேற்றம் (விருப்பம்)' : 'Bill / Receipt Image (Optional)'}</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageUpload}
-                                    style={{ display: 'none' }}
-                                    id="bill-image-upload"
-                                />
-                                <label 
-                                    htmlFor="bill-image-upload"
-                                    style={{
-                                        display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                        padding: '8px 14px', background: '#f1f5f9', border: '1.5px solid #cbd5e1',
-                                        borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, color: '#475569'
-                                    }}
-                                >
-                                    <ImageIcon size={16} /> {lang === 'ta' ? 'படம் சேர்' : 'Upload Image'}
-                                </label>
-                                {billImage && (
-                                    <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 700 }}>✓ Attached</span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
 
                     {/* ── Manual Line Insertion ── */}
                     <div style={{ background: '#fffbeb', borderRadius: '16px', border: '1.5px solid #fef3c7', padding: '16px', marginBottom: '24px' }}>

@@ -165,7 +165,7 @@ const CashSales = () => {
     // Form inputs
     const [date, setDate] = useState(new Date().toLocaleDateString('en-CA'));
     const [staffId, setStaffId] = useState('');
-    const [customerName, setCustomerName] = useState('');
+    const [customerName, setCustomerName] = useState('Cash');
     const [mobileNumber, setMobileNumber] = useState('');
     const [location, setLocation] = useState('');
     const [paymentMode, setPaymentMode] = useState('Cash');
@@ -278,7 +278,6 @@ const CashSales = () => {
 
     const handleSubmitTransaction = async () => {
         if (!staffId) return alert(lang === 'ta' ? 'தயவுசெய்து பணியாளரைத் தேர்ந்தெடுக்கவும்' : 'Please select staff first.');
-        if (!customerName.trim()) return alert(lang === 'ta' ? 'வாடிக்கையாளர் பெயரை உள்ளிடவும்' : 'Please enter customer name.');
         if (billItems.length === 0) return alert(lang === 'ta' ? 'பொருட்களைச் சேர்க்கவும்' : 'Please add at least one item line.');
         if (isSaving) return;
 
@@ -288,11 +287,11 @@ const CashSales = () => {
                 date,
                 salesmanId: staffId,
                 salesmanName: activeStaff?.name || 'Unknown',
-                customerName: customerName.trim(),
-                mobileNumber: mobileNumber.trim() || '---',
-                location: location.trim() || '---',
-                paymentMode,
-                remarks: remarks.trim() || '---',
+                customerName: 'Cash',
+                mobileNumber: '---',
+                location: '---',
+                paymentMode: 'Cash',
+                remarks: '---',
                 items: billItems,
                 grandTotal: totalAmount,
                 type: 'cash_sale'
@@ -303,10 +302,11 @@ const CashSales = () => {
             alert(lang === 'ta' ? '✅ ரொக்க விற்பனை வெற்றிகரமாக சேமிக்கப்பட்டது!' : '✅ Cash Sale Saved Successfully!');
             
             // Clear Form
-            setCustomerName('');
+            setCustomerName('Cash');
             setMobileNumber('');
             setLocation('');
             setRemarks('');
+            setPaymentMode('Cash');
             setBillItems([]);
         } catch (error) {
             console.error("Error saving cash sale:", error);
@@ -479,7 +479,7 @@ const CashSales = () => {
                                 onChange={(selected) => setStaffId(selected.id)}
                                 lang={lang}
                                 inputRef={refStaff}
-                                onKeyDown={(e) => onKey(e, refCustomerName)}
+                                onKeyDown={(e) => onKey(e, refFlower)}
                             />
                         </div>
                         <div>
@@ -511,69 +511,7 @@ const CashSales = () => {
                 {/* ── Transaction Details Form ── */}
                 <div style={{ pointerEvents: staffId ? 'auto' : 'none', opacity: staffId ? 1 : 0.5, transition: 'all 0.3s' }}>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-                        <div>
-                            <label style={LABEL_S}>{lang === 'ta' ? 'கடை / வாடிக்கையாளர் பெயர்' : 'Shop/Customer Name'}</label>
-                            <input
-                                ref={refCustomerName}
-                                type="text"
-                                placeholder={lang === 'ta' ? 'பெயர்...' : 'Customer Name...'}
-                                value={customerName}
-                                onChange={e => setCustomerName(e.target.value)}
-                                onKeyDown={(e) => onKey(e, refMobile)}
-                                style={INPUT_S}
-                            />
-                        </div>
-                        <div>
-                            <label style={LABEL_S}>{lang === 'ta' ? 'கைபேசி எண் (விருப்பம்)' : 'Mobile Number (Optional)'}</label>
-                            <input
-                                ref={refMobile}
-                                type="text"
-                                placeholder="e.g. 9876543210"
-                                value={mobileNumber}
-                                onChange={e => setMobileNumber(e.target.value)}
-                                onKeyDown={(e) => onKey(e, refLocation)}
-                                style={INPUT_S}
-                            />
-                        </div>
-                        <div>
-                            <label style={LABEL_S}>{lang === 'ta' ? 'ஊர் (விருப்பம்)' : 'Location (Optional)'}</label>
-                            <input
-                                ref={refLocation}
-                                type="text"
-                                placeholder="e.g. Tindivanam"
-                                value={location}
-                                onChange={e => setLocation(e.target.value)}
-                                onKeyDown={(e) => onKey(e, refRemarks)}
-                                style={INPUT_S}
-                            />
-                        </div>
-                        <div>
-                            <label style={LABEL_S}>{lang === 'ta' ? 'பணம் செலுத்தும் முறை' : 'Payment Mode'}</label>
-                            <select
-                                ref={refPaymentMode}
-                                value={paymentMode}
-                                onChange={e => setPaymentMode(e.target.value)}
-                                style={INPUT_S}
-                            >
-                                <option value="Cash">Cash</option>
-                                <option value="UPI">UPI</option>
-                                <option value="Bank">Bank Transfer</option>
-                            </select>
-                        </div>
-                        <div style={{ gridColumn: 'span 2' }}>
-                            <label style={LABEL_S}>{lang === 'ta' ? 'குறிப்பு' : 'Remarks / Short Notes'}</label>
-                            <input
-                                ref={refRemarks}
-                                type="text"
-                                placeholder={lang === 'ta' ? 'குறிப்புகள்...' : 'Short remarks...'}
-                                value={remarks}
-                                onChange={e => setRemarks(e.target.value)}
-                                onKeyDown={(e) => onKey(e, refFlower)}
-                                style={INPUT_S}
-                            />
-                        </div>
-                    </div>
+
 
                     {/* ── Manual Line Insertion ── */}
                     <div style={{ background: '#fffbeb', borderRadius: '16px', border: '1.5px solid #fef3c7', padding: '16px', marginBottom: '24px' }}>

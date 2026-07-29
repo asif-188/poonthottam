@@ -428,6 +428,9 @@ const SalesEntry = () => {
                 }
             });
 
+            const buyerContact = (buyer?.contact || '').replace(/\D/g, '');
+            const whatsappNumber = buyerContact.length === 10 ? '91' + buyerContact : buyerContact;
+
             const file = new File([blob], 'bill.png', { type: 'image/png' });
             if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({ files: [file], title: `Bill – ${buyer.name}` });
@@ -436,6 +439,13 @@ const SalesEntry = () => {
                 a.href = url;
                 a.download = `bill_${buyer.name.replace(/\s+/g,'_')}.png`;
                 a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 30000);
+
+                if (whatsappNumber) {
+                    setTimeout(() => {
+                        window.open(`https://wa.me/${whatsappNumber}`, '_blank');
+                    }, 500);
+                }
             }
         } catch (err) { alert('Share failed: ' + err.message); }
     };
