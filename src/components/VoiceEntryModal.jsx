@@ -732,6 +732,14 @@ const VoiceEntryModal = ({
     const refFlower = useRef(null);
     const refQty = useRef(null);
     const refRate = useRef(null);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     // Sync speechLang if langSetting changes
     useEffect(() => {
@@ -862,24 +870,29 @@ const VoiceEntryModal = ({
             salesmen
         });
 
-        if (parsed.intent === 'SAVE') {
-            setIsListening(false);
-            handleConfirmSave();
-            return;
-        }
-        
-        if (parsed.intent === 'CANCEL') {
-            setIsListening(false);
-            onClose();
-            return;
-        }
-
         let matchedSuccessfully = false;
+
+        if (parsed.intent === 'SAVE') {
+            setTranscript(langSetting === 'ta' ? 'பதிவு செய்ய "Save Transaction" பொத்தானை கிளிக் செய்யவும்.' : 'Please click "Save Transaction" button to save.');
+            setErrorMsg(langSetting === 'ta' ? 'பதிவு செய்ய "Save Transaction" பொத்தானை கிளிக் செய்யவும்.' : 'Please click "Save Transaction" button to save.');
+            matchedSuccessfully = true;
+        }
+        else if (parsed.intent === 'CANCEL') {
+            setTranscript(langSetting === 'ta' ? 'ரத்து செய்ய "Cancel" பொத்தானை கிளிக் செய்யவும்.' : 'Please click "Cancel" button to cancel.');
+            setErrorMsg(langSetting === 'ta' ? 'ரத்து செய்ய "Cancel" பொத்தானை கிளிக் செய்யவும்.' : 'Please click "Cancel" button to cancel.');
+            matchedSuccessfully = true;
+        }
 
         // Invoice Multi-Line Intent
         if (parsed.intent === 'SELECT_CUSTOMER_AND_ADD_ITEMS') {
             const hasInvalidFlower = parsed.items.some(item => !item.flower);
-            if (parsed.customer && !hasInvalidFlower && parsed.items.length > 0) {
+            if (hasInvalidFlower) {
+                setErrorMsg(langSetting === 'ta' ? 'பூ வகை கண்டறியப்படவில்லை. தயவுசெய்து மீண்டும் பேசவும் அல்லது கைமுறையாக தேர்ந்தெடுக்கவும்.' : 'Flower not found. Please speak again or select manually.');
+                if (window.toast) {
+                    window.toast.warning(langSetting === 'ta' ? 'பூ வகை கண்டறியப்படவில்லை. தயவுசெய்து மீண்டும் பேசவும் அல்லது கைமுறையாக தேர்ந்தெடுக்கவும்.' : 'Flower not found. Please speak again or select manually.');
+                }
+                matchedSuccessfully = true;
+            } else if (parsed.customer && parsed.items.length > 0) {
                 setSelectedCustomer(parsed.customer);
                 const newItems = parsed.items.map(item => ({
                     id: Math.random(),
@@ -891,10 +904,17 @@ const VoiceEntryModal = ({
                 setItemsList(prev => [...prev, ...newItems]);
                 setTranscript(`Customer Locked: ${parsed.customer.name} | Added ${newItems.length} items`);
                 matchedSuccessfully = true;
+                setErrorMsg('');
             }
         } else if (parsed.intent === 'ADD_ITEMS') {
             const hasInvalidFlower = parsed.items.some(item => !item.flower);
-            if (!hasInvalidFlower && parsed.items.length > 0) {
+            if (hasInvalidFlower) {
+                setErrorMsg(langSetting === 'ta' ? 'பூ வகை கண்டறியப்படவில்லை. தயவுசெய்து மீண்டும் பேசவும் அல்லது கைமுறையாக தேர்ந்தெடுக்கவும்.' : 'Flower not found. Please speak again or select manually.');
+                if (window.toast) {
+                    window.toast.warning(langSetting === 'ta' ? 'பூ வகை கண்டறியப்படவில்லை. தயவுசெய்து மீண்டும் பேசவும் அல்லது கைமுறையாக தேர்ந்தெடுக்கவும்.' : 'Flower not found. Please speak again or select manually.');
+                }
+                matchedSuccessfully = true;
+            } else if (parsed.items.length > 0) {
                 const newItems = parsed.items.map(item => ({
                     id: Math.random(),
                     flowerType: item.flower.name,
@@ -905,6 +925,7 @@ const VoiceEntryModal = ({
                 setItemsList(prev => [...prev, ...newItems]);
                 setTranscript(`Added ${newItems.length} items to invoice`);
                 matchedSuccessfully = true;
+                setErrorMsg('');
             }
         } else if (parsed.intent === 'SELECT_CUSTOMER') {
             if (parsed.customer) {
@@ -988,6 +1009,13 @@ const VoiceEntryModal = ({
                 setErrorMsg('No matching record found. Please try again or enter manually.');
             }
         }
+
+        // Restart listening automatically after voice commands to continue multi-item voice session
+        setTimeout(() => {
+            if (isMountedRef.current) {
+                setIsListening(true);
+            }
+        }, 800);
     };
 
     const requestMicPermission = async () => {

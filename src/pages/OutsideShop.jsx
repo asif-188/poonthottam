@@ -864,7 +864,7 @@ const OutsideShop = () => {
             await navigator.share({ files: [file], title: 'Purchase Receipt' });
         } else {
             const win = window.open('', '_blank');
-            win.document.write(`<html><body style="margin:0;display:flex;justify-content:center;background:#f0f0f0;"><img src="${url}" style="max-width:100%;box-shadow:0 0 20px rgba(0,0,0,0.2);"></body></html>`);
+            win.document.write(`<html><head><title>Purchase Receipt - ${p.id}</title><style>body { margin: 0; display: flex; justify-content: center; align-items: center; background: #f3f4f6; min-height: 100vh; } img { max-width: 100%; max-height: 100vh; display: block; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.1); } @page { size: A4 portrait; margin: 0; } @media print { html, body { margin: 0; padding: 0; background: #fff; display: block; width: 100%; height: auto; } .print-container { display: block; width: 100%; height: 297mm; box-sizing: border-box; overflow: hidden; } img { width: 100%; height: 100%; display: block; box-shadow: none; } }</style><script>window.onload = function() { window.print(); }</script></head><body><div class="print-container"><img src="${url}"></div></body></html>`);
             win.document.close();
         }
     };
@@ -1004,7 +1004,7 @@ const OutsideShop = () => {
         if (navigator.share) await navigator.share({ files: [file], title: 'Vendor Statement' });
         else {
             const win = window.open('', '_blank');
-            win.document.write(`<html><body style="margin:0;display:flex;justify-content:center;background:#f0f0f0;"><img src="${url}" style="max-width:100%;"></body></html>`);
+            win.document.write(`<html><head><title>Vendor Statement - ${v.name}</title><style>body { margin: 0; display: flex; justify-content: center; align-items: center; background: #f3f4f6; min-height: 100vh; } img { max-width: 100%; max-height: 100vh; display: block; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.1); } @page { size: A4 portrait; margin: 0; } @media print { html, body { margin: 0; padding: 0; background: #fff; display: block; width: 100%; height: auto; } .print-container { display: block; width: 100%; height: 297mm; box-sizing: border-box; overflow: hidden; } img { width: 100%; height: 100%; display: block; box-shadow: none; } }</style><script>window.onload = function() { window.print(); }</script></head><body><div class="print-container"><img src="${url}"></div></body></html>`);
             win.document.close();
         }
     };
@@ -1497,7 +1497,7 @@ const OutsideShop = () => {
             await navigator.share({ files: [file], title: 'Payment Receipt' });
         } else {
             const win = window.open('', '_blank');
-            win.document.write(`<html><body style="margin:0;display:flex;justify-content:center;background:#f0f0f0;"><img src="${url}" style="max-width:100%;box-shadow:0 0 20px rgba(0,0,0,0.2);"></body></html>`);
+            win.document.write(`<html><head><title>Payment Receipt - ${p.id}</title><style>body { margin: 0; display: flex; justify-content: center; align-items: center; background: #f3f4f6; min-height: 100vh; } img { max-width: 100%; max-height: 100vh; display: block; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.1); } @page { size: A4 portrait; margin: 0; } @media print { html, body { margin: 0; padding: 0; background: #fff; display: block; width: 100%; height: auto; } .print-container { display: block; width: 100%; height: 297mm; box-sizing: border-box; overflow: hidden; } img { width: 100%; height: 100%; display: block; box-shadow: none; } }</style><script>window.onload = function() { window.print(); }</script></head><body><div class="print-container"><img src="${url}"></div></body></html>`);
             win.document.close();
         }
     };
