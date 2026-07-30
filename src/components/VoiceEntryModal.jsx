@@ -36,6 +36,29 @@ const getMatchScore = (spokenText, name, nameTa) => {
     return Math.max(scoreEng, scoreTa);
 };
 
+const isWordPresent = (text, word) => {
+    if (!text || !word) return false;
+    const t = text.toLowerCase();
+    const w = word.toLowerCase();
+    const idx = t.indexOf(w);
+    if (idx === -1) return false;
+    
+    if (idx > 0) {
+        const leftChar = t.charAt(idx - 1);
+        if (/[a-zA-Z0-9\u0b80-\u0bff]/.test(leftChar)) {
+            return false;
+        }
+    }
+    const rightIdx = idx + w.length;
+    if (rightIdx < t.length) {
+        const rightChar = t.charAt(rightIdx);
+        if (/[a-zA-Z0-9\u0b80-\u0bff]/.test(rightChar)) {
+            return false;
+        }
+    }
+    return true;
+};
+
 /* ── Number words converter (Tamil & English) ── */
 const parseNumbers = (text) => {
     let clean = text.toLowerCase();
@@ -328,10 +351,10 @@ const parseMultiLineSpeech = (transcript, config) => {
             let idx = -1;
             let matchedKeyword = '';
 
-            if (fName && textWithoutEntity.includes(fName)) {
+            if (fName && isWordPresent(textWithoutEntity, fName)) {
                 idx = textWithoutEntity.indexOf(fName);
                 matchedKeyword = fName;
-            } else if (fNameTa && textWithoutEntity.includes(fNameTa)) {
+            } else if (fNameTa && isWordPresent(textWithoutEntity, fNameTa)) {
                 idx = textWithoutEntity.indexOf(fNameTa);
                 matchedKeyword = fNameTa;
             }
@@ -887,9 +910,9 @@ const VoiceEntryModal = ({
         if (parsed.intent === 'SELECT_CUSTOMER_AND_ADD_ITEMS') {
             const hasInvalidFlower = parsed.items.some(item => !item.flower);
             if (hasInvalidFlower) {
-                setErrorMsg(langSetting === 'ta' ? 'பூ வகை கண்டறியப்படவில்லை. தயவுசெய்து மீண்டும் பேசவும் அல்லது கைமுறையாக தேர்ந்தெடுக்கவும்.' : 'Flower not found. Please speak again or select manually.');
+                setErrorMsg(langSetting === 'ta' ? 'பொருந்தும் பதிவு எதுவும் இல்லை. மீண்டும் முயற்சிக்கவும் அல்லது கைமுறையாக தேர்ந்தெடுக்கவும்.' : 'No matching record found. Please try again or select manually.');
                 if (window.toast) {
-                    window.toast.warning(langSetting === 'ta' ? 'பூ வகை கண்டறியப்படவில்லை. தயவுசெய்து மீண்டும் பேசவும் அல்லது கைமுறையாக தேர்ந்தெடுக்கவும்.' : 'Flower not found. Please speak again or select manually.');
+                    window.toast.warning(langSetting === 'ta' ? 'பொருந்தும் பதிவு எதுவும் இல்லை. மீண்டும் முயற்சிக்கவும் அல்லது கைமுறையாக தேர்ந்தெடுக்கவும்.' : 'No matching record found. Please try again or select manually.');
                 }
                 matchedSuccessfully = true;
             } else if (parsed.customer && parsed.items.length > 0) {
@@ -909,9 +932,9 @@ const VoiceEntryModal = ({
         } else if (parsed.intent === 'ADD_ITEMS') {
             const hasInvalidFlower = parsed.items.some(item => !item.flower);
             if (hasInvalidFlower) {
-                setErrorMsg(langSetting === 'ta' ? 'பூ வகை கண்டறியப்படவில்லை. தயவுசெய்து மீண்டும் பேசவும் அல்லது கைமுறையாக தேர்ந்தெடுக்கவும்.' : 'Flower not found. Please speak again or select manually.');
+                setErrorMsg(langSetting === 'ta' ? 'பொருந்தும் பதிவு எதுவும் இல்லை. மீண்டும் முயற்சிக்கவும் அல்லது கைமுறையாக தேர்ந்தெடுக்கவும்.' : 'No matching record found. Please try again or select manually.');
                 if (window.toast) {
-                    window.toast.warning(langSetting === 'ta' ? 'பூ வகை கண்டறியப்படவில்லை. தயவுசெய்து மீண்டும் பேசவும் அல்லது கைமுறையாக தேர்ந்தெடுக்கவும்.' : 'Flower not found. Please speak again or select manually.');
+                    window.toast.warning(langSetting === 'ta' ? 'பொருந்தும் பதிவு எதுவும் இல்லை. மீண்டும் முயற்சிக்கவும் அல்லது கைமுறையாக தேர்ந்தெடுக்கவும்.' : 'No matching record found. Please try again or select manually.');
                 }
                 matchedSuccessfully = true;
             } else if (parsed.items.length > 0) {
@@ -1004,18 +1027,11 @@ const VoiceEntryModal = ({
         if (!matchedSuccessfully) {
             setTranscript(`Heard: "${commandText}" (No matching record found)`);
             if (window.toast) {
-                window.toast.warning(langSetting === 'ta' ? 'பொருந்தும் பதிவு எதுவும் இல்லை. மீண்டும் முயற்சிக்கவும் அல்லது கைமுறையாக உள்ளிடவும்.' : 'No matching record found. Please try again or enter manually.');
+                window.toast.warning(langSetting === 'ta' ? 'பொருந்தும் பதிவு எதுவும் இல்லை. மீண்டும் முயற்சிக்கவும் அல்லது கைமுறையாக தேர்ந்தெடுக்கவும்.' : 'No matching record found. Please try again or select manually.');
             } else {
-                setErrorMsg('No matching record found. Please try again or enter manually.');
+                setErrorMsg('No matching record found. Please try again or select manually.');
             }
         }
-
-        // Restart listening automatically after voice commands to continue multi-item voice session
-        setTimeout(() => {
-            if (isMountedRef.current) {
-                setIsListening(true);
-            }
-        }, 800);
     };
 
     const requestMicPermission = async () => {
