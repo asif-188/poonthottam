@@ -152,9 +152,12 @@ const FlowerWiseReport = () => {
             if (dateStr >= fromDate && dateStr <= toDate) {
                 (cp.items || []).forEach(item => {
                     if (matchesFlower(item.flowerType)) {
+                        const staffName = cp.salesmanName && cp.salesmanName !== 'Unknown'
+                            ? cp.salesmanName
+                            : (lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Direct Entry');
                         list.push({
-                            name: `${cp.vendorName || 'Random Vendor'} (${lang === 'ta' ? 'ரொக்கம்' : 'Cash'})`,
-                            source: lang === 'ta' ? 'ரொக்கக் கொள்முதல்' : 'Cash Purchase',
+                            name: staffName,
+                            source: staffName,
                             quantity: parseFloat(item.quantity || 0),
                             total: parseFloat(item.total || 0),
                             rate: getItemRate(item)
@@ -200,8 +203,11 @@ const FlowerWiseReport = () => {
             if (dateStr >= fromDate && dateStr <= toDate) {
                 (cs.items || []).forEach(item => {
                     if (matchesFlower(item.flowerType)) {
+                        const staffName = cs.salesmanName && cs.salesmanName !== 'Unknown'
+                            ? cs.salesmanName
+                            : (lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Direct Entry');
                         list.push({
-                            name: `${cs.customerName || 'Random Customer'} (${lang === 'ta' ? 'ரொக்கம்' : 'Cash'})`,
+                            name: staffName,
                             quantity: parseFloat(item.quantity || 0),
                             total: parseFloat(item.total || 0),
                             rate: getItemRate(item)
@@ -278,9 +284,12 @@ const FlowerWiseReport = () => {
                 if (dateStr >= fromDate && dateStr <= toDate) {
                     (cp.items || []).forEach(item => {
                         if (matcher(item.flowerType)) {
+                            const staffName = cp.salesmanName && cp.salesmanName !== 'Unknown'
+                                ? cp.salesmanName
+                                : (lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Direct Entry');
                             pList.push({
-                                name: `${cp.vendorName || 'Random Vendor'} (${lang === 'ta' ? 'ரொக்கம்' : 'Cash'})`,
-                                source: lang === 'ta' ? 'ரொக்கக் கொள்முதல்' : 'Cash Purchase',
+                                name: staffName,
+                                source: staffName,
                                 quantity: parseFloat(item.quantity || 0),
                                 total: parseFloat(item.total || 0),
                                 rate: getItemRate(item)
@@ -320,8 +329,11 @@ const FlowerWiseReport = () => {
                 if (dateStr >= fromDate && dateStr <= toDate) {
                     (cs.items || []).forEach(item => {
                         if (matcher(item.flowerType)) {
+                            const staffName = cs.salesmanName && cs.salesmanName !== 'Unknown'
+                                ? cs.salesmanName
+                                : (lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Direct Entry');
                             sList.push({
-                                name: `${cs.customerName || 'Random Customer'} (${lang === 'ta' ? 'ரொக்கம்' : 'Cash'})`,
+                                name: staffName,
                                 quantity: parseFloat(item.quantity || 0),
                                 total: parseFloat(item.total || 0),
                                 rate: getItemRate(item)
