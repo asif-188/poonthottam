@@ -771,9 +771,11 @@ const VoiceEntryModal = ({
         setSpeechLang(langSetting === 'ta' ? 'ta-IN' : 'en-IN');
     }, [langSetting]);
 
-    // Reset local state when modal opens/closes
+    const prevIsOpenRef = useRef(false);
+
+    // Reset local state ONLY when modal transitions from closed to open
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && !prevIsOpenRef.current) {
             setSelectedCustomer(initialCustomer);
             setItemsList(initialItems);
             setToStaff(null);
@@ -787,103 +789,110 @@ const VoiceEntryModal = ({
             setIsListening(false);
             setVoiceStatus('idle');
         }
+        prevIsOpenRef.current = isOpen;
     }, [isOpen, initialCustomer, initialItems]);
 
-    // Web Speech API Effect
-    useEffect(() => {
-        if (!isOpen) return;
-
+    // Instantiate and start SpeechRecognition in sync with user gesture
+    const startSpeechRecognition = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
             setErrorMsg('Web Speech API is not supported in this browser. Please use Chrome or Edge.');
             return;
         }
 
-        const rec = new SpeechRecognition();
-        rec.continuous = false;
-        rec.interimResults = false;
-        rec.lang = speechLang;
-        
-        rec.onstart = () => {
-            setIsRecognizing(true);
-            setVoiceStatus('listening');
-            setErrorMsg('');
-        };
-        
-        rec.onresult = (e) => {
-            const alternative = e.results[0][0];
-            const confidence = alternative.confidence;
-            const resultText = alternative.transcript;
-
-            // Speech confidence filtering: ignore if confidence is too low
-            if (confidence < 0.45) {
-                console.log(`Speech ignored due to low confidence (${confidence}): ${resultText}`);
-                setIsListening(false);
-                setVoiceStatus('no_speech');
-                if (window.toast) {
-                    window.toast.warning(langSetting === 'ta' ? 'குரல் தெளிவாக இல்லை. மீண்டும் முயற்சிக்கவும்.' : 'Speech was not clear. Please try again.');
-                }
-                return;
-            }
-
-            setVoiceStatus('processing');
-            setTranscript(resultText);
-            setIsListening(false); // Stop listening after a successful result
-            
-            setTimeout(() => {
-                setVoiceStatus('recognized');
-                handleVoiceCommand(resultText);
-            }, 600);
-        };
-        
-        rec.onerror = (e) => {
-            console.error('Speech recognition error:', e.error);
-            setIsListening(false);
-            setIsRecognizing(false);
-            if (e.error === 'no-speech') {
-                setVoiceStatus('no_speech');
-                if (window.toast) {
-                    window.toast.warning(langSetting === 'ta' ? 'குரல் எதுவும் கண்டறியப்படவில்லை!' : 'Voice not detected!');
-                }
-            } else if (e.error === 'not-allowed') {
-                setVoiceStatus('permission_denied');
-                setErrorMsg('Microphone access denied. Please allow microphone permissions.');
-                if (window.toast) {
-                    window.toast.error(langSetting === 'ta' ? 'மைக்ரோஃபோன் அனுமதி மறுக்கப்பட்டது!' : 'Microphone permission denied!');
-                }
-            } else {
-                setVoiceStatus('no_speech');
-                setErrorMsg('Voice Error: ' + e.error);
-            }
-        };
-        
-        rec.onend = () => {
-            setIsRecognizing(false);
-            setIsListening(false); // Ensure listening stops cleanly
-            setVoiceStatus(prev => {
-                if (prev === 'listening') return 'idle';
-                return prev;
-            });
-        };
-
-        recognitionRef.current = rec;
-        
-        if (isListening) {
-            try {
-                rec.start();
-            } catch (err) {
-                console.log('Recognition start failed:', err);
-                setIsListening(false);
-                setIsRecognizing(false);
-            }
-        }
-        
-        return () => {
+        try {
             if (recognitionRef.current) {
                 recognitionRef.current.abort();
             }
+
+            const rec = new SpeechRecognition();
+            rec.continuous = false;
+            rec.interimResults = false;
+            rec.lang = speechLang;
+
+            rec.onstart = () => {
+                setIsRecognizing(true);
+                setVoiceStatus('listening');
+                setErrorMsg('');
+                setIsListening(true);
+            };
+
+            rec.onresult = (e) => {
+                const alternative = e.results[0][0];
+                const confidence = alternative.confidence;
+                const resultText = alternative.transcript;
+
+                if (confidence < 0.45) {
+                    console.log(`Speech ignored due to low confidence (${confidence}): ${resultText}`);
+                    setIsListening(false);
+                    setVoiceStatus('no_speech');
+                    if (window.toast) {
+                        window.toast.warning(langSetting === 'ta' ? 'குரல் தெளிவாக இல்லை. மீண்டும் முயற்சிக்கவும்.' : 'Speech was not clear. Please try again.');
+                    }
+                    return;
+                }
+
+                setVoiceStatus('processing');
+                setTranscript(resultText);
+                setIsListening(false);
+
+                setTimeout(() => {
+                    setVoiceStatus('recognized');
+                    handleVoiceCommand(resultText);
+                }, 600);
+            };
+
+            rec.onerror = (e) => {
+                console.error('Speech recognition error:', e.error);
+                setIsListening(false);
+                setIsRecognizing(false);
+                if (e.error === 'no-speech') {
+                    setVoiceStatus('no_speech');
+                    if (window.toast) {
+                        window.toast.warning(langSetting === 'ta' ? 'குரல் எதுவும் கண்டறியப்படவில்லை!' : 'Voice not detected!');
+                    }
+                } else if (e.error === 'not-allowed') {
+                    setVoiceStatus('permission_denied');
+                    setErrorMsg('Microphone access denied. Please allow microphone permissions.');
+                    if (window.toast) {
+                        window.toast.error(langSetting === 'ta' ? 'மைக்ரோஃபோன் அனுமதி மறுக்கப்பட்டது!' : 'Microphone permission denied!');
+                    }
+                } else {
+                    setVoiceStatus('no_speech');
+                    setErrorMsg('Voice Error: ' + e.error);
+                }
+            };
+
+            rec.onend = () => {
+                setIsRecognizing(false);
+                setIsListening(false);
+                setVoiceStatus(prev => {
+                    if (prev === 'listening') return 'idle';
+                    return prev;
+                });
+            };
+
+            recognitionRef.current = rec;
+            rec.start();
+        } catch (err) {
+            console.error('Failed to start recognition:', err);
+            setIsListening(false);
+            setIsRecognizing(false);
+        }
+    };
+
+    // Clean up on component unmount
+    useEffect(() => {
+        return () => {
+            if (recognitionRef.current) {
+                try {
+                    recognitionRef.current.abort();
+                } catch (e) {
+                    console.log('Unmount cleanup failed:', e);
+                }
+            }
         };
-    }, [isOpen, isListening, speechLang]);
+    }, []);
 
     // Process recognized speech
     const handleVoiceCommand = (commandText) => {
@@ -1037,41 +1046,20 @@ const VoiceEntryModal = ({
         }
     };
 
-    const requestMicPermission = async () => {
-        try {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                stream.getTracks().forEach(track => track.stop());
-                return true;
-            }
-            return true;
-        } catch (err) {
-            console.error('Microphone permission request failed:', err);
-            return false;
-        }
-    };
-
-    const toggleListening = async () => {
+    const toggleListening = () => {
         if (isListening) {
             if (recognitionRef.current) {
-                recognitionRef.current.abort();
+                try {
+                    recognitionRef.current.abort();
+                } catch (e) {
+                    console.log('Abort failed:', e);
+                }
             }
             setIsListening(false);
             setVoiceStatus('idle');
-            return;
+        } else {
+            startSpeechRecognition();
         }
-
-        setVoiceStatus('idle');
-        const hasPermission = await requestMicPermission();
-        if (!hasPermission) {
-            setVoiceStatus('permission_denied');
-            if (window.toast) {
-                window.toast.error(langSetting === 'ta' ? 'மைக்ரோஃபோன் அனுமதி தேவை!' : 'Microphone permission required!');
-            }
-            return;
-        }
-
-        setIsListening(true);
     };
 
     const handleConfirmSave = async () => {
