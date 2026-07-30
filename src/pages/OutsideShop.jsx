@@ -961,7 +961,7 @@ const OutsideShop = () => {
         const labels = {
             date: t('date'), particulars: t('particulars'), weight: t('weight'), rate: t('rate'), total: t('total'), 
             cashRec: t('cashPaid'), cashLess: t('adjustments') || 'Adjustments', openingBalLabel: t('openingBalance'), 
-            statementTitle: (lang==='ta' ? `${v.nameTa || v.name} அறிக்கை` : `VENDOR STATEMENT - ${v.name}`), 
+            statementTitle: (lang==='ta' ? (v.nameTa || v.name) : v.name), 
             customerNoLabel: t('vendorId') || 'Vendor ID', nameLabel: t('name'),
             totalSalesLabel: (lang === 'ta' ? 'மொத்த கொள்முதல் :' : 'Total Purchase :'),
             cashRecLabel: (lang === 'ta' ? 'செலுத்திய தொகை :' : 'Total Paid :'),

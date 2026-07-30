@@ -18,6 +18,7 @@ const DEFAULTS = {
     bankIfsc:'',
     upiId:   '',
     logoUrl: '',
+    qrCodeUrl: '',
     lblInvoiceEn: '',
     lblInvoiceTa: '',
     lblInvoiceNoEn: '',
@@ -60,6 +61,17 @@ const BusinessSettings = ({ isModal, onClose }) => {
             setForm(tenantData);
         }
     }, [tenantData]);
+
+    const handleFileChange = (key, e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setForm(p => ({ ...p, [key]: reader.result }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -137,6 +149,7 @@ const BusinessSettings = ({ isModal, onClose }) => {
             }}>
                 <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 700 }}>Preview</div>
                 {form.logoUrl && <img src={form.logoUrl} alt="Logo" style={{ maxHeight: '40px', display: 'block', margin: '0 auto 8px' }} />}
+                {form.qrCodeUrl && <img src={form.qrCodeUrl} alt="QR Code" style={{ maxHeight: '80px', display: 'block', margin: '0 auto 8px' }} />}
                 <div style={{ fontSize: '11px', fontStyle: 'italic', color: '#64748b' }}>{form.motto || 'SRI RAMA JAYAM'}</div>
                 <div style={{ fontSize: '16px', fontWeight: 800, color: '#1e293b', margin: '2px 0' }}>{form.name || 'SVM Flowers'}</div>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>{form.type || 'Sri Valli Flower Merchant'}</div>
@@ -171,7 +184,68 @@ const BusinessSettings = ({ isModal, onClose }) => {
 
                 {field('gst', lang === 'ta' ? 'GST எண் (விருப்பத்தேர்வு)' : 'GST Number (Optional)', 'e.g. 33AAAAA0000A1Z5')}
                 {field('upiId', lang === 'ta' ? 'UPI ஐடி (பணம் பெற - விருப்பத்தேர்வு)' : 'UPI ID (For Payments - Optional)', 'e.g. shopname@upi')}
-                {field('logoUrl', lang === 'ta' ? 'லோகோ பட URL (விருப்பத்தேர்வு)' : 'Logo Image URL (Optional)', 'e.g. https://example.com/logo.png')}
+                
+                <div style={{ marginBottom: '18px' }} className="text-left">
+                    <label style={S.label}>{lang === 'ta' ? 'லோகோ படம் (விருப்பத்தேர்வு)' : 'Logo Image (Optional)'}</label>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={e => handleFileChange('logoUrl', e)}
+                            style={{ display: 'none' }}
+                            id="logo-upload-input"
+                        />
+                        <label
+                            htmlFor="logo-upload-input"
+                            style={{
+                                padding: '10px 16px', borderRadius: '12px', border: '2px solid #e2e8f0',
+                                background: '#f8fafc', color: '#475569', fontSize: '13px', fontWeight: 700,
+                                cursor: 'pointer', display: 'inline-block', transition: 'all 0.15s', whiteSpace: 'nowrap'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+                            onMouseLeave={e => e.currentTarget.style.background = '#f8fafc'}
+                        >
+                            {lang === 'ta' ? 'பதிவேற்று' : 'Upload'}
+                        </label>
+                        <input
+                            value={form.logoUrl || ''}
+                            onChange={e => setForm(p => ({ ...p, logoUrl: e.target.value }))}
+                            placeholder={lang === 'ta' ? 'அல்லது பட URL ஐ உள்ளிடவும்' : 'Or enter Image URL'}
+                            style={S.input}
+                        />
+                    </div>
+                </div>
+
+                <div style={{ marginBottom: '18px' }} className="text-left">
+                    <label style={S.label}>{lang === 'ta' ? 'QR குறியீடு படம் (விருப்பத்தேர்வு)' : 'QR Code Image (Optional)'}</label>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={e => handleFileChange('qrCodeUrl', e)}
+                            style={{ display: 'none' }}
+                            id="qr-upload-input"
+                        />
+                        <label
+                            htmlFor="qr-upload-input"
+                            style={{
+                                padding: '10px 16px', borderRadius: '12px', border: '2px solid #e2e8f0',
+                                background: '#f8fafc', color: '#475569', fontSize: '13px', fontWeight: 700,
+                                cursor: 'pointer', display: 'inline-block', transition: 'all 0.15s', whiteSpace: 'nowrap'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+                            onMouseLeave={e => e.currentTarget.style.background = '#f8fafc'}
+                        >
+                            {lang === 'ta' ? 'பதிவேற்று' : 'Upload'}
+                        </label>
+                        <input
+                            value={form.qrCodeUrl || ''}
+                            onChange={e => setForm(p => ({ ...p, qrCodeUrl: e.target.value }))}
+                            placeholder={lang === 'ta' ? 'அல்லது QR குறியீடு பட URL ஐ உள்ளிடவும்' : 'Or enter QR Code Image URL'}
+                            style={S.input}
+                        />
+                    </div>
+                </div>
 
                 <div style={{ margin: '20px 0 10px', borderTop: '1px solid #f1f5f9', paddingTop: '15px' }}>
                     <span style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left', marginBottom: '10px' }}>

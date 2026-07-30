@@ -60,6 +60,27 @@ export async function generateBuyerReceiptCanvas({
         phone2  = '6383529192',
     } = bizInfo;
 
+    const upiId = bizInfo.upiId ? bizInfo.upiId.trim() : '';
+    const qrCodeUrl = bizInfo.qrCodeUrl || (upiId ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('upi://pay?pa=' + upiId + '&pn=' + encodeURIComponent(name) + '&cu=INR')}` : '');
+
+    let hasQr = false;
+    let qrImg = null;
+    if (qrCodeUrl) {
+        qrImg = new Image();
+        qrImg.crossOrigin = "anonymous";
+        qrImg.src = qrCodeUrl;
+        await new Promise((resolve) => {
+            qrImg.onload = () => {
+                hasQr = true;
+                resolve();
+            };
+            qrImg.onerror = () => {
+                hasQr = false;
+                resolve();
+            };
+        });
+    }
+
     const fmtNum = (n, dec = 0) =>
         new Intl.NumberFormat('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec }).format(n || 0);
 
@@ -74,7 +95,10 @@ export async function generateBuyerReceiptCanvas({
     if (cashLess > 0) {
         baseHeight += 45; // Space for Cash Less row
     }
-    const H = baseHeight + (rowsCount * LINE_H);
+    let H = baseHeight + (rowsCount * LINE_H);
+    if (hasQr) {
+        H += 300;
+    }
 
     const canvas  = document.createElement('canvas');
     canvas.width  = W;
@@ -161,7 +185,24 @@ export async function generateBuyerReceiptCanvas({
         y += 40;
     }
 
-    y += 20; // Spacer
+    if (hasQr) {
+        y += 15;
+        const qrSize = 180;
+        ctx.drawImage(qrImg, (W - qrSize) / 2, y, qrSize, qrSize);
+        y += qrSize + 22;
+        
+        drawText(lang === 'ta' ? "ஸ்கேன் செய்து செலுத்தவும்" : "Scan & Pay", W / 2, y, { size: 22, weight: '900', align: 'center' });
+        y += 26;
+        
+        drawText(name, W / 2, y, { size: 20, weight: '700', align: 'center', color: '#1e293b' });
+        y += 24;
+        
+        drawText(`UPI ID: ${upiId}`, W / 2, y, { size: 18, weight: '700', align: 'center', color: '#475569' });
+        y += 24;
+        y += 10;
+    } else {
+        y += 20; // Spacer
+    }
 
     // 3. Customer Info (Left-aligned, bold, no box)
     const buyerName = lang === 'ta' ? (buyer.nameTa || buyer.taName || buyer.name) : buyer.name;
@@ -207,7 +248,7 @@ export async function generateBuyerReceiptCanvas({
             y += LINE_H / 2;
             const fName = lang === 'ta' ? (item.flowerTypeTa || item.flowerType) : item.flowerType;
             const qtyNum = parseFloat(item.quantity);
-            const qtyStr = (qtyNum % 1 === 0 ? qtyNum.toFixed(0) : qtyNum.toFixed(2)) + ' KG';
+            const qtyStr = (qtyNum % 1 === 0 ? qtyNum.toFixed(0) : qtyNum.toFixed(2));
 
             drawText(fName || '', PAD, y, { size: 22, weight: '700', align: 'left' });
             drawText(qtyStr, 420, y, { size: 22, weight: '700', align: 'right' });
@@ -372,8 +413,8 @@ export async function generateLedgerCanvas({
         dummyCtx.font = '700 22px sans-serif';
         const nameStr = `${nameLabel} : ${buyer.name || '---'}`;
         const nameWidth = dummyCtx.measureText(nameStr).width;
-        const isNameWrapped = nameWidth > (W - PAD*2 - 20);
-        const firstPageTableStartY = 30 + 45 + 28 + 32 + 18 + 22 + 40 + 40 + 28 + (isNameWrapped ? 58 : 30) + 3 + 2;
+        const isNameWrapped = nameWidth > (W - PAD*2 - 30);
+        const firstPageTableStartY = 322 + (isNameWrapped ? 58 : 30);
 
         const displayStartDate = formatDateToDDMMYYYY(startDate);
         const allRows = [
@@ -521,7 +562,6 @@ export async function generateLedgerCanvas({
 
                         const maxW = colWidths[i] - (i === 1 ? 20 : 15);
                         drawText(displayVal, x, rowY + LINE_H/2, { size: 22, align, weight: '700', maxWidth: maxW, color: textColor });
-                        if (i > 0) { ctx.beginPath(); ctx.moveTo(colStarts[i], rowY); ctx.lineTo(colStarts[i], rowY + LINE_H); ctx.stroke(); }
                     });
                     ctx.beginPath(); ctx.moveTo(PAD, rowY + LINE_H); ctx.lineTo(W - PAD, rowY + LINE_H); ctx.stroke();
                 };
@@ -550,18 +590,24 @@ export async function generateLedgerCanvas({
                     y += 40;
 
                     // Customer Info
-                    drawText(`${customerNoLabel} : ${buyer.displayId || '---'}`, PAD + 10, y, { size: 22, weight: '700' });
-                    drawText(`${date} : ${dateLabel}`, W - PAD - 10, y, { size: 22, weight: '700', align: 'right' });
-                    y += 28;
+                    const boxStartY = y - 10;
+                    y += 15;
+                    drawText(`${customerNoLabel} : ${buyer.displayId || '---'}`, PAD + 15, y, { size: 22, weight: '700' });
+                    drawText(`${date} : ${dateLabel}`, W - PAD - 15, y, { size: 22, weight: '700', align: 'right' });
+                    
+                    y += 32;
                     ctx.font = '700 22px sans-serif';
-                    drawText(nameStr, PAD + 10, y, { size: 22, weight: '700', wrapWidth: W - PAD*2 - 20, lineHeight: 28 });
+                    const nameStr = `${nameLabel} : ${buyer.name || '---'}`;
+                    const nameWidth = ctx.measureText(nameStr).width;
+                    const maxTextW = W - PAD*2 - 30;
+                    const isNameWrapped = nameWidth > maxTextW;
+                    
+                    drawText(nameStr, PAD + 15, y, { size: 22, weight: '700', wrapWidth: maxTextW, lineHeight: 28 });
                     y += isNameWrapped ? 58 : 30;
-
-                    // Double Border before table
-                    ctx.beginPath(); ctx.lineWidth = 1; ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
-                    y += 3;
-                    ctx.beginPath(); ctx.lineWidth = 1; ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
-                    y += 2;
+                    const boxHeight = (y - boxStartY) + 5;
+                    rect(PAD, boxStartY, W - PAD*2, boxHeight);
+                    
+                    y += 20;
                 } else {
                     // Simplified Header for Continued Pages
                     drawText(name, PAD + 10, y + 20, { size: 28, weight: '900' });
@@ -576,17 +622,15 @@ export async function generateLedgerCanvas({
                 }
 
                 // Draw Table Header
-                const tableStartY = y;
-                rect(PAD, y, W - PAD*2, 40);
+                ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
                 colHeaders.forEach((lab, i) => {
                     const hx = colStarts[i] + colWidths[i]/2;
                     const maxW = colWidths[i] - 10;
                     drawText(lab, hx, y + 20, { size: 18, weight: '900', align: 'center', maxWidth: maxW });
-                    if (i > 0) { ctx.beginPath(); ctx.moveTo(colStarts[i], y); ctx.lineTo(colStarts[i], y + 40); ctx.stroke(); }
                 });
                 y += 40;
+                ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
 
-                const rowsStartY = y;
                 // Draw Rows for this page
                 for (let idx = pLayout.startIndex; idx < pLayout.endIndex; idx++) {
                     const rowData = allRows[idx];
@@ -603,15 +647,7 @@ export async function generateLedgerCanvas({
                     y += LINE_H;
                 }
 
-                // Vertical borders for the table on this page
-                rect(PAD, rowsStartY, W - PAD*2, y - rowsStartY);
-                ctx.lineWidth = 1.0;
-                [colStarts[1], colStarts[2], colStarts[3], colStarts[4], colStarts[5], colStarts[6]].forEach(vx => {
-                    ctx.beginPath();
-                    ctx.moveTo(vx, tableStartY);
-                    ctx.lineTo(vx, y);
-                    ctx.stroke();
-                });
+
 
                 // If last page, draw summary box and footer
                 if (pLayout.isLast) {
@@ -734,34 +770,34 @@ export async function generateLedgerCanvas({
     y += 40;
 
     // Customer Info
-    drawText(`${customerNoLabel} : ${buyer.displayId || '---'}`, PAD + 10, y, { size: 22, weight: '700' });
-    drawText(`${date} : ${dateLabel}`, W - PAD - 10, y, { size: 22, weight: '700', align: 'right' });
-    y += 28;
+    const boxStartY = y - 10;
+    y += 15;
+    drawText(`${customerNoLabel} : ${buyer.displayId || '---'}`, PAD + 15, y, { size: 22, weight: '700' });
+    drawText(`${date} : ${dateLabel}`, W - PAD - 15, y, { size: 22, weight: '700', align: 'right' });
+    
+    y += 32;
     ctx.font = '700 22px sans-serif';
     const nameStr = `${nameLabel} : ${buyer.name || '---'}`;
     const nameWidth = ctx.measureText(nameStr).width;
-    const isNameWrapped = nameWidth > (W - PAD*2 - 20);
+    const maxTextW = W - PAD*2 - 30;
+    const isNameWrapped = nameWidth > maxTextW;
     
-    drawText(nameStr, PAD + 10, y, { size: 22, weight: '700', wrapWidth: W - PAD*2 - 20, lineHeight: 28 });
+    drawText(nameStr, PAD + 15, y, { size: 22, weight: '700', wrapWidth: maxTextW, lineHeight: 28 });
     y += isNameWrapped ? 58 : 30;
+    const boxHeight = (y - boxStartY) + 5;
+    rect(PAD, boxStartY, W - PAD*2, boxHeight);
     
-    // Double Border before table
-    ctx.beginPath(); ctx.lineWidth = 1; ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
-    y += 3;
-    ctx.beginPath(); ctx.lineWidth = 1; ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
-    y += 2;
+    y += 20;
 
     // Header Row
-    rect(PAD, y, W - PAD*2, 40);
+    ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
     colHeaders.forEach((lab, i) => {
         const x = colStarts[i] + colWidths[i]/2;
         const maxW = colWidths[i] - 10;
         drawText(lab, x, y + 20, { size: 18, weight: '900', align: 'center', maxWidth: maxW });
-        if (i > 0) { ctx.beginPath(); ctx.moveTo(colStarts[i], y); ctx.lineTo(colStarts[i], y + 40); ctx.stroke(); }
     });
     y += 40;
-
-    const tableStartY = y;
+    ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
 
     // Opening Balance Row
     const drawRow = (rowY, data, isOpening = false) => {
@@ -801,7 +837,6 @@ export async function generateLedgerCanvas({
 
             const maxW = colWidths[i] - (i === 1 ? 20 : 15);
             drawText(displayVal, x, rowY + LINE_H/2, { size: 22, align, weight: '700', maxWidth: maxW, color: textColor });
-            if (i > 0) { ctx.beginPath(); ctx.moveTo(colStarts[i], rowY); ctx.lineTo(colStarts[i], rowY + LINE_H); ctx.stroke(); }
         });
         ctx.beginPath(); ctx.moveTo(PAD, rowY + LINE_H); ctx.lineTo(W - PAD, rowY + LINE_H); ctx.stroke();
     };
@@ -816,9 +851,6 @@ export async function generateLedgerCanvas({
         drawRow(y, { ...row, date: showDate ? row.date : '' });
         y += LINE_H;
     });
-
-    // Outer Table Borders
-    rect(PAD, tableStartY, W - PAD*2, y - tableStartY);
 
     y += 30;
 
