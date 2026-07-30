@@ -97,7 +97,7 @@ export async function generateBuyerReceiptCanvas({
     }
     let H = baseHeight + (rowsCount * LINE_H);
     if (hasQr) {
-        H += 300;
+        H += 110;
     }
 
     const canvas  = document.createElement('canvas');
@@ -186,33 +186,32 @@ export async function generateBuyerReceiptCanvas({
     }
 
     if (hasQr) {
-        y += 15;
-        const qrSize = 180;
-        ctx.drawImage(qrImg, (W - qrSize) / 2, y, qrSize, qrSize);
-        y += qrSize + 22;
-        
-        drawText(lang === 'ta' ? "ஸ்கேன் செய்து செலுத்தவும்" : "Scan & Pay", W / 2, y, { size: 22, weight: '900', align: 'center' });
-        y += 26;
-        
-        drawText(name, W / 2, y, { size: 20, weight: '700', align: 'center', color: '#1e293b' });
-        y += 24;
-        
-        drawText(`UPI ID: ${upiId}`, W / 2, y, { size: 18, weight: '700', align: 'center', color: '#475569' });
-        y += 24;
         y += 10;
+        const qrSize = 180;
+        // Draw QR Code on the right side
+        ctx.drawImage(qrImg, W - PAD - qrSize, y, qrSize, qrSize);
+
+        // Draw Customer info on the left side
+        const buyerName = lang === 'ta' ? (buyer.nameTa || buyer.taName || buyer.name) : buyer.name;
+        drawText(buyerName.toUpperCase(), PAD, y + 35, { size: 30, weight: '900', maxWidth: 480 });
+
+        const formattedDate = formatDateToDDMMYYYY(dateLabel);
+        drawText(`தேதி : ${formattedDate}`, PAD, y + 90, { size: 24, weight: '700' });
+
+        y += qrSize + 20;
     } else {
         y += 20; // Spacer
+        
+        // 3. Customer Info (Left-aligned, bold, no box)
+        const buyerName = lang === 'ta' ? (buyer.nameTa || buyer.taName || buyer.name) : buyer.name;
+        drawText(buyerName.toUpperCase(), PAD, y, { size: 30, weight: '900' });
+        y += 45;
+
+        // 4. Date (Left-aligned, bold, no box)
+        const formattedDate = formatDateToDDMMYYYY(dateLabel);
+        drawText(`தேதி : ${formattedDate}`, PAD, y, { size: 24, weight: '700' });
+        y += 45;
     }
-
-    // 3. Customer Info (Left-aligned, bold, no box)
-    const buyerName = lang === 'ta' ? (buyer.nameTa || buyer.taName || buyer.name) : buyer.name;
-    drawText(buyerName.toUpperCase(), PAD, y, { size: 30, weight: '900' });
-    y += 45;
-
-    // 4. Date (Left-aligned, bold, no box)
-    const formattedDate = formatDateToDDMMYYYY(dateLabel);
-    drawText(`தேதி : ${formattedDate}`, PAD, y, { size: 24, weight: '700' });
-    y += 45;
 
     // 5. Columns divider line
     ctx.strokeStyle = '#000';
