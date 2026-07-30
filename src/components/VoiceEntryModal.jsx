@@ -246,7 +246,7 @@ const preprocessWeights = (text) => {
 
 /* ── Smart Multi-Line & Multi-Type Speech Parser ── */
 const parseMultiLineSpeech = (transcript, config) => {
-    const { type, entities = [], flowers = [], currentItems = [], salesmen = [] } = config;
+    const { type, entities = [], flowers = [], currentItems = [], salesmen = [], lockedCustomer = null } = config;
     const cleanText = transcript.toLowerCase().trim();
 
     // 1. Save / Complete checks
@@ -320,16 +320,18 @@ const parseMultiLineSpeech = (transcript, config) => {
 
     // 5. Multi-type parsing logic
     if (type === 'buyer' || type === 'vendor' || type === 'sales' || type === 'purchase') {
-        // Find Customer / Vendor
+        // Find Customer / Vendor (only if not locked)
         let matchedEntity = null;
-        let bestEntityScore = 0;
-        entities.forEach(e => {
-            const score = getMatchScore(translatedText, e.name, e.nameTa || e.taName);
-            if (score > bestEntityScore && score > 0.35) {
-                bestEntityScore = score;
-                matchedEntity = e;
-            }
-        });
+        if (!lockedCustomer) {
+            let bestEntityScore = 0;
+            entities.forEach(e => {
+                const score = getMatchScore(translatedText, e.name, e.nameTa || e.taName);
+                if (score > bestEntityScore && score > 0.35) {
+                    bestEntityScore = score;
+                    matchedEntity = e;
+                }
+            });
+        }
 
         // Strip the entity name out to avoid matching flower names with customer names
         let textWithoutEntity = translatedText;
@@ -890,7 +892,8 @@ const VoiceEntryModal = ({
             entities,
             flowers,
             currentItems: itemsList,
-            salesmen
+            salesmen,
+            lockedCustomer: selectedCustomer
         });
 
         let matchedSuccessfully = false;
@@ -1701,11 +1704,30 @@ const VoiceEntryModal = ({
                         </span>
                     </div>
                 ) : (
-                    <div style={{...styles.infoBanner, background: '#ecfdf5', border: '1.5px solid #a7f3d0'}}>
-                        <Check size={16} color="#059669" />
-                        <span style={{color: '#065f46', fontWeight: 700, fontSize: '13px'}}>
-                            Lock Status: <strong>{selectedCustomer.name}</strong> selected. Speak further details or click Save.
-                        </span>
+                    <div style={{...styles.infoBanner, background: '#ecfdf5', border: '1.5px solid #a7f3d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <Check size={16} color="#059669" />
+                                <span style={{color: '#065f46', fontWeight: 700, fontSize: '13px'}}>
+                                    Customer Locked: <strong>{selectedCustomer.name}</strong>
+                                </span>
+                            </div>
+                            <div style={{ color: '#065f46', fontWeight: 700, fontSize: '13px', marginLeft: '26px' }}>
+                                Items Added: <strong>{itemsList.length}</strong>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => setSelectedCustomer(null)}
+                            style={{
+                                padding: '6px 12px', borderRadius: '8px', border: '1px solid #059669',
+                                background: '#fff', color: '#059669', fontSize: '11px', fontWeight: 800,
+                                cursor: 'pointer', transition: 'all 0.15s'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#ecfdf5'}
+                            onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                        >
+                            Change Customer
+                        </button>
                     </div>
                 )}
 
