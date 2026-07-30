@@ -204,7 +204,7 @@ const SalesmanReports = () => {
                 const fromSales = salesmen.find(s => s.id === t.fromSalesmanId);
                 const fromName = fromSales ? (lang === 'ta' ? (fromSales.nameTa || fromSales.name) : fromSales.name) : '---';
                 creditList.push({
-                    particulars: lang === 'ta' ? `${fromName}(Transfer)` : `Transfer from ${fromName}`,
+                    particulars: fromName,
                     quantity: null,
                     rate: null,
                     total: Number(t.amount) || 0
@@ -221,7 +221,7 @@ const SalesmanReports = () => {
                 const buyerName = buyer ? buyer.name : (lang === 'ta' ? 'வாடிக்கையாளர்' : 'Buyer');
                 const noteSuffix = p.note ? ` (${p.note})` : '';
                 creditList.push({
-                    particulars: lang === 'ta' ? `${buyerName} வசூல்${noteSuffix}` : `${buyerName} Payment Recd${noteSuffix}`,
+                    particulars: `${buyerName}${noteSuffix}`,
                     quantity: null,
                     rate: null,
                     total: (Number(p.amount) || 0) + (Number(p.cashLess) || 0)
@@ -291,8 +291,9 @@ const SalesmanReports = () => {
             // 3. Expenses
             const rangeExpenses = expenses.filter(e => e.salesmanId === salesman.id && e.date >= fromDate && e.date <= toDate);
             rangeExpenses.forEach(e => {
+                const detail = [e.category, e.notes].filter(val => val && val !== '---').join(' - ') || '---';
                 debitList.push({
-                    particulars: `${lang === 'ta' ? 'செலவு' : 'Expense'} (${e.remarks || '---'})`,
+                    particulars: `${lang === 'ta' ? 'செலவு' : 'Expense'} (${detail})`,
                     quantity: null,
                     rate: null,
                     total: Number(e.amount) || 0
@@ -305,7 +306,7 @@ const SalesmanReports = () => {
                 const toSales = salesmen.find(s => s.id === t.toSalesmanId);
                 const toName = toSales ? (lang === 'ta' ? (toSales.nameTa || toSales.name) : toSales.name) : '---';
                 debitList.push({
-                    particulars: lang === 'ta' ? `${toName}(Transfer)` : `Transfer to ${toName}`,
+                    particulars: toName,
                     quantity: null,
                     rate: null,
                     total: Number(t.amount) || 0
