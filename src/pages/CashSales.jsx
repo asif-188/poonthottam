@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useContext } from 'react';
 import { subscribeToCollection, saveCashSale } from '../utils/storage';
 import { LangContext } from '../components/Layout';
 import { useTenant } from '../utils/TenantContext';
-import { Plus, Trash2, Calendar, User, ShoppingBag, History, CreditCard, Printer, Share2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Calendar, User, ShoppingBag, History, CreditCard, Printer, Share2 } from 'lucide-react';
 
 /* ── Shared style tokens ── */
 const INPUT_S = {
@@ -174,6 +174,7 @@ const CashSales = () => {
     // Line insertion state
     const [currentLine, setCurrentLine] = useState({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
     const [billItems, setBillItems] = useState([]);
+    const [editingIndex, setEditingIndex] = useState(null);
 
     const [isSaving, setIsSaving] = useState(false);
     const [lastSavedRecord, setLastSavedRecord] = useState(null);
@@ -258,21 +259,42 @@ const CashSales = () => {
         const rate = parseFloat(price);
         if (qty <= 0 || rate <= 0) return;
 
-        setBillItems(prev => [
-            ...prev,
-            {
-                flowerType,
-                flowerTypeTa: flowerTypeTa || '',
-                quantity: qty,
-                price: rate,
-                total: qty * rate
-            }
-        ]);
+        const newLine = {
+            flowerType,
+            flowerTypeTa: flowerTypeTa || '',
+            quantity: qty,
+            price: rate,
+            total: qty * rate
+        };
+
+        if (editingIndex !== null) {
+            setBillItems(prev => prev.map((item, idx) => idx === editingIndex ? newLine : item));
+            setEditingIndex(null);
+        } else {
+            setBillItems(prev => [...prev, newLine]);
+        }
+
         setCurrentLine({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
         setTimeout(() => refFlower.current?.focus(), 50);
     };
 
+    const handleEditLine = (index) => {
+        const item = billItems[index];
+        setCurrentLine({
+            flowerType: item.flowerType,
+            flowerTypeTa: item.flowerTypeTa || '',
+            quantity: String(item.quantity),
+            price: String(item.price)
+        });
+        setEditingIndex(index);
+        setTimeout(() => refFlower.current?.focus(), 50);
+    };
+
     const handleDeleteLine = (index) => {
+        if (editingIndex === index) {
+            setEditingIndex(null);
+            setCurrentLine({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
+        }
         setBillItems(prev => prev.filter((_, i) => i !== index));
     };
 
@@ -308,6 +330,7 @@ const CashSales = () => {
             setRemarks('');
             setPaymentMode('Cash');
             setBillItems([]);
+            setEditingIndex(null);
         } catch (error) {
             console.error("Error saving cash sale:", error);
             alert("Error: " + error.message);
@@ -569,17 +592,34 @@ const CashSales = () => {
                                     style={INPUT_S}
                                 />
                             </div>
-                            <button
-                                ref={refAddBtn}
-                                onClick={handleAddLine}
-                                style={{
-                                    padding: '9px 18px', background: '#d97706', color: '#fff',
-                                    border: 'none', borderRadius: '8px', cursor: 'pointer',
-                                    fontWeight: 800, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px'
-                                }}
-                            >
-                                <Plus size={16} /> {lang === 'ta' ? 'வரிசையைச் சேர்' : 'Add Line'}
-                            </button>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                    ref={refAddBtn}
+                                    onClick={handleAddLine}
+                                    style={{
+                                        padding: '9px 18px', background: editingIndex !== null ? '#10b981' : '#d97706', color: '#fff',
+                                        border: 'none', borderRadius: '8px', cursor: 'pointer',
+                                        fontWeight: 800, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px'
+                                    }}
+                                >
+                                    <Plus size={16} /> {editingIndex !== null ? (lang === 'ta' ? 'வரிசையைப் புதுப்பி' : 'Update Line') : (lang === 'ta' ? 'வரிசையைச் சேர்' : 'Add Line')}
+                                </button>
+                                {editingIndex !== null && (
+                                    <button
+                                        onClick={() => {
+                                            setEditingIndex(null);
+                                            setCurrentLine({ flowerType: '', flowerTypeTa: '', quantity: '', price: '' });
+                                        }}
+                                        style={{
+                                            padding: '9px 14px', background: '#ef4444', color: '#fff',
+                                            border: 'none', borderRadius: '8px', cursor: 'pointer',
+                                            fontWeight: 800, fontSize: '13px'
+                                        }}
+                                    >
+                                        {lang === 'ta' ? 'ரத்து' : 'Cancel'}
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -610,12 +650,22 @@ const CashSales = () => {
                                                 {item.total.toLocaleString('en-IN')}
                                             </td>
                                             <td style={{ ...TD_S, textAlign: 'center' }}>
-                                                <button
-                                                    onClick={() => handleDeleteLine(idx)}
-                                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                                    <button
+                                                        onClick={() => handleEditLine(idx)}
+                                                        style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: '4px' }}
+                                                        title={lang === 'ta' ? 'மாற்றுக' : 'Edit'}
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteLine(idx)}
+                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                                        title={lang === 'ta' ? 'அழிக்க' : 'Delete'}
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
