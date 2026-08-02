@@ -286,11 +286,16 @@ const SalesmanMaster = () => {
     const handleOpenModal = (salesman = null) => {
         setTouched({ name: false, nameTa: false });
         if (salesman) {
-            setCurrentSalesman(salesman);
+            const val = Number(salesman.openingCash) || 0;
+            setCurrentSalesman({
+                ...salesman,
+                openingCash: val > 0 ? String(val) : '',
+                openingCredit: val < 0 ? String(Math.abs(val)) : ''
+            });
         } else {
             const validIds = salesmen.map(s => parseInt(s.displayId) || 0).filter(id => id >= 101 && id < 100000);
             const nextId = validIds.length > 0 ? Math.max(...validIds) + 1 : 101;
-            setCurrentSalesman({ id: '', displayId: String(nextId), name: '', nameTa: '', contact: '', location: '', status: 'Active', openingCash: '' });
+            setCurrentSalesman({ id: '', displayId: String(nextId), name: '', nameTa: '', contact: '', location: '', status: 'Active', openingCash: '', openingCredit: '' });
         }
         setIsModalOpen(true);
     };
@@ -299,10 +304,19 @@ const SalesmanMaster = () => {
         e.preventDefault();
         setIsSaving(true);
         try {
+            let finalOpeningCash = 0;
+            if (currentSalesman.openingCash && parseFloat(currentSalesman.openingCash) > 0) {
+                finalOpeningCash = parseFloat(currentSalesman.openingCash);
+            } else if (currentSalesman.openingCredit && parseFloat(currentSalesman.openingCredit) > 0) {
+                finalOpeningCash = -parseFloat(currentSalesman.openingCredit);
+            }
+
             const dataToSave = {
                 ...currentSalesman,
-                openingCash: currentSalesman.openingCash ? parseFloat(currentSalesman.openingCash) : 0
+                openingCash: finalOpeningCash
             };
+            delete dataToSave.openingCredit;
+
             await saveSalesman(dataToSave);
             setIsModalOpen(false);
         } catch (error) {
@@ -640,20 +654,37 @@ const SalesmanMaster = () => {
                                     onBlur={e => e.target.style.borderColor = '#e2e8f0'}
                                 />
                             </div>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '5px', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                    {lang === 'ta' ? 'தொடக்க ரொக்கம்' : 'Opening Cash'}
-                                </label>
-                                <input 
-                                    type="number" 
-                                    inputMode="decimal"
-                                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', fontSize: '14px', fontWeight: 600, color: '#1e293b', outline: 'none', fontFamily: 'var(--font-sans)' }}
-                                    value={currentSalesman.openingCash || ''}
-                                    onChange={(e) => setCurrentSalesman({ ...currentSalesman, openingCash: e.target.value })}
-                                    placeholder={lang === 'ta' ? 'தொடக்க ரொக்கம் (ரூ)' : 'Opening Cash (₹)'}
-                                    onFocus={e => e.target.style.borderColor = '#d97706'}
-                                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
-                                />
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        {lang === 'ta' ? 'தொடக்க ரொக்கம்' : 'Opening Cash'}
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        inputMode="decimal"
+                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', fontSize: '14px', fontWeight: 600, color: '#1e293b', outline: 'none', fontFamily: 'var(--font-sans)' }}
+                                        value={currentSalesman.openingCash || ''}
+                                        onChange={(e) => setCurrentSalesman({ ...currentSalesman, openingCash: e.target.value, openingCredit: '' })}
+                                        placeholder={lang === 'ta' ? 'ரொக்கம் (ரூ)' : 'Cash (₹)'}
+                                        onFocus={e => e.target.style.borderColor = '#d97706'}
+                                        onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        {lang === 'ta' ? 'தொடக்க இருப்பு' : 'Opening Credit'}
+                                    </label>
+                                    <input 
+                                        type="number" 
+                                        inputMode="decimal"
+                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0', background: '#fff', fontSize: '14px', fontWeight: 600, color: '#1e293b', outline: 'none', fontFamily: 'var(--font-sans)' }}
+                                        value={currentSalesman.openingCredit || ''}
+                                        onChange={(e) => setCurrentSalesman({ ...currentSalesman, openingCredit: e.target.value, openingCash: '' })}
+                                        placeholder={lang === 'ta' ? 'இருப்பு (ரூ)' : 'Credit (₹)'}
+                                        onFocus={e => e.target.style.borderColor = '#d97706'}
+                                        onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '5px', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{lang === 'ta' ? 'நிலை' : 'Status'}</label>
