@@ -557,7 +557,7 @@ const CashPurchase = () => {
                                 {lang === 'ta' ? 'பூக்கள் விவரம்' : 'Flower Line Insertion'}
                             </span>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '12px', alignItems: 'end' }}>
+                        <div className="flower-line-grid">
                             <div>
                                 <label style={LABEL_S}>{lang === 'ta' ? 'பூ பெயர்' : 'Select Flower'}</label>
                                 <SearchSelect
@@ -698,7 +698,7 @@ const CashPurchase = () => {
                     )}
 
                     {/* ── Submited Options / Action Buttons ── */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <button
                                 onClick={handleSubmitTransaction}

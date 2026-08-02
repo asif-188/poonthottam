@@ -544,7 +544,7 @@ const CashSales = () => {
                                 {lang === 'ta' ? 'பூக்கள் விவரம்' : 'Flower Line Insertion'}
                             </span>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '12px', alignItems: 'end' }}>
+                        <div className="flower-line-grid">
                             <div>
                                 <label style={LABEL_S}>{lang === 'ta' ? 'பூ பெயர்' : 'Select Flower'}</label>
                                 <SearchSelect
