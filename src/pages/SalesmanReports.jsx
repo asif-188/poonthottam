@@ -178,7 +178,7 @@ const SalesmanReports = () => {
 
             const openingBalance = openingCashInflow - openingCashOutflow;
 
-            if (openingBalance !== 0) {
+            if (openingBalance > 0) {
                 creditList.push({
                     particulars: 'OB',
                     quantity: null,
@@ -255,6 +255,15 @@ const SalesmanReports = () => {
             const totalCredit = creditList.reduce((sum, item) => sum + (item.total || 0), 0);
 
             const debitList = [];
+
+            if (openingBalance < 0) {
+                debitList.push({
+                    particulars: 'OB',
+                    quantity: null,
+                    rate: null,
+                    total: Math.abs(openingBalance)
+                });
+            }
 
             // 1. Farmer purchases
             const rangePurchases = purchaseRecords.filter(p => p.salesmanId === salesman.id && p.date >= fromDate && p.date <= toDate);
