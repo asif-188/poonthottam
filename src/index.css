@@ -556,7 +556,37 @@ body.modal-open main,
   .mobile-w-full {
     width: 100% !important;
   }
+
+  .flower-line-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .flower-line-grid > div {
+    width: 100%;
+  }
+
+  .flower-line-grid > div:last-child {
+    display: flex;
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .flower-line-grid > div:last-child button {
+    flex: 1;
+    justify-content: center;
+    padding: 12px 18px !important;
+  }
 }
+
+/* ── Flower Line Grid Default (Desktop) ── */
+.flower-line-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
 
 /* Table Scroll Utilities */
 .table-scroll-container {

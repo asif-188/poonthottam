@@ -1254,7 +1254,7 @@ const QuickEntry = () => {
                             {/* Lines Insertion Section */}
                             <div style={{ background: '#fffbeb', borderRadius: '12px', padding: '16px', border: '1px solid #fef3c7', marginBottom: '16px' }}>
                                 <span style={{ ...S.label, color: '#b45309', marginBottom: '12px', display: 'block' }}>Add Flower Detail Rows</span>
-                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+                                <div className="flower-line-grid">
                                     <div>
                                         <label style={S.label}>Flower Variety</label>
                                         <SearchSelect 
@@ -1348,7 +1348,7 @@ const QuickEntry = () => {
                             {/* Lines Insertion Section */}
                             <div style={{ background: '#fffbeb', borderRadius: '12px', padding: '16px', border: '1px solid #fef3c7', marginBottom: '16px' }}>
                                 <span style={{ ...S.label, color: '#b45309', marginBottom: '12px', display: 'block' }}>Add Flower Detail Rows</span>
-                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+                                <div className="flower-line-grid">
                                     <div>
                                         <label style={S.label}>Flower Variety</label>
                                         <SearchSelect 
@@ -1483,7 +1483,7 @@ const QuickEntry = () => {
                             {/* Lines Insertion Section */}
                             <div style={{ background: '#fffbeb', borderRadius: '12px', padding: '16px', border: '1px solid #fef3c7', marginBottom: '16px' }}>
                                 <span style={{ ...S.label, color: '#b45309', marginBottom: '12px', display: 'block' }}>Add Flower Detail Rows</span>
-                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+                                <div className="flower-line-grid">
                                     <div>
                                         <label style={S.label}>Flower Variety</label>
                                         <SearchSelect 
@@ -1618,7 +1618,7 @@ const QuickEntry = () => {
                             {/* Lines Insertion Section */}
                             <div style={{ background: '#fffbeb', borderRadius: '12px', padding: '16px', border: '1px solid #fef3c7', marginBottom: '16px' }}>
                                 <span style={{ ...S.label, color: '#b45309', marginBottom: '12px', display: 'block' }}>Add Flower Detail Rows</span>
-                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+                                <div className="flower-line-grid">
                                     <div>
                                         <label style={S.label}>Flower Variety</label>
                                         <SearchSelect 
