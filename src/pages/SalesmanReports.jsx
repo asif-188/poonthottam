@@ -300,9 +300,9 @@ const SalesmanReports = () => {
             // 3. Expenses
             const rangeExpenses = expenses.filter(e => e.salesmanId === salesman.id && e.date >= fromDate && e.date <= toDate);
             rangeExpenses.forEach(e => {
-                const detail = [e.category, e.notes].filter(val => val && val !== '---').join(' - ') || '---';
+                const detail = [e.category, e.notes].filter(val => val && val !== '---').join(' - ') || (lang === 'ta' ? 'செலவு' : 'Expense');
                 debitList.push({
-                    particulars: `${lang === 'ta' ? 'செலவு' : 'Expense'} (${detail})`,
+                    particulars: detail,
                     quantity: null,
                     rate: null,
                     total: Number(e.amount) || 0

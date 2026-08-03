@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useContext } from 'react';
-import { subscribeToCollection, saveCashSale } from '../utils/storage';
+import { subscribeToCollection, saveCashSale, db, deleteDoc } from '../utils/storage';
+import { doc } from 'firebase/firestore';
 import { LangContext } from '../components/Layout';
 import { useTenant } from '../utils/TenantContext';
 import { Plus, Trash2, Edit2, Calendar, User, ShoppingBag, History, CreditCard, Printer, Share2 } from 'lucide-react';
@@ -251,6 +252,87 @@ const CashSales = () => {
     const activeStaff = useMemo(() => salesmen.find(s => s.id === staffId), [staffId, salesmen]);
 
     const totalAmount = useMemo(() => billItems.reduce((sum, item) => sum + (item.total || 0), 0), [billItems]);
+
+    const sortedCashSales = useMemo(() => {
+        return [...cashSales].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    }, [cashSales]);
+
+    const handleDeleteRecord = async (id) => {
+        if (!window.confirm(lang === 'ta' ? 'நிச்சயமாக இந்த ரொக்க விற்பனை பதிவை நீக்க வேண்டுமா?' : 'Are you sure you want to delete this cash sale record?')) return;
+        try {
+            await deleteDoc(doc(db, 'cash_sales', id));
+            alert(lang === 'ta' ? '✅ பதிவு நீக்கப்பட்டது!' : '✅ Record deleted!');
+        } catch (err) {
+            alert('Delete failed: ' + err.message);
+        }
+    };
+
+    const handlePrintRecord = (record) => {
+        if (!record) return;
+        const biz = tenantData || { name: 'S.V.M', type: 'SRI VALLI FLOWER MERCHANT', address: 'B-7, FLOWER MARKET, TINDIVANAM.', phone1: '9443247771', phone2: '9952535057' };
+        const printWindow = window.open('', '_blank');
+        const content = `
+            <html>
+            <head>
+                <title>Cash Sales Invoice</title>
+                <style>
+                    body { font-family: 'Courier New', Courier, monospace; padding: 10px; font-size: 14px; width: 80mm; margin: 0 auto; }
+                    .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+                    .shop-name { font-size: 18px; font-weight: bold; }
+                    .details { font-size: 12px; margin-bottom: 10px; }
+                    .details div { display: flex; justify-content: space-between; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; border-bottom: 1px dashed #000; }
+                    th { border-bottom: 1px dashed #000; text-align: left; font-size: 12px; }
+                    td { font-size: 12px; padding: 4px 0; }
+                    .total { text-align: right; font-weight: bold; font-size: 14px; padding: 10px 0; }
+                    .footer { text-align: center; font-size: 11px; margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px; }
+                </style>
+            </head>
+            <body onload="window.print(); window.close();">
+                <div class="header">
+                    <div class="shop-name">${biz.name}</div>
+                    <div style="font-size: 11px;">${biz.type || ''}</div>
+                    <div style="font-size: 10px;">${biz.address || ''}</div>
+                    <div style="font-size: 10px;">Ph: ${biz.phone1 || ''}</div>
+                </div>
+                <div class="details">
+                    <div><span>Date:</span> <span>${displayDate(record.date)}</span></div>
+                    <div><span>Staff:</span> <span>${record.salesmanName || '---'}</span></div>
+                    <div><span>Customer:</span> <span>${record.customerName || 'Cash'}</span></div>
+                    <div><span>Mode:</span> <span>${record.paymentMode || 'Cash'}</span></div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th style="text-align: right;">Qty</th>
+                            <th style="text-align: right;">Rate</th>
+                            <th style="text-align: right;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${(record.items || []).map(item => `
+                            <tr>
+                                <td>${lang === 'ta' ? (item.flowerTypeTa || item.flowerType) : item.flowerType}</td>
+                                <td style="text-align: right;">${item.quantity}</td>
+                                <td style="text-align: right;">${item.price || item.rate}</td>
+                                <td style="text-align: right;">${(Number(item.total) || 0).toFixed(0)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div class="total">
+                    Grand Total: Rs ${(Number(record.grandTotal) || 0).toFixed(0)}
+                </div>
+                <div class="footer">
+                    Thank You!
+                </div>
+            </body>
+            </html>
+        `;
+        printWindow.document.write(content);
+        printWindow.document.close();
+    };
 
     const handleAddLine = () => {
         const { flowerType, flowerTypeTa, quantity, price } = currentLine;
@@ -747,6 +829,90 @@ const CashSales = () => {
                 </div>
 
             </div>
+
+            {/* ── Cash Sales Entries List Table ── */}
+            <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>💰</span> {lang === 'ta' ? 'ரொக்க விற்பனை பதிவுகள் பட்டியல்' : 'Cash Sales Entries List'}
+                    </h3>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', background: '#f1f5f9', padding: '4px 12px', borderRadius: '20px' }}>
+                        {sortedCashSales.length} {lang === 'ta' ? 'பதிவுகள்' : 'Entries'}
+                    </span>
+                </div>
+
+                <div style={{ overflowX: 'auto', width: '100%' }}>
+                    <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr>
+                                <th style={{ ...TH_S, width: '40px' }}>S.No</th>
+                                <th style={TH_S}>{lang === 'ta' ? 'தேதி' : 'Date'}</th>
+                                <th style={TH_S}>{lang === 'ta' ? 'பணியாளர்' : 'Staff'}</th>
+                                <th style={TH_S}>{lang === 'ta' ? 'விவரங்கள் / பொருட்கள்' : 'Items / Details'}</th>
+                                <th style={{ ...TH_S, textAlign: 'right' }}>{lang === 'ta' ? 'தொகை' : 'Total Amount'}</th>
+                                <th style={{ ...TH_S, textAlign: 'center' }}>{lang === 'ta' ? 'செயல்' : 'Action'}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {sortedCashSales.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} style={{ padding: '36px', textAlign: 'center', fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>
+                                        {lang === 'ta' ? 'ரொக்க விற்பனை பதிவுகள் எதுவும் இல்லை.' : 'No cash sale entries found.'}
+                                    </td>
+                                </tr>
+                            ) : (
+                                sortedCashSales.map((rec, idx) => {
+                                    const sStaff = salesmen.find(s => s.id === rec.salesmanId);
+                                    const staffDisplayName = sStaff ? (lang === 'ta' ? (sStaff.nameTa || sStaff.taName || sStaff.name) : sStaff.name) : (rec.salesmanName || '---');
+                                    return (
+                                        <tr key={rec.id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                            <td style={TD_S}>{idx + 1}</td>
+                                            <td style={TD_S}>{displayDate(rec.date)}</td>
+                                            <td style={TD_S}>
+                                                <div style={{ fontWeight: 700, color: '#1e293b' }}>{staffDisplayName}</div>
+                                            </td>
+                                            <td style={TD_S}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                    {(rec.items || []).map((item, iIndex) => {
+                                                        const flName = lang === 'ta' ? (item.flowerTypeTa || item.flowerType) : item.flowerType;
+                                                        return (
+                                                            <span key={iIndex} style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>
+                                                                • {flName} ({item.quantity}Kg @ ₹{item.price || item.rate})
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </td>
+                                            <td style={{ ...TD_S, textAlign: 'right', fontWeight: 800, color: '#10b981' }}>
+                                                ₹{(Number(rec.grandTotal) || 0).toLocaleString('en-IN')}
+                                            </td>
+                                            <td style={{ ...TD_S, textAlign: 'center' }}>
+                                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                                    <button
+                                                        onClick={() => handlePrintRecord(rec)}
+                                                        style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', padding: '4px' }}
+                                                        title={lang === 'ta' ? 'அச்சிடு' : 'Print'}
+                                                    >
+                                                        <Printer size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteRecord(rec.id)}
+                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                                        title={lang === 'ta' ? 'நீக்கு' : 'Delete'}
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
     );
 };
