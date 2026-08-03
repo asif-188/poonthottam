@@ -6,6 +6,7 @@ import { subscribeToCollection, addData, updateData, db, deleteDoc } from '../ut
 import { LangContext } from '../components/Layout';
 import CashPurchase from './CashPurchase';
 import CashSales from './CashSales';
+import Payments from './Payments';
 
 const fmt = (n) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(n || 0);
@@ -310,15 +311,15 @@ const SalesmanCreditExpenses = () => {
     }, [transfers]);
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', maxWidth: '1200px', margin: '0 auto', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', boxSizing: 'border-box' }}>
             
             {/* Navigation Tabs */}
-            <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '14px', width: 'fit-content', flexWrap: 'wrap', gap: '4px' }}>
+            <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '14px', width: '100%', maxWidth: '100%', overflowX: 'auto', gap: '4px', boxSizing: 'border-box', scrollbarWidth: 'none' }}>
                 <button
                     onClick={() => setActiveTab('expenses')}
                     style={{
-                        padding: '10px 20px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 800,
-                        cursor: 'pointer', transition: 'all 0.2s',
+                        padding: '10px 16px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 800,
+                        cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
                         background: activeTab === 'expenses' ? '#fff' : 'transparent',
                         color: activeTab === 'expenses' ? '#ef4444' : '#64748b',
                         boxShadow: activeTab === 'expenses' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
@@ -329,8 +330,8 @@ const SalesmanCreditExpenses = () => {
                 <button
                     onClick={() => setActiveTab('credit')}
                     style={{
-                        padding: '10px 20px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 800,
-                        cursor: 'pointer', transition: 'all 0.2s',
+                        padding: '10px 16px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 800,
+                        cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
                         background: activeTab === 'credit' ? '#fff' : 'transparent',
                         color: activeTab === 'credit' ? '#3b82f6' : '#64748b',
                         boxShadow: activeTab === 'credit' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
@@ -339,10 +340,22 @@ const SalesmanCreditExpenses = () => {
                     {lang === 'ta' ? 'பரிமாற்றம்' : 'Credit Transfers'}
                 </button>
                 <button
+                    onClick={() => setActiveTab('cash-sales')}
+                    style={{
+                        padding: '10px 16px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 800,
+                        cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
+                        background: activeTab === 'cash-sales' ? '#fff' : 'transparent',
+                        color: activeTab === 'cash-sales' ? '#10b981' : '#64748b',
+                        boxShadow: activeTab === 'cash-sales' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
+                    }}
+                >
+                    {lang === 'ta' ? 'ரொக்க விற்பனை' : 'Cash Sales'}
+                </button>
+                <button
                     onClick={() => setActiveTab('cash-purchase')}
                     style={{
-                        padding: '10px 20px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 800,
-                        cursor: 'pointer', transition: 'all 0.2s',
+                        padding: '10px 16px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 800,
+                        cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
                         background: activeTab === 'cash-purchase' ? '#fff' : 'transparent',
                         color: activeTab === 'cash-purchase' ? '#d97706' : '#64748b',
                         boxShadow: activeTab === 'cash-purchase' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
@@ -351,25 +364,25 @@ const SalesmanCreditExpenses = () => {
                     {lang === 'ta' ? 'ரொக்கக் கொள்முதல்' : 'Cash Purchase'}
                 </button>
                 <button
-                    onClick={() => setActiveTab('cash-sales')}
+                    onClick={() => setActiveTab('payments')}
                     style={{
-                        padding: '10px 20px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 800,
-                        cursor: 'pointer', transition: 'all 0.2s',
-                        background: activeTab === 'cash-sales' ? '#fff' : 'transparent',
-                        color: activeTab === 'cash-sales' ? '#10b981' : '#64748b',
-                        boxShadow: activeTab === 'cash-sales' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
+                        padding: '10px 16px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 800,
+                        cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
+                        background: activeTab === 'payments' ? '#fff' : 'transparent',
+                        color: activeTab === 'payments' ? '#8b5cf6' : '#64748b',
+                        boxShadow: activeTab === 'payments' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
                     }}
                 >
-                    {lang === 'ta' ? 'ரொக்க விற்பனை' : 'Cash Sales'}
+                    {lang === 'ta' ? 'பணம் செலுத்துதல்' : 'Payments'}
                 </button>
             </div>
 
             {activeTab === 'expenses' && (
                 // ── EXPENSES TAB ──
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', width: '100%' }}>
                     
                     {/* Add Expense Box */}
-                    <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '24px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', height: 'fit-content' }}>
+                    <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '20px', padding: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', height: 'fit-content', width: '100%', maxWidth: '380px', flexShrink: 0, boxSizing: 'border-box' }}>
                         <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: 900, color: '#1e293b' }}>
                             {editingExpenseId 
                                 ? (lang === 'ta' ? 'செலவு விவரங்களை திருத்துக' : 'Edit Expense Details') 
@@ -381,48 +394,47 @@ const SalesmanCreditExpenses = () => {
                                 <select value={expSalesmanId} onChange={e => setExpSalesmanId(e.target.value)} required style={INPUT_S}>
                                     <option value="">{lang === 'ta' ? 'தேர்வு செய்க...' : 'Choose Staff...'}</option>
                                     {activeSalesmen.map(s => (
-                                        <option key={s.id} value={s.id}>{s.name} (#{s.displayId})</option>
+                                        <option key={s.id} value={s.id}>{lang === 'ta' ? (s.nameTa || s.taName || s.name) : s.name} (#{s.displayId})</option>
                                     ))}
                                 </select>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                <div>
-                                    <label style={LABEL_S}>{lang === 'ta' ? 'தேதி' : 'Date'}</label>
-                                    <input type="date" value={expDate} onChange={e => setExpDate(e.target.value)} required style={INPUT_S} />
-                                </div>
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                                        <label style={{ ...LABEL_S, marginBottom: 0 }}>{lang === 'ta' ? 'வகை' : 'Category'}</label>
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsCategoryModalOpen(true)}
-                                            style={{ border: 'none', background: 'none', color: '#4f46e5', fontSize: '11px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px', padding: 0 }}
-                                        >
-                                            <Plus size={12} /> {lang === 'ta' ? 'வகை மேலாண்மை' : 'Manage Categories'}
-                                        </button>
-                                    </div>
-                                    <select 
-                                        value={expCategory} 
-                                        onChange={e => {
-                                            if (e.target.value === '__ADD_NEW__') {
-                                                setIsCategoryModalOpen(true);
-                                            } else {
-                                                setExpCategory(e.target.value);
-                                            }
-                                        }} 
-                                        required
-                                        style={INPUT_S}
+                            <div>
+                                <label style={LABEL_S}>{lang === 'ta' ? 'தேதி' : 'Date'}</label>
+                                <input type="date" value={expDate} onChange={e => setExpDate(e.target.value)} required style={INPUT_S} />
+                            </div>
+
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                    <label style={{ ...LABEL_S, marginBottom: 0 }}>{lang === 'ta' ? 'வகை' : 'Category'}</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCategoryModalOpen(true)}
+                                        style={{ border: 'none', background: 'none', color: '#4f46e5', fontSize: '11px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px', padding: 0 }}
                                     >
-                                        <option value="">{lang === 'ta' ? 'வகை தேர்வு செய்க...' : 'Select Category...'}</option>
-                                        {allCategories.map(c => (
-                                            <option key={c.id || c.name} value={c.name}>
-                                                {lang === 'ta' ? (c.nameTa || c.name) : c.name}
-                                            </option>
-                                        ))}
-                                        <option value="__ADD_NEW__">➕ {lang === 'ta' ? '+ புதிய வகை சேர்...' : '+ Add Custom Category...'}</option>
-                                    </select>
+                                        <Plus size={12} /> {lang === 'ta' ? 'வகை மேலாண்மை' : 'Manage Categories'}
+                                    </button>
                                 </div>
+                                <select 
+                                    value={expCategory} 
+                                    onChange={e => {
+                                        if (e.target.value === '__ADD_NEW__') {
+                                            setIsCategoryModalOpen(true);
+                                        } else {
+                                            setExpCategory(e.target.value);
+                                        }
+                                    }} 
+                                    required
+                                    style={INPUT_S}
+                                >
+                                    <option value="">{lang === 'ta' ? 'வகை தேர்வு செய்க...' : 'Select Category...'}</option>
+                                    {allCategories.map(c => (
+                                        <option key={c.id || c.name} value={c.name}>
+                                            {lang === 'ta' ? (c.nameTa || c.name) : c.name}
+                                        </option>
+                                    ))}
+                                    <option value="__ADD_NEW__">➕ {lang === 'ta' ? '+ புதிய வகை சேர்...' : '+ Add Custom Category...'}</option>
+                                </select>
                             </div>
 
                             <div>
@@ -470,12 +482,12 @@ const SalesmanCreditExpenses = () => {
                     </div>
 
                     {/* Expense Details list */}
-                    <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '24px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '20px', padding: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, width: '100%', boxSizing: 'border-box' }}>
                         <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: 900, color: '#1e293b' }}>
                             {lang === 'ta' ? 'செலவுகள் பட்டியல்' : 'Expenses List'}
                         </h3>
-                        <div style={{ overflowX: 'auto', flex: 1 }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <div style={{ overflowX: 'auto', flex: 1, width: '100%' }}>
+                            <table style={{ width: '100%', minWidth: '550px', borderCollapse: 'collapse' }}>
                                 <thead>
                                     <tr>
                                         <th style={{ ...TH_S, width: '40px' }}>S.No</th>
@@ -499,7 +511,12 @@ const SalesmanCreditExpenses = () => {
                                                 <td style={TD_S}>{idx + 1}</td>
                                                 <td style={TD_S}>{exp.date.split('-').reverse().join('/')}</td>
                                                 <td style={TD_S}>
-                                                    <div style={{ fontWeight: 700 }}>{exp.salesmanName}</div>
+                                                    <div style={{ fontWeight: 700 }}>
+                                                        {(() => {
+                                                            const found = salesmen.find(s => s.id === exp.salesmanId);
+                                                            return found ? (lang === 'ta' ? (found.nameTa || found.taName || found.name) : found.name) : exp.salesmanName;
+                                                        })()}
+                                                    </div>
                                                     <div style={{ fontSize: '10px', color: '#94a3b8' }}>{exp.notes}</div>
                                                 </td>
                                                 <td style={TD_S}>
@@ -541,10 +558,10 @@ const SalesmanCreditExpenses = () => {
 
             {activeTab === 'credit' && (
                 // ── CREDIT TRANSFER TAB ──
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', width: '100%' }}>
                     
                     {/* Add Transfer Form */}
-                    <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '24px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', height: 'fit-content' }}>
+                    <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '20px', padding: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', height: 'fit-content', width: '100%', maxWidth: '380px', flexShrink: 0, boxSizing: 'border-box' }}>
                         <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: 900, color: '#1e293b' }}>
                             {editingTransferId 
                                 ? (lang === 'ta' ? 'கடனைப் புதுப்பிக்கவும்' : 'Edit Credit Transfer') 
@@ -556,7 +573,7 @@ const SalesmanCreditExpenses = () => {
                                 <select value={fromSalesmanId} onChange={e => setFromSalesmanId(e.target.value)} required style={INPUT_S}>
                                     <option value="">{lang === 'ta' ? 'தேர்வு செய்க...' : 'Choose Staff...'}</option>
                                     {activeSalesmen.map(s => (
-                                        <option key={s.id} value={s.id}>{s.name} (#{s.displayId})</option>
+                                        <option key={s.id} value={s.id}>{lang === 'ta' ? (s.nameTa || s.taName || s.name) : s.name} (#{s.displayId})</option>
                                     ))}
                                 </select>
                             </div>
@@ -566,20 +583,19 @@ const SalesmanCreditExpenses = () => {
                                 <select value={toSalesmanId} onChange={e => setToSalesmanId(e.target.value)} required style={INPUT_S}>
                                     <option value="">{lang === 'ta' ? 'தேர்வு செய்க...' : 'Choose Staff...'}</option>
                                     {activeSalesmen.map(s => (
-                                        <option key={s.id} value={s.id}>{s.name} (#{s.displayId})</option>
+                                        <option key={s.id} value={s.id}>{lang === 'ta' ? (s.nameTa || s.taName || s.name) : s.name} (#{s.displayId})</option>
                                     ))}
                                 </select>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                <div>
-                                    <label style={LABEL_S}>{lang === 'ta' ? 'தேதி' : 'Date'}</label>
-                                    <input type="date" value={transDate} onChange={e => setTransDate(e.target.value)} required style={INPUT_S} />
-                                </div>
-                                <div>
-                                    <label style={LABEL_S}>{lang === 'ta' ? 'தொகை' : 'Amount'}</label>
-                                    <input type="number" inputMode="decimal" placeholder="0.00" value={transAmount} onChange={e => setTransAmount(e.target.value)} required style={INPUT_S} />
-                                </div>
+                            <div>
+                                <label style={LABEL_S}>{lang === 'ta' ? 'தேதி' : 'Date'}</label>
+                                <input type="date" value={transDate} onChange={e => setTransDate(e.target.value)} required style={INPUT_S} />
+                            </div>
+
+                            <div>
+                                <label style={LABEL_S}>{lang === 'ta' ? 'தொகை' : 'Amount'}</label>
+                                <input type="number" inputMode="decimal" placeholder="0.00" value={transAmount} onChange={e => setTransAmount(e.target.value)} required style={INPUT_S} />
                             </div>
 
                             <div>
@@ -622,12 +638,12 @@ const SalesmanCreditExpenses = () => {
                     </div>
 
                     {/* Credit Transfers List */}
-                    <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '24px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: '20px', padding: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, width: '100%', boxSizing: 'border-box' }}>
                         <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: 900, color: '#1e293b' }}>
                             {lang === 'ta' ? 'பரிமாற்றங்கள் பட்டியல்' : 'Credit Transfers List'}
                         </h3>
-                        <div style={{ overflowX: 'auto', flex: 1 }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <div style={{ overflowX: 'auto', flex: 1, width: '100%' }}>
+                            <table style={{ width: '100%', minWidth: '550px', borderCollapse: 'collapse' }}>
                                 <thead>
                                     <tr>
                                         <th style={{ ...TH_S, width: '40px' }}>S.No</th>
@@ -651,10 +667,20 @@ const SalesmanCreditExpenses = () => {
                                                 <td style={TD_S}>{idx + 1}</td>
                                                 <td style={TD_S}>{t.date.split('-').reverse().join('/')}</td>
                                                 <td style={TD_S}>
-                                                    <div style={{ fontWeight: 700, color: '#ef4444' }}>{t.fromSalesmanName}</div>
+                                                    <div style={{ fontWeight: 700, color: '#ef4444' }}>
+                                                        {(() => {
+                                                            const found = salesmen.find(s => s.id === t.fromSalesmanId);
+                                                            return found ? (lang === 'ta' ? (found.nameTa || found.taName || found.name) : found.name) : t.fromSalesmanName;
+                                                        })()}
+                                                    </div>
                                                 </td>
                                                 <td style={TD_S}>
-                                                    <div style={{ fontWeight: 700, color: '#10b981' }}>{t.toSalesmanName}</div>
+                                                    <div style={{ fontWeight: 700, color: '#10b981' }}>
+                                                        {(() => {
+                                                            const found = salesmen.find(s => s.id === t.toSalesmanId);
+                                                            return found ? (lang === 'ta' ? (found.nameTa || found.taName || found.name) : found.name) : t.toSalesmanName;
+                                                        })()}
+                                                    </div>
                                                     <div style={{ fontSize: '10px', color: '#94a3b8' }}>{t.notes}</div>
                                                 </td>
                                                 <td style={{ ...TD_S, textAlign: 'right', fontWeight: 700, color: '#3b82f6' }}>{fmt(t.amount)}</td>
@@ -692,6 +718,10 @@ const SalesmanCreditExpenses = () => {
 
             {activeTab === 'cash-sales' && (
                 <CashSales />
+            )}
+
+            {activeTab === 'payments' && (
+                <Payments />
             )}
 
             {/* ── Category Manager Modal ── */}
