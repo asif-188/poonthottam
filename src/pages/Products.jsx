@@ -10,7 +10,7 @@ const Products = () => {
     const [products, setProducts] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [currentProduct, setCurrentProduct] = useState({ id: '', name: '', price: '', unit: 'Kg' });
+    const [currentProduct, setCurrentProduct] = useState({ id: '', name: '', price: '', unit: 'Kg', taName: '' });
 
     useEffect(() => {
         const unsubscribe = subscribeToCollection('products', setProducts);
@@ -28,9 +28,15 @@ const Products = () => {
 
     const handleOpenModal = (product = null) => {
         if (product) {
-            setCurrentProduct(product);
+            setCurrentProduct({
+                id: product.id || '',
+                name: product.name || '',
+                price: product.price || '',
+                unit: product.unit || 'Kg',
+                taName: product.taName || ''
+            });
         } else {
-            setCurrentProduct({ id: '', name: '', price: '', unit: 'Kg' });
+            setCurrentProduct({ id: '', name: '', price: '', unit: 'Kg', taName: '' });
         }
         setIsModalOpen(true);
     };
@@ -41,18 +47,19 @@ const Products = () => {
             setIsModalOpen(false);
         } catch (error) {
             console.error("Error saving product:", error);
-            alert("Failed to save product.");
+            alert(lang === 'ta' ? "பூவைச் சேமிக்க முடியவில்லை." : "Failed to save product.");
         }
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('Delete this product?')) {
+        if (window.confirm(lang === 'ta' ? 'இந்த பூவை நீக்க வேண்டுமா?' : 'Delete this product?')) {
             await deleteDoc(doc(db, 'products', id));
         }
     };
 
     const filteredProducts = products.filter(p =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase())
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.taName || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -64,20 +71,20 @@ const Products = () => {
                         <Boxes size={36} />
                     </div>
                     <div>
-                        <h2 className="text-4xl font-black text-gray-800 tracking-tighter italic">Product Master</h2>
+                        <h2 className="text-4xl font-black text-gray-800 tracking-tighter italic">{lang === 'ta' ? 'பூக்கள் பட்டியல்' : 'Product Master'}</h2>
                         <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-[10px]">Flower Inventory & Logistics</p>
                     </div>
                 </div>
                 
                 <div className="flex items-center gap-3">
                     <button className="hidden lg:flex items-center gap-2 px-6 py-3 bg-gray-50 text-gray-600 rounded-full font-bold text-sm hover:bg-gray-100 transition-colors">
-                        <Download size={18} /> Export
+                        <Download size={18} /> {lang === 'ta' ? 'ஏற்றுமதி' : 'Export'}
                     </button>
                     <button 
                         onClick={() => handleOpenModal()} 
                         className="flex items-center gap-3 px-8 py-4 bg-orange-500 text-white rounded-full font-black uppercase tracking-widest text-sm hover:bg-orange-600 shadow-[0_15px_30px_-10px_rgba(249,115,22,0.5)] transform transition-all hover:-translate-y-1 active:scale-95"
                     >
-                        <Plus size={20} /> Add New Flowr
+                        <Plus size={20} /> {lang === 'ta' ? 'புதிய பூ சேர்' : 'Add New Flower'}
                     </button>
                 </div>
             </div>
@@ -88,7 +95,7 @@ const Products = () => {
                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-orange-400" size={24} />
                     <input 
                         type="text" 
-                        placeholder="Search flower catalog..." 
+                        placeholder={lang === 'ta' ? 'பூக்கள் பட்டியல் தேடுக...' : 'Search flower catalog...'} 
                         className="w-full pl-16 pr-14 py-5 border-3 border-orange-50 rounded-[30px] outline-none focus:border-orange-500 focus:bg-white transition-all font-black text-gray-700 text-lg shadow-sm"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -98,7 +105,7 @@ const Products = () => {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <span className="px-4 py-2 bg-orange-100 text-orange-600 rounded-full text-xs font-black uppercase tracking-widest">{filteredProducts.length} Items</span>
+                    <span className="px-4 py-2 bg-orange-100 text-orange-600 rounded-full text-xs font-black uppercase tracking-widest">{filteredProducts.length} {lang === 'ta' ? 'பூக்கள்' : 'Items'}</span>
                 </div>
             </div>
 
@@ -119,17 +126,17 @@ const Products = () => {
                             <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center text-orange-500 shadow-xl border border-orange-50 group-hover:scale-110 transition-transform mb-6">
                                 <Tag size={32} />
                             </div>
-                            <h3 className="text-2xl font-black text-gray-800 tracking-tight italic mb-2">🌸 {product.name}</h3>
+                            <h3 className="text-2xl font-black text-gray-800 tracking-tight italic mb-2">🌸 {lang === 'ta' ? (product.taName || product.name) : product.name}</h3>
                             <div className="flex items-center gap-2 text-gray-400 font-bold text-xs uppercase tracking-widest pl-1">
                                 <Package size={14} className="text-orange-300" />
-                                Standard {product.unit} Unit
+                                {lang === 'ta' ? `அளவு வகை: ${product.unit === 'Kg' ? 'கிலோ' : product.unit === 'Bunch' ? 'கட்டு' : 'எண்ணிக்கை'}` : `Standard ${product.unit} Unit`}
                             </div>
                         </div>
 
                         <div className="flex items-center justify-between mt-auto pt-6 border-t border-gray-100">
-                            <div className="bg-gray-100 px-4 py-1 rounded-full text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:bg-orange-50 group-hover:text-orange-400 transition-colors">Market Rate</div>
+                            <div className="bg-gray-100 px-4 py-1 rounded-full text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:bg-orange-50 group-hover:text-orange-400 transition-colors">{lang === 'ta' ? 'சந்தை விலை' : 'Market Rate'}</div>
                             <div className="text-2xl font-black text-gray-800 group-hover:text-orange-600 transition-colors">
-                                {product.price}<span className="text-sm text-gray-400 font-bold italic ml-1">/{product.unit}</span>
+                                {product.price}<span className="text-sm text-gray-400 font-bold italic ml-1">/{lang === 'ta' ? (product.unit === 'Kg' ? 'கிலோ' : product.unit === 'Bunch' ? 'கட்டு' : 'எண்ணிக்கை') : product.unit}</span>
                             </div>
                         </div>
                     </div>
@@ -137,7 +144,7 @@ const Products = () => {
                 {filteredProducts.length === 0 && (
                     <div className="col-span-full py-40 text-center opacity-20">
                          <Boxes size={120} className="mx-auto mb-6" />
-                         <p className="text-2xl font-black uppercase tracking-[0.3em]">No Flowers Registered</p>
+                         <p className="text-2xl font-black uppercase tracking-[0.3em]">{lang === 'ta' ? 'பூக்கள் எதுவும் பதிவு செய்யப்படவில்லை' : 'No Flowers Registered'}</p>
                     </div>
                 )}
             </div>
@@ -147,26 +154,36 @@ const Products = () => {
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-[40px] w-full max-w-lg shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] animate-in zoom-in duration-300 overflow-hidden">
                         <div className="p-10 border-b flex justify-between items-center bg-gray-50">
-                            <h3 className="text-3xl font-black text-gray-800 tracking-tighter italic">Product Intelligence</h3>
+                            <h3 className="text-3xl font-black text-gray-800 tracking-tighter italic">{lang === 'ta' ? 'பூ மாஸ்டர் விவரங்கள்' : 'Product Intelligence'}</h3>
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-red-500 hover:rotate-90 transition-all">
                                 <X size={32} />
                             </button>
                         </div>
-                        <form onSubmit={handleSave} className="p-12 space-y-10">
-                            <div className="space-y-4">
-                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest pl-2">Scientific / Local Flower Name</label>
+                        <form onSubmit={handleSave} className="p-12 space-y-8">
+                            <div className="space-y-3">
+                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest pl-2">{lang === 'ta' ? 'பூவின் பெயர் (English) *' : 'Scientific / Local Flower Name *'}</label>
                                 <input 
                                     type="text" 
                                     className="w-full px-8 py-5 rounded-[24px] bg-gray-50 border-3 border-transparent focus:border-orange-500 focus:bg-white transition-all outline-none text-xl font-black text-gray-800 shadow-inner" 
                                     value={currentProduct.name}
                                     onChange={(e) => setCurrentProduct({ ...currentProduct, name: e.target.value })}
-                                    placeholder="Enter Name..."
+                                    placeholder={lang === 'ta' ? 'பெயரை ஆங்கிலத்தில் உள்ளிடவும்...' : 'Enter Name...'}
                                     required
                                 />
                             </div>
+                            <div className="space-y-3">
+                                <label className="block text-xs font-black text-gray-400 uppercase tracking-widest pl-2">{lang === 'ta' ? 'பூவின் பெயர் (தமிழ்)' : 'Flower Name (Tamil - Optional)'}</label>
+                                <input 
+                                    type="text" 
+                                    className="w-full px-8 py-5 rounded-[24px] bg-gray-50 border-3 border-transparent focus:border-orange-500 focus:bg-white transition-all outline-none text-xl font-black text-gray-800 shadow-inner" 
+                                    value={currentProduct.taName || ''}
+                                    onChange={(e) => setCurrentProduct({ ...currentProduct, taName: e.target.value })}
+                                    placeholder={lang === 'ta' ? 'பெயரை தமிழில் உள்ளிடவும்...' : 'Enter Tamil Name...'}
+                                />
+                            </div>
                             <div className="grid grid-cols-2 gap-8">
-                                <div className="space-y-4">
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest pl-2">Benchmark Rate</label>
+                                <div className="space-y-3">
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest pl-2">{lang === 'ta' ? 'வழக்கமான விலை' : 'Benchmark Rate'}</label>
                                     <input 
                                         type="number" 
                                         inputMode="decimal"
@@ -176,16 +193,16 @@ const Products = () => {
                                         placeholder="0"
                                     />
                                 </div>
-                                <div className="space-y-4">
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest pl-2">Measure Unit</label>
+                                <div className="space-y-3">
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest pl-2">{lang === 'ta' ? 'அலகு வகை' : 'Measure Unit'}</label>
                                     <select 
                                         className="w-full px-8 py-5 rounded-[24px] bg-gray-50 border-3 border-transparent focus:border-orange-500 focus:bg-white transition-all outline-none text-xl font-black text-gray-800 shadow-inner appearance-none"
                                         value={currentProduct.unit}
                                         onChange={(e) => setCurrentProduct({ ...currentProduct, unit: e.target.value })}
                                     >
-                                        <option>Kg</option>
-                                        <option>Bunch</option>
-                                        <option>Piece</option>
+                                        <option value="Kg">{lang === 'ta' ? 'கிலோ (Kg)' : 'Kg'}</option>
+                                        <option value="Bunch">{lang === 'ta' ? 'கட்டு (Bunch)' : 'Bunch'}</option>
+                                        <option value="Piece">{lang === 'ta' ? 'எண்ணிக்கை (Piece)' : 'Piece'}</option>
                                     </select>
                                 </div>
                             </div>
@@ -194,7 +211,7 @@ const Products = () => {
                                 className="w-full py-8 bg-orange-500 text-white rounded-[32px] font-black text-2xl uppercase tracking-[0.2em] hover:bg-orange-600 shadow-2xl transition-all transform hover:-translate-y-2 active:scale-95 flex items-center justify-center gap-4"
                             >
                                 <Save size={32} />
-                                Sync Product
+                                {lang === 'ta' ? 'பூவைச் சேமி' : 'Sync Product'}
                             </button>
                         </form>
                     </div>

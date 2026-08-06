@@ -59,6 +59,7 @@ const FlowerWiseReport = () => {
     const [farmers, setFarmers] = useState([]);
     const [vendors, setVendors] = useState([]);
     const [buyers, setBuyers] = useState([]);
+    const [salesmen, setSalesmen] = useState([]);
 
     useEffect(() => {
         const u1 = subscribeToCollection('products', setProducts, true);
@@ -70,6 +71,7 @@ const FlowerWiseReport = () => {
         const u7 = subscribeToCollection('buyers', setBuyers, true);
         const u8 = subscribeToCollection('cash_purchases', setCashPurchases, true);
         const u9 = subscribeToCollection('cash_sales', setCashSales, true);
+        const u10 = subscribeToCollection('salesmen', setSalesmen, true);
 
         return () => {
             u1();
@@ -81,6 +83,7 @@ const FlowerWiseReport = () => {
             u7();
             u8();
             u9();
+            u10();
         };
     }, []);
 
@@ -112,7 +115,7 @@ const FlowerWiseReport = () => {
             if (dateStr >= fromDate && dateStr <= toDate) {
                 (intake.items || []).forEach(item => {
                     if (matchesFlower(item.flowerType)) {
-                        const farmer = farmers.find(f => f.id === intake.farmerId);
+                        const farmer = farmers.find(f => f.id === intake.farmerId || f.name.toLowerCase() === (intake.farmerName || '').toLowerCase());
                         const name = farmer ? (lang === 'ta' ? (farmer.nameTa || farmer.name) : farmer.name) : (intake.farmerName || 'Farmer');
                         list.push({
                             name,
@@ -132,8 +135,8 @@ const FlowerWiseReport = () => {
             if (dateStr >= fromDate && dateStr <= toDate) {
                 (p.items || []).forEach(item => {
                     if (matchesFlower(item.flowerType)) {
-                        const vendor = vendors.find(v => v.id === p.vendorId);
-                        const name = vendor ? (lang === 'ta' ? (vendor.nameTa || vendor.name) : vendor.name) : 'Vendor';
+                        const vendor = vendors.find(v => v.id === p.vendorId || v.name.toLowerCase() === (p.vendorName || '').toLowerCase());
+                        const name = vendor ? (lang === 'ta' ? (vendor.nameTa || vendor.name) : vendor.name) : (p.vendorName || 'Vendor');
                         list.push({
                             name,
                             source: lang === 'ta' ? 'விற்பனையாளர்' : 'Vendor',
@@ -152,9 +155,12 @@ const FlowerWiseReport = () => {
             if (dateStr >= fromDate && dateStr <= toDate) {
                 (cp.items || []).forEach(item => {
                     if (matchesFlower(item.flowerType)) {
-                        const staffName = cp.salesmanName && cp.salesmanName !== 'Unknown'
-                            ? cp.salesmanName
-                            : (lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Direct Entry');
+                        const salesman = salesmen.find(s => s.id === cp.salesmanId || s.name.toLowerCase() === (cp.salesmanName || '').toLowerCase());
+                        const staffName = salesman
+                            ? (lang === 'ta' ? (salesman.nameTa || salesman.name) : salesman.name)
+                            : (cp.salesmanName && cp.salesmanName !== 'Unknown'
+                                ? cp.salesmanName
+                                : (lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Direct Entry'));
                         list.push({
                             name: staffName,
                             source: staffName,
@@ -172,7 +178,7 @@ const FlowerWiseReport = () => {
         const totalAmount = mergedList.reduce((sum, item) => sum + item.total, 0);
 
         return { list: mergedList, totalKg, totalAmount };
-    }, [intakes, outsidePurchases, cashPurchases, farmers, vendors, fromDate, toDate, matchesFlower, lang]);
+    }, [intakes, outsidePurchases, cashPurchases, farmers, vendors, salesmen, fromDate, toDate, matchesFlower, lang]);
 
     // Compute Sales list (Customers) for selected date range and flower
     const salesData = useMemo(() => {
@@ -183,7 +189,7 @@ const FlowerWiseReport = () => {
             if (dateStr >= fromDate && dateStr <= toDate) {
                 (s.items || []).forEach(item => {
                     if (matchesFlower(item.flowerType)) {
-                        const buyer = buyers.find(b => b.id === s.buyerId);
+                        const buyer = buyers.find(b => b.id === s.buyerId || b.name.toLowerCase() === (s.buyerName || '').toLowerCase());
                         const name = buyer ? (lang === 'ta' ? (buyer.nameTa || buyer.name) : buyer.name) : (s.buyerName || 'Customer');
                         list.push({
                             name,
@@ -203,9 +209,12 @@ const FlowerWiseReport = () => {
             if (dateStr >= fromDate && dateStr <= toDate) {
                 (cs.items || []).forEach(item => {
                     if (matchesFlower(item.flowerType)) {
-                        const staffName = cs.salesmanName && cs.salesmanName !== 'Unknown'
-                            ? cs.salesmanName
-                            : (lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Direct Entry');
+                        const salesman = salesmen.find(s => s.id === cs.salesmanId || s.name.toLowerCase() === (cs.salesmanName || '').toLowerCase());
+                        const staffName = salesman
+                            ? (lang === 'ta' ? (salesman.nameTa || salesman.name) : salesman.name)
+                            : (cs.salesmanName && cs.salesmanName !== 'Unknown'
+                                ? cs.salesmanName
+                                : (lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Direct Entry'));
                         list.push({
                             name: staffName,
                             quantity: parseFloat(item.quantity || 0),
@@ -222,7 +231,7 @@ const FlowerWiseReport = () => {
         const totalAmount = mergedList.reduce((sum, item) => sum + item.total, 0);
 
         return { list: mergedList, totalKg, totalAmount };
-    }, [sales, cashSales, buyers, fromDate, toDate, matchesFlower, lang]);
+    }, [sales, cashSales, buyers, salesmen, fromDate, toDate, matchesFlower, lang]);
 
     // Compute grouped flower-wise data when selectedFlower is 'all'
     const groupedFlowerData = useMemo(() => {
@@ -246,7 +255,7 @@ const FlowerWiseReport = () => {
                 if (dateStr >= fromDate && dateStr <= toDate) {
                     (intake.items || []).forEach(item => {
                         if (matcher(item.flowerType)) {
-                            const farmer = farmers.find(f => f.id === intake.farmerId);
+                            const farmer = farmers.find(f => f.id === intake.farmerId || f.name.toLowerCase() === (intake.farmerName || '').toLowerCase());
                             const name = farmer ? (lang === 'ta' ? (farmer.nameTa || farmer.name) : farmer.name) : (intake.farmerName || 'Farmer');
                             pList.push({
                                 name,
@@ -265,8 +274,8 @@ const FlowerWiseReport = () => {
                 if (dateStr >= fromDate && dateStr <= toDate) {
                     (op.items || []).forEach(item => {
                         if (matcher(item.flowerType)) {
-                            const vendor = vendors.find(v => v.id === op.vendorId);
-                            const name = vendor ? (lang === 'ta' ? (vendor.nameTa || vendor.name) : vendor.name) : 'Vendor';
+                            const vendor = vendors.find(v => v.id === op.vendorId || v.name.toLowerCase() === (op.vendorName || '').toLowerCase());
+                            const name = vendor ? (lang === 'ta' ? (vendor.nameTa || vendor.name) : vendor.name) : (op.vendorName || 'Vendor');
                             pList.push({
                                 name,
                                 source: lang === 'ta' ? 'விற்பனையாளர்' : 'Vendor',
@@ -284,9 +293,12 @@ const FlowerWiseReport = () => {
                 if (dateStr >= fromDate && dateStr <= toDate) {
                     (cp.items || []).forEach(item => {
                         if (matcher(item.flowerType)) {
-                            const staffName = cp.salesmanName && cp.salesmanName !== 'Unknown'
-                                ? cp.salesmanName
-                                : (lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Direct Entry');
+                            const salesman = salesmen.find(s => s.id === cp.salesmanId || s.name.toLowerCase() === (cp.salesmanName || '').toLowerCase());
+                            const staffName = salesman
+                                ? (lang === 'ta' ? (salesman.nameTa || salesman.name) : salesman.name)
+                                : (cp.salesmanName && cp.salesmanName !== 'Unknown'
+                                    ? cp.salesmanName
+                                    : (lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Direct Entry'));
                             pList.push({
                                 name: staffName,
                                 source: staffName,
@@ -310,7 +322,7 @@ const FlowerWiseReport = () => {
                 if (dateStr >= fromDate && dateStr <= toDate) {
                     (s.items || []).forEach(item => {
                         if (matcher(item.flowerType)) {
-                            const buyer = buyers.find(b => b.id === s.buyerId);
+                            const buyer = buyers.find(b => b.id === s.buyerId || b.name.toLowerCase() === (s.buyerName || '').toLowerCase());
                             const name = buyer ? (lang === 'ta' ? (buyer.nameTa || buyer.name) : buyer.name) : (s.buyerName || 'Customer');
                             sList.push({
                                 name,
@@ -329,9 +341,12 @@ const FlowerWiseReport = () => {
                 if (dateStr >= fromDate && dateStr <= toDate) {
                     (cs.items || []).forEach(item => {
                         if (matcher(item.flowerType)) {
-                            const staffName = cs.salesmanName && cs.salesmanName !== 'Unknown'
-                                ? cs.salesmanName
-                                : (lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Direct Entry');
+                            const salesman = salesmen.find(s => s.id === cs.salesmanId || s.name.toLowerCase() === (cs.salesmanName || '').toLowerCase());
+                            const staffName = salesman
+                                ? (lang === 'ta' ? (salesman.nameTa || salesman.name) : salesman.name)
+                                : (cs.salesmanName && cs.salesmanName !== 'Unknown'
+                                    ? cs.salesmanName
+                                    : (lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Direct Entry'));
                             sList.push({
                                 name: staffName,
                                 quantity: parseFloat(item.quantity || 0),
@@ -359,7 +374,7 @@ const FlowerWiseReport = () => {
         });
 
         return groups;
-    }, [products, intakes, outsidePurchases, cashPurchases, sales, cashSales, farmers, vendors, buyers, fromDate, toDate, lang]);
+    }, [products, intakes, outsidePurchases, cashPurchases, sales, cashSales, farmers, vendors, buyers, salesmen, fromDate, toDate, lang]);
 
     const handlePrint = () => {
         try {

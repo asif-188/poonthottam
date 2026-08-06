@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { FileText, Search, User, Users, ArrowUpRight, ArrowDownRight, Wallet, History, Landmark, ShieldCheck } from 'lucide-react';
 import { subscribeToCollection } from '../utils/storage';
+import { LangContext } from '../components/Layout';
 
 const Accounts = () => {
+    const { lang } = useContext(LangContext);
     const [farmers, setFarmers] = useState([]);
     const [buyers, setBuyers] = useState([]);
     const [activeTab, setActiveTab] = useState('farmers');
@@ -38,10 +40,10 @@ const Accounts = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="bg-white rounded-[40px] p-8 shadow-2xl border border-gray-100 flex items-center justify-between group hover:border-blue-500 transition-all cursor-default">
                     <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Total Farmer Payables</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">{lang === 'ta' ? 'விவசாயிக்கு செலுத்த வேண்டிய தொகை' : 'Total Farmer Payables'}</p>
                         <h4 className="text-4xl font-black text-gray-800 tracking-tighter italic">{formatCurrency(totalFarmerBalance)}</h4>
                         <div className="flex items-center gap-2 mt-4 text-emerald-500 font-bold text-xs uppercase tracking-widest pl-1">
-                             <ShieldCheck size={14} /> Secured Balance
+                             <ShieldCheck size={14} /> {lang === 'ta' ? 'பாதுகாக்கப்பட்ட இருப்பு' : 'Secured Balance'}
                         </div>
                     </div>
                     <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-[28px] flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all transform group-hover:rotate-12">
@@ -51,10 +53,10 @@ const Accounts = () => {
 
                 <div className="bg-white rounded-[40px] p-8 shadow-2xl border border-gray-100 flex items-center justify-between group hover:border-purple-500 transition-all cursor-default">
                     <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Total Buyer Receivables</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">{lang === 'ta' ? 'வாடிக்கையாளரிடமிருந்து வர வேண்டிய தொகை' : 'Total Buyer Receivables'}</p>
                         <h4 className="text-4xl font-black text-gray-800 tracking-tighter italic">{formatCurrency(totalBuyerBalance)}</h4>
                         <div className="flex items-center gap-2 mt-4 text-emerald-500 font-bold text-xs uppercase tracking-widest pl-1">
-                             <ShieldCheck size={14} /> Global Sync active
+                             <ShieldCheck size={14} /> {lang === 'ta' ? 'ஒத்திசைவு செயலில் உள்ளது' : 'Global Sync active'}
                         </div>
                     </div>
                     <div className="w-20 h-20 bg-purple-50 text-purple-600 rounded-[28px] flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-all transform group-hover:-rotate-12">
@@ -64,9 +66,9 @@ const Accounts = () => {
 
                 <div className="bg-emerald-600 rounded-[40px] p-8 shadow-2xl flex items-center justify-between text-white relative overflow-hidden group">
                     <div className="relative z-10">
-                        <p className="text-[10px] font-black text-emerald-200 uppercase tracking-[0.2em] mb-2">Market Liquidity</p>
-                        <h4 className="text-4xl font-black tracking-tighter italic">Healthy</h4>
-                        <div className="mt-4 px-4 py-1 bg-white/20 rounded-full inline-block text-[10px] font-black uppercase tracking-widest">System Operational</div>
+                        <p className="text-[10px] font-black text-emerald-200 uppercase tracking-[0.2em] mb-2">{lang === 'ta' ? 'சந்தை பணப்புழக்கம்' : 'Market Liquidity'}</p>
+                        <h4 className="text-4xl font-black tracking-tighter italic">{lang === 'ta' ? 'நன்றாக உள்ளது' : 'Healthy'}</h4>
+                        <div className="mt-4 px-4 py-1 bg-white/20 rounded-full inline-block text-[10px] font-black uppercase tracking-widest">{lang === 'ta' ? 'இயக்கம் செயலில் உள்ளது' : 'System Operational'}</div>
                     </div>
                     <Landmark size={80} className="text-emerald-500/30 absolute -right-4 -bottom-4 group-hover:scale-110 transition-transform" />
                 </div>
@@ -80,14 +82,14 @@ const Accounts = () => {
                         className={`flex-1 py-6 rounded-[28px] flex items-center justify-center gap-4 font-black uppercase tracking-widest transition-all ${activeTab === 'farmers' ? 'bg-white text-blue-600 shadow-xl scale-[1.02]' : 'text-gray-400 hover:text-gray-700 hover:bg-white/50'}`}
                     >
                         <History size={24} />
-                        Farmer Ledger
+                        {lang === 'ta' ? 'விவசாயி பேரேடு' : 'Farmer Ledger'}
                     </button>
                     <button 
                         onClick={() => setActiveTab('buyers')}
                         className={`flex-1 py-6 rounded-[28px] flex items-center justify-center gap-4 font-black uppercase tracking-widest transition-all ${activeTab === 'buyers' ? 'bg-white text-purple-600 shadow-xl scale-[1.02]' : 'text-gray-400 hover:text-gray-700 hover:bg-white/50'}`}
                     >
                         <Wallet size={24} />
-                        Buyer Ledger
+                        {lang === 'ta' ? 'வாடிக்கையாளர் பேரேடு' : 'Buyer Ledger'}
                     </button>
                 </div>
 
@@ -96,14 +98,14 @@ const Accounts = () => {
                         <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300" size={24} />
                         <input 
                             type="text" 
-                            placeholder={`Search identified ${activeTab}...`} 
+                            placeholder={lang === 'ta' ? 'தேடுக...' : `Search identified ${activeTab}...`} 
                             className="w-full pl-16 pr-8 py-5 bg-gray-50/50 border-3 border-transparent rounded-[30px] outline-none focus:border-blue-400 focus:bg-white transition-all font-black text-gray-700 text-lg shadow-inner"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
                     <div className="flex gap-4">
-                         <button className="px-8 py-4 bg-gray-800 text-white rounded-full font-black uppercase tracking-widest text-xs hover:bg-black transition-all">Print Statements</button>
+                         <button className="px-8 py-4 bg-gray-800 text-white rounded-full font-black uppercase tracking-widest text-xs hover:bg-black transition-all">{lang === 'ta' ? 'அறிக்கைகளை அச்சிடு' : 'Print Statements'}</button>
                     </div>
                 </div>
 
@@ -111,10 +113,10 @@ const Accounts = () => {
                     <table className="w-full text-left border-separate border-spacing-0">
                         <thead>
                             <tr className="bg-gray-50/30">
-                                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">{activeTab === 'farmers' ? 'Supplier Name' : 'Client Identity'}</th>
-                                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Last Journal Entry</th>
-                                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] text-right">Outstanding Bal (₹)</th>
-                                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] text-center">Credit Risk</th>
+                                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">{activeTab === 'farmers' ? (lang === 'ta' ? 'விவசாயி பெயர்' : 'Supplier Name') : (lang === 'ta' ? 'வாடிக்கையாளர் பெயர்' : 'Client Identity')}</th>
+                                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">{lang === 'ta' ? 'கடைசி பதிவு தேதி' : 'Last Journal Entry'}</th>
+                                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] text-right">{lang === 'ta' ? 'நிலுவைத் தொகை (₹)' : 'Outstanding Bal (₹)'}</th>
+                                <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] text-center">{lang === 'ta' ? 'கடன் நிலைமை' : 'Credit Risk'}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -126,15 +128,15 @@ const Accounts = () => {
                                                 {activeTab === 'farmers' ? <User size={28} /> : <Users size={28} />}
                                             </div>
                                             <div>
-                                                <p className="font-black text-gray-800 text-xl tracking-tight italic">{item.name}</p>
-                                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">📍 {item.location || 'Regional Market'}</p>
+                                                <p className="font-black text-gray-800 text-xl tracking-tight italic">{lang === 'ta' ? (item.nameTa || item.taName || item.name) : item.name}</p>
+                                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">📍 {item.location || (lang === 'ta' ? 'உள்ளூர் சந்தை' : 'Regional Market')}</p>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-10 py-8">
                                         <div className="bg-gray-100 rounded-full px-4 py-2 inline-block">
                                             <p className="text-xs font-black text-gray-500 uppercase tracking-widest">
-                                                {item.lastTxDate || 'Archive Ready'}
+                                                {item.lastTxDate || (lang === 'ta' ? 'பதிவு இல்லை' : 'Archive Ready')}
                                             </p>
                                         </div>
                                     </td>
@@ -149,7 +151,7 @@ const Accounts = () => {
                                                 item.balance > 10000 ? 'bg-red-50 text-red-600 border-red-100' : 
                                                 item.balance > 0 ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
                                             }`}>
-                                                {item.balance > 10000 ? 'Critical' : item.balance > 0 ? 'Warning' : 'Verified'}
+                                                {item.balance > 10000 ? (lang === 'ta' ? 'அபாயகரமானது' : 'Critical') : item.balance > 0 ? (lang === 'ta' ? 'எச்சரிக்கை' : 'Warning') : (lang === 'ta' ? 'சரிபார்க்கப்பட்டது' : 'Verified')}
                                             </span>
                                         </div>
                                     </td>
@@ -159,7 +161,7 @@ const Accounts = () => {
                                 <tr>
                                     <td colSpan="4" className="py-32 text-center opacity-30">
                                         <FileText size={80} className="mx-auto mb-4" />
-                                        <p className="text-xl font-black uppercase tracking-widest">Empty Ledger entries</p>
+                                        <p className="text-xl font-black uppercase tracking-widest">{lang === 'ta' ? 'கணக்குப் பதிவுகள் எதுவும் இல்லை' : 'Empty Ledger entries'}</p>
                                     </td>
                                 </tr>
                             )}

@@ -105,6 +105,8 @@ const SalesmanReports = () => {
     const [buyers, setBuyers] = useState([]);
     const [cashPurchases, setCashPurchases] = useState([]);
     const [cashSales, setCashSales] = useState([]);
+    const [farmers, setFarmers] = useState([]);
+    const [customCategories, setCustomCategories] = useState([]);
 
     const today = new Date().toLocaleDateString('en-CA');
     const [selectedSalesmanId, setSelectedSalesmanId] = useState('');
@@ -127,6 +129,8 @@ const SalesmanReports = () => {
         const unsubBuyers = subscribeToCollection('buyers', setBuyers);
         const unsubCashPurchases = subscribeToCollection('cash_purchases', setCashPurchases);
         const unsubCashSales = subscribeToCollection('cash_sales', setCashSales);
+        const unsubFarmers = subscribeToCollection('farmers', setFarmers);
+        const unsubCustomCategories = subscribeToCollection('expense_categories', setCustomCategories);
 
         return () => {
             unsubSalesmen();
@@ -140,6 +144,8 @@ const SalesmanReports = () => {
             unsubBuyers();
             unsubCashPurchases();
             unsubCashSales();
+            unsubFarmers();
+            unsubCustomCategories();
         };
     }, []);
 
@@ -180,7 +186,7 @@ const SalesmanReports = () => {
 
             if (openingBalance > 0) {
                 creditList.push({
-                    particulars: 'OB',
+                    particulars: lang === 'ta' ? 'ஆரம்ப இருப்பு (OB)' : 'OB',
                     quantity: null,
                     rate: null,
                     total: openingBalance
@@ -218,7 +224,9 @@ const SalesmanReports = () => {
             ));
             rangeBuyerPayments.forEach(p => {
                 const buyer = buyers.find(b => b.id === p.entityId);
-                const buyerName = buyer ? buyer.name : (lang === 'ta' ? 'வாடிக்கையாளர்' : 'Buyer');
+                const buyerName = buyer 
+                    ? (lang === 'ta' ? (buyer.nameTa || buyer.taName || buyer.name) : buyer.name) 
+                    : (lang === 'ta' ? 'வாடிக்கையாளர்' : 'Buyer');
                 const noteSuffix = p.note ? ` (${p.note})` : '';
                 creditList.push({
                     particulars: `${buyerName}${noteSuffix}`,
@@ -243,8 +251,9 @@ const SalesmanReports = () => {
                         });
                     });
                 } else {
+                    const custName = cs.customerName === 'Cash' ? (lang === 'ta' ? 'ரொக்கம்' : 'Cash') : cs.customerName;
                     creditList.push({
-                        particulars: (lang === 'ta' ? 'ரொக்க விற்பனை' : 'Cash Sales') + ` (${cs.customerName || '---'})`,
+                        particulars: (lang === 'ta' ? 'ரொக்க விற்பனை' : 'Cash Sales') + ` (${custName || '---'})`,
                         quantity: null,
                         rate: null,
                         total: Number(cs.grandTotal) || 0
@@ -258,7 +267,7 @@ const SalesmanReports = () => {
 
             if (openingBalance < 0) {
                 debitList.push({
-                    particulars: 'OB',
+                    particulars: lang === 'ta' ? 'ஆரம்ப இருப்பு (OB)' : 'OB',
                     quantity: null,
                     rate: null,
                     total: Math.abs(openingBalance)
@@ -271,8 +280,12 @@ const SalesmanReports = () => {
                 p.items.forEach(item => {
                     const fl = flowers.find(f => f.name === item.flowerType);
                     const flowerName = fl ? (lang === 'ta' ? (fl.taName || item.flowerType) : item.flowerType) : item.flowerType;
+                    const farmer = farmers.find(f => f.id === p.farmerId);
+                    const farmerName = farmer 
+                        ? (lang === 'ta' ? (farmer.nameTa || farmer.taName || farmer.name) : farmer.name)
+                        : (p.farmerName || '---');
                     debitList.push({
-                        particulars: `${flowerName} (${lang === 'ta' ? 'விவசாயி' : 'Farmer'}: ${p.farmerName || '---'})`,
+                        particulars: `${flowerName} (${lang === 'ta' ? 'விவசாயி' : 'Farmer'}: ${farmerName})`,
                         quantity: Number(item.quantity) || 0,
                         rate: Number(item.price) || 0,
                         total: Number(item.total) || 0
@@ -300,7 +313,17 @@ const SalesmanReports = () => {
             // 3. Expenses
             const rangeExpenses = expenses.filter(e => e.salesmanId === salesman.id && e.date >= fromDate && e.date <= toDate);
             rangeExpenses.forEach(e => {
-                const detail = [e.category, e.notes].filter(val => val && val !== '---').join(' - ') || (lang === 'ta' ? 'செலவு' : 'Expense');
+                let cat = e.category || '';
+                const foundCat = customCategories.find(c => c.name.toLowerCase() === cat.toLowerCase());
+                if (foundCat) {
+                    cat = lang === 'ta' ? (foundCat.nameTa || foundCat.name) : foundCat.name;
+                } else if (lang === 'ta') {
+                    if (cat === 'Petrol') cat = 'பெட்ரோல்';
+                    else if (cat === 'Food') cat = 'உணவு';
+                    else if (cat === 'Maintenance') cat = 'பராமரிப்பு';
+                    else if (cat === 'Other') cat = 'இதர';
+                }
+                const detail = [cat, e.notes].filter(val => val && val !== '---').join(' - ') || (lang === 'ta' ? 'செலவு' : 'Expense');
                 debitList.push({
                     particulars: detail,
                     quantity: null,
@@ -337,8 +360,9 @@ const SalesmanReports = () => {
                         });
                     });
                 } else {
+                    const vendName = cp.vendorName === 'Cash' ? (lang === 'ta' ? 'ரொக்கம்' : 'Cash') : cp.vendorName;
                     debitList.push({
-                        particulars: `${lang === 'ta' ? 'ரொக்கக் கொள்முதல்' : 'Cash Purchase'}: ${cp.vendorName || '---'}`,
+                        particulars: `${lang === 'ta' ? 'ரொக்கக் கொள்முதல்' : 'Cash Purchase'}: ${vendName || '---'}`,
                         quantity: null,
                         rate: null,
                         total: Number(cp.grandTotal) || 0

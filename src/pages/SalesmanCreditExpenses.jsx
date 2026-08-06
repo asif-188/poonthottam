@@ -7,6 +7,8 @@ import { LangContext } from '../components/Layout';
 import CashPurchase from './CashPurchase';
 import CashSales from './CashSales';
 import Payments from './Payments';
+import SalesmanReports from './SalesmanReports';
+
 
 const fmt = (n) =>
     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(n || 0);
@@ -46,7 +48,7 @@ const TD_S = {
 const SalesmanCreditExpenses = () => {
     const { lang } = useContext(LangContext);
     const locationState = useLocation().state;
-    const [activeTab, setActiveTab] = useState(locationState?.tab || 'expenses'); // 'expenses', 'credit', 'cash-purchase', 'cash-sales'
+    const [activeTab, setActiveTab] = useState(locationState?.tab || 'expenses'); // 'expenses', 'credit', 'cash-purchase', 'cash-sales', 'payments', 'reports'
 
     const [salesmen, setSalesmen] = useState([]);
     const [expenses, setExpenses] = useState([]);
@@ -374,6 +376,18 @@ const SalesmanCreditExpenses = () => {
                     }}
                 >
                     {lang === 'ta' ? 'பணம் செலுத்துதல்' : 'Payments'}
+                </button>
+                <button
+                    onClick={() => setActiveTab('reports')}
+                    style={{
+                        padding: '10px 16px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 800,
+                        cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
+                        background: activeTab === 'reports' ? '#fff' : 'transparent',
+                        color: activeTab === 'reports' ? '#0d9488' : '#64748b',
+                        boxShadow: activeTab === 'reports' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
+                    }}
+                >
+                    {lang === 'ta' ? 'அறிக்கைகள்' : 'Reports'}
                 </button>
             </div>
 
@@ -722,6 +736,10 @@ const SalesmanCreditExpenses = () => {
 
             {activeTab === 'payments' && (
                 <Payments />
+            )}
+
+            {activeTab === 'reports' && (
+                <SalesmanReports />
             )}
 
             {/* ── Category Manager Modal ── */}
