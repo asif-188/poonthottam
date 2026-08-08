@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Plus, Trash2, Printer, MessageCircle, Pencil, History, Clock, Mic } from 'lucide-react';
 import { saveSale, subscribeToCollection, db, updateDoc, deleteDoc } from '../utils/storage';
 import { doc, increment, serverTimestamp } from 'firebase/firestore';
@@ -8,6 +9,8 @@ import WhatsAppIcon from '../components/WhatsAppIcon';
 import { useTenant } from '../utils/TenantContext';
 import { getTemplateForTenant, TEMPLATE_TYPES } from '../utils/invoiceTemplates';
 import VoiceEntryModal from '../components/VoiceEntryModal';
+import Payments from './Payments';
+import Reports from './Reports';
 
 /* ── Keyboard-navigable Searchable Customer Dropdown ── */
 const SearchSelect = ({ items, value, onChange, onKeyDown, inputRef, placeholder, lang }) => {
@@ -142,7 +145,7 @@ const LABEL_S = {
     color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px',
 };
 
-const SalesEntry = () => {
+const SalesEntryForm = () => {
     const { t, lang } = useContext(LangContext);
     const { tenantData, tenantId } = useTenant();
     const [flowers, setFlowers]   = useState([]);
@@ -974,6 +977,60 @@ const TH_S = {
 };
 const TD_S = {
     padding: '14px', fontSize: '14px', verticalAlign: 'middle'
+};
+
+const SalesEntry = () => {
+    const { lang } = useContext(LangContext);
+    const locationState = useLocation().state;
+    const [activeTab, setActiveTab] = useState(locationState?.tab || 'sales'); // 'sales', 'payments', 'reports'
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', boxSizing: 'border-box' }}>
+            {/* Navigation Tabs */}
+            <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '14px', width: '100%', maxWidth: '100%', overflowX: 'auto', gap: '4px', boxSizing: 'border-box', scrollbarWidth: 'none' }}>
+                <button
+                    onClick={() => setActiveTab('sales')}
+                    style={{
+                        padding: '10px 16px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 800,
+                        cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
+                        background: activeTab === 'sales' ? '#fff' : 'transparent',
+                        color: activeTab === 'sales' ? '#16a34a' : '#64748b',
+                        boxShadow: activeTab === 'sales' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
+                    }}
+                >
+                    {lang === 'ta' ? 'விற்பனை' : 'Sales'}
+                </button>
+                <button
+                    onClick={() => setActiveTab('payments')}
+                    style={{
+                        padding: '10px 16px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 800,
+                        cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
+                        background: activeTab === 'payments' ? '#fff' : 'transparent',
+                        color: activeTab === 'payments' ? '#8b5cf6' : '#64748b',
+                        boxShadow: activeTab === 'payments' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
+                    }}
+                >
+                    {lang === 'ta' ? 'பணம் செலுத்துதல்' : 'Payments'}
+                </button>
+                <button
+                    onClick={() => setActiveTab('reports')}
+                    style={{
+                        padding: '10px 16px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 800,
+                        cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap',
+                        background: activeTab === 'reports' ? '#fff' : 'transparent',
+                        color: activeTab === 'reports' ? '#0d9488' : '#64748b',
+                        boxShadow: activeTab === 'reports' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
+                    }}
+                >
+                    {lang === 'ta' ? 'அறிக்கைகள்' : 'Reports'}
+                </button>
+            </div>
+
+            {activeTab === 'sales' && <SalesEntryForm />}
+            {activeTab === 'payments' && <Payments />}
+            {activeTab === 'reports' && <Reports />}
+        </div>
+    );
 };
 
 export default SalesEntry;
